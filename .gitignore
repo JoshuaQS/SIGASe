@@ -13,3 +13,6 @@ tests/playwright/storage-states/
 # Local tooling folders
 .agents/
 .claude/
+
+.env
+.env.*

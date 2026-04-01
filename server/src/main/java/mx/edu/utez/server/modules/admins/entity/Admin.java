@@ -1,0 +1,130 @@
+package mx.edu.utez.server.modules.admins.entity;
+
+import mx.edu.utez.server.shared.entity.BaseAuditableEntity;
+import mx.edu.utez.server.shared.enums.AdminRole;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.Index;
+import jakarta.persistence.Table;
+import java.time.Instant;
+
+@Entity
+@Table(name = "admins", indexes = {
+        @Index(name = "idx_admins_email", columnList = "email", unique = true),
+        @Index(name = "idx_admins_role", columnList = "role")
+})
+public class Admin extends BaseAuditableEntity {
+
+    @Column(name = "email", nullable = false, length = 254, unique = true)
+    private String email;
+
+    @Column(name = "full_name", nullable = false, length = 100)
+    private String name;
+
+    @Column(name = "last_name_paternal", nullable = false, length = 100)
+    private String lastNamePaternal;
+
+    @Column(name = "last_name_maternal", length = 100)
+    private String lastNameMaternal;
+
+    @Column(name = "password_hash", nullable = false, length = 255)
+    private String passwordHash;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "role", nullable = false, length = 32)
+    private AdminRole role;
+
+    @Column(name = "active", nullable = false)
+    private boolean active = true;
+
+    @Column(name = "failed_login_attempts", nullable = false)
+    private int failedLoginAttempts = 0;
+
+    @Column(name = "locked_until")
+    private Instant lockedUntil;
+
+    @Column(name = "last_login_at")
+    private Instant lastLoginAt;
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getLastNamePaternal() {
+        return lastNamePaternal;
+    }
+
+    public void setLastNamePaternal(String lastNamePaternal) {
+        this.lastNamePaternal = lastNamePaternal;
+    }
+
+    public String getLastNameMaternal() {
+        return lastNameMaternal;
+    }
+
+    public void setLastNameMaternal(String lastNameMaternal) {
+        this.lastNameMaternal = lastNameMaternal;
+    }
+
+    public String getPasswordHash() {
+        return passwordHash;
+    }
+
+    public void setPasswordHash(String passwordHash) {
+        this.passwordHash = passwordHash;
+    }
+
+    public AdminRole getRole() {
+        return role;
+    }
+
+    public void setRole(AdminRole role) {
+        this.role = role;
+    }
+
+    public boolean isActive() {
+        return active;
+    }
+
+    public void setActive(boolean active) {
+        this.active = active;
+    }
+
+    public int getFailedLoginAttempts() {
+        return failedLoginAttempts;
+    }
+
+    public void setFailedLoginAttempts(int failedLoginAttempts) {
+        this.failedLoginAttempts = failedLoginAttempts;
+    }
+
+    public Instant getLockedUntil() {
+        return lockedUntil;
+    }
+
+    public void setLockedUntil(Instant lockedUntil) {
+        this.lockedUntil = lockedUntil;
+    }
+
+    public Instant getLastLoginAt() {
+        return lastLoginAt;
+    }
+
+    public void setLastLoginAt(Instant lastLoginAt) {
+        this.lastLoginAt = lastLoginAt;
+    }
+}
