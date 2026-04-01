@@ -1,0 +1,15 @@
+# macOS / editor
+.DS_Store
+.vscode/
+
+# Dependencies and build outputs
+**/node_modules/
+client/dist/
+server/target/
+tests/playwright/playwright-report/
+tests/playwright/test-results/
+tests/playwright/storage-states/
+
+# Local tooling folders
+.agents/
+.claude/
