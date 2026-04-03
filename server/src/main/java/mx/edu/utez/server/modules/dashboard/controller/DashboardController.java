@@ -10,6 +10,7 @@ import mx.edu.utez.server.shared.enums.AccessResult;
 import mx.edu.utez.server.shared.enums.StudentStatus;
 import io.swagger.v3.oas.annotations.Operation;
 import java.time.Instant;
+import java.util.UUID;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -34,10 +35,11 @@ public class DashboardController {
     public ApiResponse<DashboardSummaryResponse> summary(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant dateFrom,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant dateTo,
-            @RequestParam(required = false) String career,
+            @RequestParam(required = false) UUID careerId,
+            @RequestParam(required = false) String careerCode,
             @RequestParam(required = false) StudentStatus studentStatus
     ) {
-        DashboardSummaryResponse response = dashboardService.getSummary(dateFrom, dateTo, career, studentStatus);
+        DashboardSummaryResponse response = dashboardService.getSummary(dateFrom, dateTo, careerId, careerCode, studentStatus);
         return new ApiResponse<>(true, "Resumen de dashboard obtenido.", response, HttpStatus.OK.value());
     }
 
@@ -46,14 +48,16 @@ public class DashboardController {
     public ApiResponse<DashboardAccessTrendsResponse> accessTrends(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant dateFrom,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant dateTo,
-            @RequestParam(required = false) String career,
+            @RequestParam(required = false) UUID careerId,
+            @RequestParam(required = false) String careerCode,
             @RequestParam(required = false) StudentStatus studentStatus,
             @RequestParam(required = false) AccessResult result
     ) {
         DashboardAccessTrendsResponse response = dashboardService.getAccessTrends(
                 dateFrom,
                 dateTo,
-                career,
+                careerId,
+                careerCode,
                 studentStatus,
                 result
         );
@@ -65,7 +69,8 @@ public class DashboardController {
     public ApiResponse<DashboardTopStudentsResponse> topStudents(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant dateFrom,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant dateTo,
-            @RequestParam(required = false) String career,
+            @RequestParam(required = false) UUID careerId,
+            @RequestParam(required = false) String careerCode,
             @RequestParam(required = false) StudentStatus studentStatus,
             @RequestParam(required = false) AccessResult result,
             @RequestParam(required = false) Integer limit,
@@ -74,7 +79,8 @@ public class DashboardController {
         DashboardTopStudentsResponse response = dashboardService.getTopStudents(
                 dateFrom,
                 dateTo,
-                career,
+                careerId,
+                careerCode,
                 studentStatus,
                 result,
                 limit,

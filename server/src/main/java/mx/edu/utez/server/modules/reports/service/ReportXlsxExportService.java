@@ -80,11 +80,12 @@ public class ReportXlsxExportService {
         }
 
         // Determine career/status from filters for data collector (null if not filtered)
-        String careerFilter = null; // Access log export doesn't filter by career directly
+        UUID careerIdFilter = null; // Access log export doesn't filter by career directly
+        String careerCodeFilter = null;
         StudentStatus statusFilter = null;
 
         ReportDataCollector.ReportData data = reportDataCollector.collect(
-                dateFrom, dateTo, result, careerFilter, statusFilter
+                dateFrom, dateTo, result, careerIdFilter, careerCodeFilter, statusFilter
         );
 
         try (SXSSFWorkbook wb = new SXSSFWorkbook(CHUNK_SIZE)) {

@@ -17,7 +17,13 @@ public class StudentMapper {
                 student.getSex(),
                 student.getQuarter(),
                 student.getInstitutionalEmail(),
-                student.getCareer(),
+                student.getCareer() == null
+                        ? null
+                        : new StudentResponse.CareerInfo(
+                                student.getCareer().getId(),
+                                student.getCareer().getCode(),
+                                student.getCareer().getName()
+                        ),
                 student.getStatus(),
                 student.getLastLoginAt(),
                 student.getDeactivatedAt(),

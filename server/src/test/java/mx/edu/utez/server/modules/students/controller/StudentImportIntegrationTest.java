@@ -3,7 +3,10 @@ package mx.edu.utez.server.modules.students.controller;
 import mx.edu.utez.server.modules.admins.entity.Admin;
 import mx.edu.utez.server.modules.admins.repository.AdminRepository;
 import mx.edu.utez.server.modules.auth.repository.AdminPasswordResetTokenRepository;
+import mx.edu.utez.server.modules.careers.entity.Career;
+import mx.edu.utez.server.modules.careers.repository.CareerRepository;
 import mx.edu.utez.server.modules.elibro.repository.ElibroConfigRepository;
+import mx.edu.utez.server.modules.elibro.repository.ElibroValidationRunRepository;
 import mx.edu.utez.server.modules.logs.access.repository.AccessLogRepository;
 import mx.edu.utez.server.modules.logs.audit.repository.AuditLogRepository;
 import mx.edu.utez.server.modules.students.entity.Student;
@@ -45,6 +48,8 @@ class StudentImportIntegrationTest {
     @Autowired private AccessLogRepository accessLogRepository;
     @Autowired private AuditLogRepository auditLogRepository;
     @Autowired private ElibroConfigRepository elibroConfigRepository;
+    @Autowired private ElibroValidationRunRepository validationRunRepository;
+    @Autowired private CareerRepository careerRepository;
 
     private Admin adminTi;
 
@@ -52,12 +57,16 @@ class StudentImportIntegrationTest {
     void setUp() {
         accessLogRepository.deleteAll();
         auditLogRepository.deleteAll();
+        validationRunRepository.deleteAll();
         elibroConfigRepository.deleteAll();
         studentRepository.deleteAll();
+        careerRepository.deleteAll();
         passwordResetTokenRepository.deleteAll();
         adminRepository.deleteAll();
 
         adminTi = saveAdmin("admin.ti@utez.edu.mx", AdminRole.ADMIN_TI);
+        saveCareer("DSM", "Desarrollo de Software Multiplataforma");
+        saveCareer("IRD", "Infraestructura en Redes Digitales");
     }
 
     // ── Valid CSV ───────────────────────────────────────────────────────
@@ -65,8 +74,8 @@ class StudentImportIntegrationTest {
     @Test
     void shouldImportValidCsvSuccessfully() throws Exception {
         String csv = csvHeader()
-                + "2026A0001,Alice,Paternal,Maternal,alice@utez.edu.mx,Sistemas,3,FEMALE\n"
-                + "2026A0002,Bob,Gomez,,bob@utez.edu.mx,Redes,5,MALE\n";
+                + "2026A0001,Alice,Paternal,Maternal,alice@utez.edu.mx,DSM,3,FEMALE\n"
+                + "2026A0002,Bob,Gomez,,bob@utez.edu.mx,IRD,5,MALE\n";
 
         MockMultipartFile file = csvFile(csv);
 
@@ -86,8 +95,8 @@ class StudentImportIntegrationTest {
     @Test
     void shouldReportRowLevelValidationErrors() throws Exception {
         String csv = csvHeader()
-                + ",Alice,Paternal,Maternal,alice@utez.edu.mx,Sistemas,3,FEMALE\n"  // missing matricula
-                + "2026A0003,Bob,Gomez,,invalid-email,Redes,5,MALE\n";               // invalid email
+                + ",Alice,Paternal,Maternal,alice@utez.edu.mx,DSM,3,FEMALE\n"  // missing enrollmentId
+                + "2026A0003,Bob,Gomez,,invalid-email,IRD,5,MALE\n";            // invalid email
 
         MockMultipartFile file = csvFile(csv);
 
@@ -98,7 +107,7 @@ class StudentImportIntegrationTest {
                 .andExpect(jsonPath("$.data.totalRows", is(2)))
                 .andExpect(jsonPath("$.data.successCount", is(0)))
                 .andExpect(jsonPath("$.data.errorCount", is(2)))
-                .andExpect(jsonPath("$.data.errors[0].errorCode", is("MISSING_MATRICULA")))
+                .andExpect(jsonPath("$.data.errors[0].errorCode", is("MISSING_ENROLLMENT_ID")))
                 .andExpect(jsonPath("$.data.errors[1].errorCode", is("INVALID_EMAIL")));
     }
 
@@ -107,8 +116,8 @@ class StudentImportIntegrationTest {
     @Test
     void shouldReportDuplicateMatriculaInFile() throws Exception {
         String csv = csvHeader()
-                + "2026A0010,Alice,Paternal,Maternal,alice10@utez.edu.mx,Sistemas,3,FEMALE\n"
-                + "2026A0010,Bob,Gomez,,bob10@utez.edu.mx,Redes,5,MALE\n";
+                + "2026A0010,Alice,Paternal,Maternal,alice10@utez.edu.mx,DSM,3,FEMALE\n"
+                + "2026A0010,Bob,Gomez,,bob10@utez.edu.mx,IRD,5,MALE\n";
 
         MockMultipartFile file = csvFile(csv);
 
@@ -117,8 +126,8 @@ class StudentImportIntegrationTest {
                         .with(auth(adminTi, RoleConstants.ADMIN_TI)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.errorCount", is(2)))
-                .andExpect(jsonPath("$.data.errors[0].errorCode", is("DUPLICATE_MATRICULA_IN_FILE")))
-                .andExpect(jsonPath("$.data.errors[1].errorCode", is("DUPLICATE_MATRICULA_IN_FILE")));
+                .andExpect(jsonPath("$.data.errors[0].errorCode", is("DUPLICATE_ENROLLMENT_ID_IN_FILE")))
+                .andExpect(jsonPath("$.data.errors[1].errorCode", is("DUPLICATE_ENROLLMENT_ID_IN_FILE")));
     }
 
     // ── Duplicate email in file ────────────────────────────────────────
@@ -126,8 +135,8 @@ class StudentImportIntegrationTest {
     @Test
     void shouldReportDuplicateEmailInFile() throws Exception {
         String csv = csvHeader()
-                + "2026A0020,Alice,Paternal,Maternal,shared@utez.edu.mx,Sistemas,3,FEMALE\n"
-                + "2026A0021,Bob,Gomez,,shared@utez.edu.mx,Redes,5,MALE\n";
+                + "2026A0020,Alice,Paternal,Maternal,shared@utez.edu.mx,DSM,3,FEMALE\n"
+                + "2026A0021,Bob,Gomez,,shared@utez.edu.mx,IRD,5,MALE\n";
 
         MockMultipartFile file = csvFile(csv);
 
@@ -144,10 +153,10 @@ class StudentImportIntegrationTest {
 
     @Test
     void shouldReportDuplicateMatriculaInDb() throws Exception {
-        saveStudent(adminTi, "2026A0030", "existing30@utez.edu.mx", "Sistemas", StudentStatus.ACTIVE);
+        saveStudent(adminTi, "2026A0030", "existing30@utez.edu.mx", "DSM", StudentStatus.ACTIVE);
 
         String csv = csvHeader()
-                + "2026A0030,Alice,Paternal,Maternal,new30@utez.edu.mx,Sistemas,3,FEMALE\n";
+                + "2026A0030,Alice,Paternal,Maternal,new30@utez.edu.mx,DSM,3,FEMALE\n";
 
         MockMultipartFile file = csvFile(csv);
 
@@ -156,17 +165,17 @@ class StudentImportIntegrationTest {
                         .with(auth(adminTi, RoleConstants.ADMIN_TI)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.errorCount", is(1)))
-                .andExpect(jsonPath("$.data.errors[0].errorCode", is("DUPLICATE_MATRICULA_IN_DB")));
+                .andExpect(jsonPath("$.data.errors[0].errorCode", is("DUPLICATE_ENROLLMENT_ID_IN_DB")));
     }
 
     // ── Duplicate email in DB ──────────────────────────────────────────
 
     @Test
     void shouldReportDuplicateEmailInDb() throws Exception {
-        saveStudent(adminTi, "2026A0040", "existing40@utez.edu.mx", "Sistemas", StudentStatus.ACTIVE);
+        saveStudent(adminTi, "2026A0040", "existing40@utez.edu.mx", "DSM", StudentStatus.ACTIVE);
 
         String csv = csvHeader()
-                + "2026A0041,Alice,Paternal,Maternal,existing40@utez.edu.mx,Sistemas,3,FEMALE\n";
+                + "2026A0041,Alice,Paternal,Maternal,existing40@utez.edu.mx,DSM,3,FEMALE\n";
 
         MockMultipartFile file = csvFile(csv);
 
@@ -195,7 +204,7 @@ class StudentImportIntegrationTest {
     @Test
     void shouldRejectImportForStudentRole() throws Exception {
         String csv = csvHeader()
-                + "2026A0050,Alice,Paternal,Maternal,alice50@utez.edu.mx,Sistemas,3,FEMALE\n";
+                + "2026A0050,Alice,Paternal,Maternal,alice50@utez.edu.mx,DSM,3,FEMALE\n";
 
         MockMultipartFile file = csvFile(csv);
 
@@ -208,7 +217,7 @@ class StudentImportIntegrationTest {
     // ── Helpers ────────────────────────────────────────────────────────
 
     private String csvHeader() {
-        return "matricula,fullName,lastNamePaternal,lastNameMaternal,institutionalEmail,career,quarter,sex\n";
+        return "enrollmentId,name,lastNamePaternal,lastNameMaternal,institutionalEmail,careerCode,quarter,sex\n";
     }
 
     private MockMultipartFile csvFile(String content) {
@@ -238,20 +247,33 @@ class StudentImportIntegrationTest {
         return adminRepository.save(admin);
     }
 
-    private Student saveStudent(Admin createdBy, String matricula, String email, String career, StudentStatus status) {
+    private Student saveStudent(Admin createdBy, String matricula, String email, String careerCode, StudentStatus status) {
         Student s = new Student();
-        s.setEnrollmentNumber(matricula);
+        s.setEnrollmentId(matricula);
         s.setName("Student");
         s.setLastNamePaternal("Paternal");
         s.setLastNameMaternal("Maternal");
-        s.setSex(Sex.NOT_SPECIFIED);
+        s.setSex(Sex.NON_BINARY);
         s.setQuarter(3);
         s.setInstitutionalEmail(email);
         s.setInstitutionalEmailNormalized(email.toLowerCase());
-        s.setCareer(career);
+        s.setCareer(resolveCareer(careerCode));
         s.setStatus(status);
         s.setCreatedByAdmin(createdBy);
         s.setUpdatedByAdmin(createdBy);
         return studentRepository.save(s);
+    }
+
+    private Career saveCareer(String code, String name) {
+        Career career = new Career();
+        career.setCode(code);
+        career.setName(name);
+        career.setActive(true);
+        return careerRepository.save(career);
+    }
+
+    private Career resolveCareer(String code) {
+        return careerRepository.findByCodeIgnoreCase(code)
+                .orElseThrow(() -> new IllegalStateException("Career not seeded for test code: " + code));
     }
 }

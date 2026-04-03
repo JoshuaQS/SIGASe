@@ -1,6 +1,8 @@
 package mx.edu.utez.server.modules.students.service;
 
 import mx.edu.utez.server.modules.admins.entity.Admin;
+import mx.edu.utez.server.modules.careers.entity.Career;
+import mx.edu.utez.server.modules.careers.repository.CareerRepository;
 import mx.edu.utez.server.modules.logs.audit.service.AuditTrailService;
 import mx.edu.utez.server.modules.students.dto.StudentImportResultResponse;
 import mx.edu.utez.server.modules.students.dto.StudentImportRowError;
@@ -37,16 +39,16 @@ public class StudentImportService {
     private static final int NAME_MAX_LENGTH = 100;
     private static final int LAST_NAME_MAX_LENGTH = 100;
     private static final int EMAIL_MAX_LENGTH = 254;
-    private static final int CAREER_MAX_LENGTH = 120;
+    private static final int CAREER_CODE_MAX_LENGTH = 20;
 
     private static final Set<String> REQUIRED_HEADERS = new LinkedHashSet<>(List.of(
             "enrollmentid", "name", "lastnamepaternal", "lastnamematernal",
-            "institutionalemail", "career", "quarter", "sex"
+            "institutionalemail", "careercode", "quarter", "sex"
     ));
 
     private static final Set<String> ALL_VALID_HEADERS = new LinkedHashSet<>(List.of(
             "enrollmentid", "name", "lastnamepaternal", "lastnamematernal",
-            "institutionalemail", "career", "quarter", "sex", "status"
+            "institutionalemail", "careercode", "quarter", "sex", "status"
     ));
 
     private static final Pattern EMAIL_PATTERN = Pattern.compile(
@@ -54,15 +56,18 @@ public class StudentImportService {
     );
 
     private final StudentRepository studentRepository;
+    private final CareerRepository careerRepository;
     private final EmailNormalizer emailNormalizer;
     private final AuditTrailService auditTrailService;
 
     public StudentImportService(
             StudentRepository studentRepository,
+            CareerRepository careerRepository,
             EmailNormalizer emailNormalizer,
             AuditTrailService auditTrailService
     ) {
         this.studentRepository = studentRepository;
+        this.careerRepository = careerRepository;
         this.emailNormalizer = emailNormalizer;
         this.auditTrailService = auditTrailService;
     }
@@ -162,7 +167,7 @@ public class StudentImportService {
         String lastNamePaternal = getField(row, headerIndex, "lastnamepaternal").trim();
         String lastNameMaternal = getField(row, headerIndex, "lastnamematernal").trim();
         String institutionalEmail = getField(row, headerIndex, "institutionalemail").trim();
-        String career = getField(row, headerIndex, "career").trim();
+        String careerCode = getField(row, headerIndex, "careercode").trim();
         String quarterStr = getField(row, headerIndex, "quarter").trim();
         String sexStr = getField(row, headerIndex, "sex").trim();
         String statusStr = getField(row, headerIndex, "status").trim();
@@ -203,12 +208,12 @@ public class StudentImportService {
         if (!EMAIL_PATTERN.matcher(institutionalEmail).matches()) {
             return error(rowNumber, enrollmentId, "INVALID_EMAIL", "El correo institucional tiene formato inválido.");
         }
-        if (!StringUtils.hasText(career)) {
-            return error(rowNumber, enrollmentId, "MISSING_CAREER", "La carrera es obligatoria.");
+        if (!StringUtils.hasText(careerCode)) {
+            return error(rowNumber, enrollmentId, "MISSING_CAREER_CODE", "La clave de carrera es obligatoria.");
         }
-        if (career.length() > CAREER_MAX_LENGTH) {
-            return error(rowNumber, enrollmentId, "INVALID_CAREER_LENGTH",
-                    "La carrera no puede exceder " + CAREER_MAX_LENGTH + " caracteres.");
+        if (careerCode.length() > CAREER_CODE_MAX_LENGTH) {
+            return error(rowNumber, enrollmentId, "INVALID_CAREER_CODE_LENGTH",
+                    "La clave de carrera no puede exceder " + CAREER_CODE_MAX_LENGTH + " caracteres.");
         }
 
         // Quarter
@@ -263,6 +268,12 @@ public class StudentImportService {
         if (studentRepository.existsByInstitutionalEmailNormalized(normalizedEmail)) {
             return error(rowNumber, enrollmentId, "DUPLICATE_EMAIL_IN_DB",
                     "El correo institucional ya existe en la base de datos.");
+        }
+
+        String safeCareerCode = careerCode.trim().toUpperCase(Locale.ROOT);
+        Career career = careerRepository.findByCodeIgnoreCase(safeCareerCode).orElse(null);
+        if (career == null) {
+            return error(rowNumber, enrollmentId, "INVALID_CAREER_CODE", "La clave de carrera no existe.");
         }
 
         // Save

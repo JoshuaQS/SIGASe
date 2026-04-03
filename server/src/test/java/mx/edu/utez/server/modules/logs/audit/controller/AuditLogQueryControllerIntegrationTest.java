@@ -4,6 +4,7 @@ import mx.edu.utez.server.modules.admins.entity.Admin;
 import mx.edu.utez.server.modules.admins.repository.AdminRepository;
 import mx.edu.utez.server.modules.auth.repository.AdminPasswordResetTokenRepository;
 import mx.edu.utez.server.modules.elibro.repository.ElibroConfigRepository;
+import mx.edu.utez.server.modules.elibro.repository.ElibroValidationRunRepository;
 import mx.edu.utez.server.modules.logs.access.repository.AccessLogRepository;
 import mx.edu.utez.server.modules.logs.audit.entity.AuditLog;
 import mx.edu.utez.server.modules.logs.audit.repository.AuditLogRepository;
@@ -55,6 +56,9 @@ class AuditLogQueryControllerIntegrationTest {
     private ElibroConfigRepository elibroConfigRepository;
 
     @Autowired
+    private ElibroValidationRunRepository validationRunRepository;
+
+    @Autowired
     private AdminPasswordResetTokenRepository passwordResetTokenRepository;
 
     private Admin adminTi;
@@ -65,6 +69,7 @@ class AuditLogQueryControllerIntegrationTest {
     void setUp() {
         accessLogRepository.deleteAll();
         auditLogRepository.deleteAll();
+        validationRunRepository.deleteAll();
         elibroConfigRepository.deleteAll();
         studentRepository.deleteAll();
         passwordResetTokenRepository.deleteAll();

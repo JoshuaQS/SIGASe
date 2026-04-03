@@ -23,6 +23,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class StudentPortalSummaryService {
 
+    private static final String ELIBRO_PROVIDER_NAME = "ELIBRO";
+
     private final StudentRepository studentRepository;
     private final AccessLogRepository accessLogRepository;
 
@@ -42,19 +44,22 @@ public class StudentPortalSummaryService {
         Instant now = Instant.now();
         Instant fromLast7Days = now.minus(7, ChronoUnit.DAYS);
 
-        long accessesLast7Days = accessLogRepository.countByStudent_IdAndOccurredAtGreaterThanEqualAndResult(
+        long accessesLast7Days = accessLogRepository.countByStudent_IdAndProviderNameAndOccurredAtGreaterThanEqualAndResult(
                 student.getId(),
+                ELIBRO_PROVIDER_NAME,
                 fromLast7Days,
                 AccessResult.SUCCESS
         );
-        long failedAttemptsLast7Days = accessLogRepository.countByStudent_IdAndOccurredAtGreaterThanEqualAndResultNot(
+        long failedAttemptsLast7Days = accessLogRepository.countByStudent_IdAndProviderNameAndOccurredAtGreaterThanEqualAndResultNot(
                 student.getId(),
+                ELIBRO_PROVIDER_NAME,
                 fromLast7Days,
                 AccessResult.SUCCESS
         );
 
-        Instant lastAccess = accessLogRepository.findTopByStudent_IdAndResultOrderByOccurredAtDesc(
+        Instant lastAccess = accessLogRepository.findTopByStudent_IdAndProviderNameAndResultOrderByOccurredAtDesc(
                 student.getId(),
+                ELIBRO_PROVIDER_NAME,
                 AccessResult.SUCCESS
         ).map(AccessLog::getOccurredAt).orElse(null);
 
@@ -66,7 +71,7 @@ public class StudentPortalSummaryService {
                 new StudentPortalSummaryResponse.PersonalInfo(
                         student.getName(),
                         student.getEnrollmentId(),
-                        student.getCareer(),
+                        student.getCareer() != null ? student.getCareer().getName() : null,
                         student.getStatus().name()
                 ),
                 new StudentPortalSummaryResponse.AccountStatus(
@@ -88,8 +93,9 @@ public class StudentPortalSummaryService {
     }
 
     private int calculateAccessStreak(UUID studentId) {
-        List<AccessLog> recentSuccessLogs = accessLogRepository.findTop365ByStudent_IdAndResultOrderByOccurredAtDesc(
+        List<AccessLog> recentSuccessLogs = accessLogRepository.findTop365ByStudent_IdAndProviderNameAndResultOrderByOccurredAtDesc(
                 studentId,
+                ELIBRO_PROVIDER_NAME,
                 AccessResult.SUCCESS
         );
         if (recentSuccessLogs.isEmpty()) {

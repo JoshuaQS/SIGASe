@@ -8,6 +8,7 @@ import mx.edu.utez.server.shared.api.PageResponse;
 import mx.edu.utez.server.shared.enums.AccessResult;
 import mx.edu.utez.server.shared.exception.BusinessException;
 import mx.edu.utez.server.shared.exception.ErrorCode;
+import mx.edu.utez.server.shared.util.SecurityLogSanitizer;
 import java.time.Instant;
 import java.util.Locale;
 import java.util.Set;
@@ -33,13 +34,16 @@ public class AccessLogQueryService {
 
     private final AccessLogRepository accessLogRepository;
     private final AccessLogMapper accessLogMapper;
+    private final SecurityLogSanitizer securityLogSanitizer;
 
     public AccessLogQueryService(
             AccessLogRepository accessLogRepository,
-            AccessLogMapper accessLogMapper
+            AccessLogMapper accessLogMapper,
+            SecurityLogSanitizer securityLogSanitizer
     ) {
         this.accessLogRepository = accessLogRepository;
         this.accessLogMapper = accessLogMapper;
+        this.securityLogSanitizer = securityLogSanitizer;
     }
 
     @Transactional(readOnly = true)
@@ -120,6 +124,19 @@ public class AccessLogQueryService {
             String correlationId,
             String providerName
     ) {
+        final String rawNormalizedEmail = StringUtils.hasText(normalizedEmail)
+                ? normalizedEmail.trim().toLowerCase(Locale.ROOT)
+                : null;
+        final String sanitizedNormalizedEmail = securityLogSanitizer.sanitizeEmailForLookup(normalizedEmail);
+        final String rawAttemptedEmail = StringUtils.hasText(attemptedEmail)
+                ? attemptedEmail.trim().toLowerCase(Locale.ROOT)
+                : null;
+        final String sanitizedAttemptedEmail = securityLogSanitizer.sanitizeEmailForLookup(attemptedEmail);
+        final String rawIpAddress = StringUtils.hasText(ipAddress)
+                ? ipAddress.trim().toLowerCase(Locale.ROOT)
+                : null;
+        final String sanitizedIpAddress = securityLogSanitizer.sanitizeIpForLookup(ipAddress);
+
         return (root, query, cb) -> {
             var predicate = cb.conjunction();
 
@@ -133,24 +150,24 @@ public class AccessLogQueryService {
                 predicate = cb.and(predicate, cb.equal(root.get("result"), result));
             }
             if (StringUtils.hasText(normalizedEmail)) {
-                predicate = cb.and(predicate, cb.equal(
-                        cb.lower(root.get("normalizedEmail")),
-                        normalizedEmail.trim().toLowerCase(Locale.ROOT)
+                predicate = cb.and(predicate, cb.or(
+                        cb.equal(cb.lower(root.get("normalizedEmail")), rawNormalizedEmail),
+                        cb.equal(cb.lower(root.get("normalizedEmail")), sanitizedNormalizedEmail)
                 ));
             }
             if (StringUtils.hasText(attemptedEmail)) {
-                predicate = cb.and(predicate, cb.equal(
-                        cb.lower(root.get("attemptedEmail")),
-                        attemptedEmail.trim().toLowerCase(Locale.ROOT)
+                predicate = cb.and(predicate, cb.or(
+                        cb.equal(cb.lower(root.get("attemptedEmail")), rawAttemptedEmail),
+                        cb.equal(cb.lower(root.get("attemptedEmail")), sanitizedAttemptedEmail)
                 ));
             }
             if (studentId != null) {
                 predicate = cb.and(predicate, cb.equal(root.get("student").get("id"), studentId));
             }
             if (StringUtils.hasText(ipAddress)) {
-                predicate = cb.and(predicate, cb.equal(
-                        cb.lower(root.get("ipAddress")),
-                        ipAddress.trim().toLowerCase(Locale.ROOT)
+                predicate = cb.and(predicate, cb.or(
+                        cb.equal(cb.lower(root.get("ipAddress")), rawIpAddress),
+                        cb.equal(cb.lower(root.get("ipAddress")), sanitizedIpAddress)
                 ));
             }
             if (StringUtils.hasText(requestId)) {

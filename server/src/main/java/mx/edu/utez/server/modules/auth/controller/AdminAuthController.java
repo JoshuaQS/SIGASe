@@ -45,9 +45,9 @@ public class AdminAuthController {
     @PostMapping("/logout")
     @Operation(
             summary = "Logout administrador (lógico)",
-            description = "En esta fase el logout es lógico del lado cliente. "
-                    + "No existe revocación server-side ni denylist de JWT. "
-                    + "El cliente debe eliminar access token y estado de sesión local."
+            description = "El logout invalida la sesión del lado cliente. "
+                    + "No existe denylist para invalidación inmediata por evento de logout; "
+                    + "las sesiones previas se invalidan al rotar credenciales (tokenVersion)."
     )
     @PreAuthorize("hasAnyAuthority('ROLE_ADMIN_TI','ROLE_ADMIN_BIBLIOTECA')")
     public ApiResponse<Void> logout() {
@@ -68,8 +68,8 @@ public class AdminAuthController {
     @PostMapping("/reset-password/request")
     @Operation(
             summary = "Solicitar recuperación de contraseña",
-            description = "Genera un token de recuperación. En esta fase el token se "
-                    + "imprime en el log del servidor en vez de enviarse por email."
+            description = "Genera un token de recuperación. "
+                    + "Mientras no exista integración SMTP, solo se registran trazas redacted en logs."
     )
     public ApiResponse<Void> requestPasswordReset(
             @Valid @RequestBody PasswordResetRequestDto request,
@@ -86,7 +86,7 @@ public class AdminAuthController {
             summary = "Confirmar nueva contraseña con token",
             description = "Valida el token de recuperación y establece la nueva contraseña. "
                     + "El token es de un solo uso y expira en 30 minutos. "
-                    + "Nota: esta operación NO revoca JWT previos ya emitidos."
+                    + "Las sesiones JWT emitidas previamente quedan invalidadas."
     )
     public ApiResponse<Void> confirmPasswordReset(
             @Valid @RequestBody PasswordResetConfirmDto request,

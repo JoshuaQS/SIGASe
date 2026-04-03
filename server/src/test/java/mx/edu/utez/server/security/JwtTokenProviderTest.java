@@ -56,4 +56,14 @@ class JwtTokenProviderTest {
                 () -> jwtTokenProvider.validateAndParse("invalid-token")
         );
     }
+
+    @Test
+    void shouldIncludeAndParseTokenVersionClaim() {
+        UUID userId = UUID.randomUUID();
+        String token = jwtTokenProvider.generateToken(userId, RoleConstants.ADMIN_TI, JwtTokenType.ADMIN, 4);
+
+        ParsedToken parsedToken = jwtTokenProvider.validateAndParse(token);
+        Assertions.assertEquals(userId, parsedToken.userId());
+        Assertions.assertEquals(4, parsedToken.tokenVersion());
+    }
 }

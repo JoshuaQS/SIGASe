@@ -4,6 +4,8 @@ import mx.edu.utez.server.modules.admins.entity.Admin;
 import mx.edu.utez.server.modules.admins.repository.AdminRepository;
 import mx.edu.utez.server.modules.auth.entity.StudentPasswordResetToken;
 import mx.edu.utez.server.modules.auth.repository.StudentPasswordResetTokenRepository;
+import mx.edu.utez.server.modules.careers.entity.Career;
+import mx.edu.utez.server.modules.careers.repository.CareerRepository;
 import mx.edu.utez.server.modules.students.entity.Student;
 import mx.edu.utez.server.modules.students.repository.StudentRepository;
 import mx.edu.utez.server.shared.api.ApiRoutes;
@@ -56,6 +58,9 @@ class StudentAuthControllerIntegrationTest {
     private AdminRepository adminRepository;
 
     @Autowired
+    private CareerRepository careerRepository;
+
+    @Autowired
     private PasswordEncoder encoder;
 
     @Autowired
@@ -71,19 +76,21 @@ class StudentAuthControllerIntegrationTest {
     void setup() {
         resetTokenRepository.deleteAll();
         studentRepository.deleteAll();
+        careerRepository.deleteAll();
         adminRepository.deleteAll();
 
         admin = saveAdmin("admin.ti@utez.edu.mx", AdminRole.ADMIN_TI);
+        Career sistemas = saveCareer("SIS", "Sistemas");
         activeStudent = new Student();
-        activeStudent.setEnrollmentNumber("2026AUTH01");
+        activeStudent.setEnrollmentId("2026AUTH01");
         activeStudent.setName("Auth Test");
         activeStudent.setLastNamePaternal("Paternal");
         activeStudent.setLastNameMaternal("Maternal");
-        activeStudent.setSex(Sex.NOT_SPECIFIED);
+        activeStudent.setSex(Sex.NON_BINARY);
         activeStudent.setQuarter(3);
         activeStudent.setInstitutionalEmail("test@utez.edu.mx");
         activeStudent.setInstitutionalEmailNormalized("test@utez.edu.mx");
-        activeStudent.setCareer("Sistemas");
+        activeStudent.setCareer(sistemas);
         activeStudent.setStatus(StudentStatus.ACTIVE);
         activeStudent.setCreatedByAdmin(admin);
         activeStudent.setUpdatedByAdmin(admin);
@@ -330,6 +337,24 @@ class StudentAuthControllerIntegrationTest {
     }
 
     @Test
+    void changePassword_invalidatesPreviousToken() throws Exception {
+        String token = accessTokenLoginDefaultStudent();
+
+        mockMvc.perform(post(BASE + "/change-password")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(token))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(String.format("""
+                                {"currentPassword":"password123","newPassword":"%s"}
+                                """, COMPLIANT_NEW_PASSWORD)))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(get(BASE + "/me")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(token)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.errorCode").value("INVALID_TOKEN"));
+    }
+
+    @Test
     void confirmPasswordReset_rejectsWeakNewPassword() throws Exception {
         String rawToken = "student-reset-test-token-raw-value-001";
         resetTokenRepository.save(new StudentPasswordResetToken(
@@ -365,6 +390,29 @@ class StudentAuthControllerIntegrationTest {
                 .andExpect(status().isNoContent());
     }
 
+    @Test
+    void confirmPasswordReset_invalidatesPreviousToken() throws Exception {
+        String oldToken = accessTokenLoginDefaultStudent();
+        String rawToken = "student-reset-token-invalidates-003";
+        resetTokenRepository.save(new StudentPasswordResetToken(
+                sha256Hex(rawToken),
+                activeStudent,
+                Instant.now().plusSeconds(3600)
+        ));
+
+        mockMvc.perform(post(BASE + "/reset-password/confirm")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(String.format("""
+                                {"token":"%s","newPassword":"%s"}
+                                """, rawToken, COMPLIANT_NEW_PASSWORD)))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(get(BASE + "/me")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(oldToken)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.errorCode").value("INVALID_TOKEN"));
+    }
+
     private static String sha256Hex(String raw) {
         try {
             byte[] hash = MessageDigest.getInstance("SHA-256").digest(raw.getBytes(StandardCharsets.UTF_8));
@@ -384,5 +432,13 @@ class StudentAuthControllerIntegrationTest {
         a.setRole(role);
         a.setActive(true);
         return adminRepository.save(a);
+    }
+
+    private Career saveCareer(String code, String name) {
+        Career career = new Career();
+        career.setCode(code);
+        career.setName(name);
+        career.setActive(true);
+        return careerRepository.save(career);
     }
 }

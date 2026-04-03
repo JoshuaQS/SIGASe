@@ -7,6 +7,7 @@ import mx.edu.utez.server.shared.enums.AuditActorType;
 import mx.edu.utez.server.shared.enums.AuditOutcome;
 import mx.edu.utez.server.shared.enums.AuditSeverity;
 import mx.edu.utez.server.shared.util.ClientIpResolver;
+import mx.edu.utez.server.shared.util.SecurityLogSanitizer;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.Map;
 import org.springframework.stereotype.Service;
@@ -16,15 +17,18 @@ public class AuditTrailService {
 
     private final AuditLogService auditLogService;
     private final ClientIpResolver clientIpResolver;
+    private final SecurityLogSanitizer securityLogSanitizer;
     private final ObjectMapper objectMapper;
 
     public AuditTrailService(
             AuditLogService auditLogService,
             ClientIpResolver clientIpResolver,
+            SecurityLogSanitizer securityLogSanitizer,
             ObjectMapper objectMapper
     ) {
         this.auditLogService = auditLogService;
         this.clientIpResolver = clientIpResolver;
+        this.securityLogSanitizer = securityLogSanitizer;
         this.objectMapper = objectMapper;
     }
 
@@ -37,9 +41,19 @@ public class AuditTrailService {
             Map<String, Object> metadata,
             HttpServletRequest request
     ) {
-        String requestId = (String) request.getAttribute(RequestContext.REQUEST_ID_ATTR);
-        String correlationId = (String) request.getAttribute(RequestContext.CORRELATION_ID_ATTR);
-        String ipAddress = clientIpResolver.resolve(request);
+        String requestId = request != null
+                ? (String) request.getAttribute(RequestContext.REQUEST_ID_ATTR)
+                : "system";
+        String correlationId = request != null
+                ? (String) request.getAttribute(RequestContext.CORRELATION_ID_ATTR)
+                : "system";
+        if (requestId == null) {
+            requestId = "system";
+        }
+        if (correlationId == null) {
+            correlationId = "system";
+        }
+        String ipAddress = request != null ? clientIpResolver.resolve(request) : "0.0.0.0";
         String metadataJson = toJson(metadata);
 
         auditLogService.log(new AuditLogCommand(
@@ -64,7 +78,7 @@ public class AuditTrailService {
 
     private String toJson(Map<String, Object> metadata) {
         try {
-            return objectMapper.writeValueAsString(metadata);
+            return objectMapper.writeValueAsString(securityLogSanitizer.sanitizeMetadata(metadata));
         } catch (Exception ex) {
             return "{}";
         }

@@ -9,4 +9,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface ElibroConfigRepository extends JpaRepository<ElibroConfig, UUID> {
     Optional<ElibroConfig> findFirstByActiveTrueOrderByUpdatedAtDesc();
     List<ElibroConfig> findAllByActiveTrueAndIdNot(UUID id);
+    List<ElibroConfig> findAllByOrderByUpdatedAtDesc();
 }

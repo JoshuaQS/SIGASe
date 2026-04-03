@@ -56,7 +56,8 @@ public class ReportController {
     @Operation(summary = "Exportar estudiantes a CSV o XLSX")
     public void exportStudents(
             @RequestParam(required = false) String q,
-            @RequestParam(required = false) String career,
+            @RequestParam(required = false) UUID careerId,
+            @RequestParam(required = false) String careerCode,
             @RequestParam(required = false) StudentStatus status,
             @RequestParam(defaultValue = "csv") String format,
             Authentication authentication,
@@ -65,18 +66,18 @@ public class ReportController {
     ) throws Exception {
         Admin actor = adminContextService.requireCurrentAdmin(authentication);
         String fmt = validateFormat(format);
-        reportService.validateStudentExport(q, career, status);
+        reportService.validateStudentExport(q, careerId, careerCode, status);
 
         if ("xlsx".equals(fmt)) {
             String filename = ReportService.generateFilename("students", "xlsx");
             response.setContentType(CT_XLSX);
             response.setHeader("Content-Disposition", "attachment; filename=\"" + filename + "\"");
-            studentXlsxExportService.export(response.getOutputStream(), q, career, status, actor, request);
+            studentXlsxExportService.export(response.getOutputStream(), q, careerId, careerCode, status, actor, request);
         } else {
             String filename = ReportService.generateFilename("students", "csv");
             response.setContentType(CT_CSV);
             response.setHeader("Content-Disposition", "attachment; filename=\"" + filename + "\"");
-            reportService.exportStudents(response.getOutputStream(), q, career, status, actor, request);
+            reportService.exportStudents(response.getOutputStream(), q, careerId, careerCode, status, actor, request);
         }
     }
 

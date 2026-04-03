@@ -25,6 +25,7 @@ import org.springframework.util.StringUtils;
 import java.io.OutputStream;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.UUID;
 
 @Service
 public class StudentXlsxExportService {
@@ -33,7 +34,7 @@ public class StudentXlsxExportService {
     private static final int HEADER_ROW_IDX = 4;
 
     private static final String[] DISPLAY_HEADERS = {
-            "Enrollment ID", "Nombre", "Apellido Paterno", "Apellido Materno",
+            "Matrícula", "Nombre", "Apellido Paterno", "Apellido Materno",
             "Correo Institucional", "Carrera", "Cuatrimestre", "Sexo", "Estado",
             "Último Acceso", "Fecha Registro"
     };
@@ -59,10 +60,10 @@ public class StudentXlsxExportService {
     @Transactional(readOnly = true)
     public void export(
             OutputStream out,
-            String q, String career, StudentStatus status,
+            String q, UUID careerId, String careerCode, StudentStatus status,
             Admin actor, HttpServletRequest request
     ) {
-        Specification<Student> spec = reportService.buildStudentSpec(q, career, status);
+        Specification<Student> spec = reportService.buildStudentSpec(q, careerId, careerCode, status);
         long total = studentRepository.count(spec);
 
         try (SXSSFWorkbook wb = new SXSSFWorkbook(CHUNK_SIZE)) {
@@ -82,7 +83,7 @@ public class StudentXlsxExportService {
             XlsxExportService.writeMergedRow(sheet, 1, lastCol,
                     "Generado: " + XlsxExportService.formatInstantNow() + " UTC", subtitleStyle);
             XlsxExportService.writeMergedRow(sheet, 2, lastCol,
-                    "Filtros: " + buildFilterText(q, career, status), subtitleStyle);
+                    "Filtros: " + buildFilterText(q, careerId, careerCode, status), subtitleStyle);
 
             // Header row
             Row headerRow = sheet.createRow(HEADER_ROW_IDX);
@@ -107,7 +108,8 @@ public class StudentXlsxExportService {
                     row.createCell(3).setCellValue(XlsxExportService.sanitize(
                             s.getLastNameMaternal() != null ? s.getLastNameMaternal() : ""));
                     row.createCell(4).setCellValue(XlsxExportService.sanitize(s.getInstitutionalEmail()));
-                    row.createCell(5).setCellValue(XlsxExportService.sanitize(s.getCareer()));
+                    row.createCell(5).setCellValue(XlsxExportService.sanitize(
+                            s.getCareer() != null ? s.getCareer().getName() : ""));
                     row.createCell(6).setCellValue(s.getQuarter() != null ? s.getQuarter() : 0);
                     row.createCell(7).setCellValue(s.getSex() != null ? s.getSex().name() : "");
                     String statusVal = s.getStatus() != null ? s.getStatus().name() : "";
@@ -151,10 +153,11 @@ public class StudentXlsxExportService {
         auditExport(actor, "STUDENTS", meta, total, AuditOutcome.SUCCESS, request);
     }
 
-    private String buildFilterText(String q, String career, StudentStatus status) {
+    private String buildFilterText(String q, UUID careerId, String careerCode, StudentStatus status) {
         StringBuilder sb = new StringBuilder();
         if (StringUtils.hasText(q)) sb.append("q=").append(q).append(", ");
-        if (StringUtils.hasText(career)) sb.append("career=").append(career).append(", ");
+        if (careerId != null) sb.append("careerId=").append(careerId).append(", ");
+        if (StringUtils.hasText(careerCode)) sb.append("careerCode=").append(careerCode).append(", ");
         if (status != null) sb.append("status=").append(status.name()).append(", ");
         if (sb.isEmpty()) return "Sin filtros";
         return sb.substring(0, sb.length() - 2);

@@ -36,13 +36,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             "{\"code\":\"PASSWORD_CHANGE_REQUIRED\",\"message\":\"Debes cambiar tu contraseña antes de continuar\"}";
 
     private final JwtTokenProvider jwtTokenProvider;
+    private final SessionTokenValidationService sessionTokenValidationService;
     private final AuthenticationEntryPoint authenticationEntryPoint;
 
     public JwtAuthenticationFilter(
             JwtTokenProvider jwtTokenProvider,
+            SessionTokenValidationService sessionTokenValidationService,
             JwtAuthenticationEntryPoint authenticationEntryPoint
     ) {
         this.jwtTokenProvider = jwtTokenProvider;
+        this.sessionTokenValidationService = sessionTokenValidationService;
         this.authenticationEntryPoint = authenticationEntryPoint;
     }
 
@@ -58,6 +61,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String token = header.substring(BEARER_PREFIX.length()).trim();
         try {
             ParsedToken parsedToken = jwtTokenProvider.validateAndParse(token);
+            if (!sessionTokenValidationService.isTokenVersionCurrent(parsedToken)) {
+                throw new InvalidJwtAuthenticationException("Token revocado o desactualizado.");
+            }
 
             if (RoleConstants.STUDENT.equals(parsedToken.role()) && parsedToken.mustChangePassword()) {
                 String path = request.getRequestURI();

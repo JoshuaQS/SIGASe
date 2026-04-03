@@ -17,6 +17,9 @@ import java.time.Instant;
 @Table(name = "elibro_configs")
 public class ElibroConfig extends BaseAuditableEntity {
 
+    @Column(name = "name", nullable = false, length = 160)
+    private String name;
+
     @Column(name = "auth_token_encrypted", nullable = false, length = 1024)
     private String authTokenEncrypted;
 
@@ -59,6 +62,14 @@ public class ElibroConfig extends BaseAuditableEntity {
 
     public void setAuthTokenEncrypted(String authTokenEncrypted) {
         this.authTokenEncrypted = authTokenEncrypted;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
     }
 
     public String getChannelIdEncrypted() {

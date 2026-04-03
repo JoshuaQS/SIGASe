@@ -3,7 +3,10 @@ package mx.edu.utez.server.modules.elibro.controller;
 import mx.edu.utez.server.modules.admins.entity.Admin;
 import mx.edu.utez.server.modules.admins.repository.AdminRepository;
 import mx.edu.utez.server.modules.auth.repository.AdminPasswordResetTokenRepository;
+import mx.edu.utez.server.modules.careers.entity.Career;
+import mx.edu.utez.server.modules.careers.repository.CareerRepository;
 import mx.edu.utez.server.modules.elibro.repository.ElibroConfigRepository;
+import mx.edu.utez.server.modules.elibro.repository.ElibroValidationRunRepository;
 import mx.edu.utez.server.modules.logs.access.entity.AccessLog;
 import mx.edu.utez.server.modules.logs.access.repository.AccessLogRepository;
 import mx.edu.utez.server.modules.logs.audit.repository.AuditLogRepository;
@@ -57,25 +60,35 @@ class StudentPortalSummaryIntegrationTest {
     private ElibroConfigRepository elibroConfigRepository;
 
     @Autowired
+    private ElibroValidationRunRepository validationRunRepository;
+
+    @Autowired
+    private CareerRepository careerRepository;
+
+    @Autowired
     private AdminPasswordResetTokenRepository passwordResetTokenRepository;
 
     private Admin adminTi;
     private Student activeStudent;
     private Student inactiveStudent;
     private Instant latestSuccess;
+    private Career tecnologias;
 
     @BeforeEach
     void setUp() {
         accessLogRepository.deleteAll();
         auditLogRepository.deleteAll();
+        validationRunRepository.deleteAll();
         elibroConfigRepository.deleteAll();
         studentRepository.deleteAll();
+        careerRepository.deleteAll();
         passwordResetTokenRepository.deleteAll();
         adminRepository.deleteAll();
 
         adminTi = saveAdmin("summary.admin@utez.edu.mx", AdminRole.ADMIN_TI);
-        activeStudent = saveStudent("2026A2001", "student.active@utez.edu.mx", StudentStatus.ACTIVE);
-        inactiveStudent = saveStudent("2026A2002", "student.inactive@utez.edu.mx", StudentStatus.INACTIVE);
+        tecnologias = saveCareer("TEC", "Tecnologias");
+        activeStudent = saveStudent("2026A2001", "student.active@utez.edu.mx", StudentStatus.ACTIVE, tecnologias);
+        inactiveStudent = saveStudent("2026A2002", "student.inactive@utez.edu.mx", StudentStatus.INACTIVE, tecnologias);
 
         Instant now = Instant.now().truncatedTo(ChronoUnit.SECONDS);
         latestSuccess = now.minus(1, ChronoUnit.DAYS);
@@ -86,6 +99,7 @@ class StudentPortalSummaryIntegrationTest {
         saveAccessLog(activeStudent, AccessResult.FAILED_ELIBRO_API, now.minus(1, ChronoUnit.DAYS));
         saveAccessLog(activeStudent, AccessResult.FAILED_NEXT_URL_VALIDATION, now.minus(6, ChronoUnit.DAYS));
         saveAccessLog(activeStudent, AccessResult.SUCCESS, now.minus(10, ChronoUnit.DAYS));
+        saveAccessLog(activeStudent, AccessResult.SUCCESS, now.minus(3, ChronoUnit.DAYS), null);
     }
 
     @Test
@@ -94,7 +108,7 @@ class StudentPortalSummaryIntegrationTest {
                         .with(auth(activeStudent.getId().toString(), RoleConstants.STUDENT)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.personalInfo.enrollmentNumber").value(activeStudent.getEnrollmentNumber()))
+                .andExpect(jsonPath("$.data.personalInfo.enrollmentId").value(activeStudent.getEnrollmentId()))
                 .andExpect(jsonPath("$.data.personalInfo.status").value("ACTIVE"))
                 .andExpect(jsonPath("$.data.accountStatus.active").value(true))
                 .andExpect(jsonPath("$.data.accessMetrics.accesosUltimos7Dias").value(3))
@@ -106,7 +120,7 @@ class StudentPortalSummaryIntegrationTest {
 
     @Test
     void shouldReturnZeroMetricsWhenStudentHasNoLogs() throws Exception {
-        Student noLogsStudent = saveStudent("2026A2003", "student.nologs@utez.edu.mx", StudentStatus.ACTIVE);
+        Student noLogsStudent = saveStudent("2026A2003", "student.nologs@utez.edu.mx", StudentStatus.ACTIVE, tecnologias);
 
         mockMvc.perform(get("/api/v1/student/portal/summary")
                         .with(auth(noLogsStudent.getId().toString(), RoleConstants.STUDENT)))
@@ -158,24 +172,36 @@ class StudentPortalSummaryIntegrationTest {
         return adminRepository.save(admin);
     }
 
-    private Student saveStudent(String matricula, String email, StudentStatus status) {
+    private Student saveStudent(String matricula, String email, StudentStatus status, Career career) {
         Student student = new Student();
-        student.setEnrollmentNumber(matricula);
+        student.setEnrollmentId(matricula);
         student.setName("Student");
         student.setLastNamePaternal("Portal");
         student.setLastNameMaternal("Summary");
-        student.setSex(Sex.NOT_SPECIFIED);
+        student.setSex(Sex.NON_BINARY);
         student.setQuarter(4);
         student.setInstitutionalEmail(email);
         student.setInstitutionalEmailNormalized(email);
-        student.setCareer("Tecnologias");
+        student.setCareer(career);
         student.setStatus(status);
         student.setCreatedByAdmin(adminTi);
         student.setUpdatedByAdmin(adminTi);
         return studentRepository.save(student);
     }
 
+    private Career saveCareer(String code, String name) {
+        Career career = new Career();
+        career.setCode(code);
+        career.setName(name);
+        career.setActive(true);
+        return careerRepository.save(career);
+    }
+
     private void saveAccessLog(Student student, AccessResult result, Instant occurredAt) {
+        saveAccessLog(student, result, occurredAt, "ELIBRO");
+    }
+
+    private void saveAccessLog(Student student, AccessResult result, Instant occurredAt, String providerName) {
         AccessLog accessLog = new AccessLog();
         accessLog.setStudent(student);
         accessLog.setAttemptedEmail(student.getInstitutionalEmail());
@@ -186,7 +212,7 @@ class StudentPortalSummaryIntegrationTest {
         accessLog.setCorrelationId("corr-" + result.name() + "-" + occurredAt.toEpochMilli());
         accessLog.setIpAddress("127.0.0.1");
         accessLog.setUserAgent("JUnit");
-        accessLog.setProviderName(result == AccessResult.SUCCESS ? "ELIBRO" : null);
+        accessLog.setProviderName(providerName);
         accessLog.setOccurredAt(occurredAt);
         accessLogRepository.save(accessLog);
     }

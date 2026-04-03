@@ -14,7 +14,9 @@ import org.springframework.validation.annotation.Validated;
 public class AppProperties {
 
     private final Jwt jwt = new Jwt();
+    private final Auth auth = new Auth();
     private final Security security = new Security();
+    private final Logs logs = new Logs();
     private final Elibro elibro = new Elibro();
     private final Google google = new Google();
     private final Seed seed = new Seed();
@@ -23,8 +25,16 @@ public class AppProperties {
         return jwt;
     }
 
+    public Auth getAuth() {
+        return auth;
+    }
+
     public Security getSecurity() {
         return security;
+    }
+
+    public Logs getLogs() {
+        return logs;
     }
 
     public Elibro getElibro() {
@@ -80,6 +90,35 @@ public class AppProperties {
         }
     }
 
+    public static class Auth {
+        private final Lockout lockout = new Lockout();
+
+        public Lockout getLockout() {
+            return lockout;
+        }
+    }
+
+    public static class Lockout {
+        private int maxFailedAttempts = 5;
+        private long durationMinutes = 15;
+
+        public int getMaxFailedAttempts() {
+            return maxFailedAttempts;
+        }
+
+        public void setMaxFailedAttempts(int maxFailedAttempts) {
+            this.maxFailedAttempts = maxFailedAttempts;
+        }
+
+        public long getDurationMinutes() {
+            return durationMinutes;
+        }
+
+        public void setDurationMinutes(long durationMinutes) {
+            this.durationMinutes = durationMinutes;
+        }
+    }
+
     public static class Security {
         private String allowedOrigins = "http://localhost:5173,http://localhost:18080";
 
@@ -89,6 +128,90 @@ public class AppProperties {
 
         public void setAllowedOrigins(String allowedOrigins) {
             this.allowedOrigins = allowedOrigins;
+        }
+    }
+
+    public static class Logs {
+        private final Sanitization sanitization = new Sanitization();
+
+        public Sanitization getSanitization() {
+            return sanitization;
+        }
+    }
+
+    public static class Sanitization {
+        private boolean hashIp = false;
+        private boolean maskIp = true;
+        private int userAgentMaxLength = 160;
+        private int urlMaxLength = 400;
+        private int metadataMaxLength = 4000;
+        private int emailVisiblePrefix = 2;
+        private List<String> sensitiveKeys = new ArrayList<>(List.of(
+                "authorization",
+                "cookie",
+                "password",
+                "secret",
+                "token",
+                "refresh_token",
+                "id_token",
+                "set-cookie",
+                "x-api-key"
+        ));
+
+        public boolean isHashIp() {
+            return hashIp;
+        }
+
+        public void setHashIp(boolean hashIp) {
+            this.hashIp = hashIp;
+        }
+
+        public boolean isMaskIp() {
+            return maskIp;
+        }
+
+        public void setMaskIp(boolean maskIp) {
+            this.maskIp = maskIp;
+        }
+
+        public int getUserAgentMaxLength() {
+            return userAgentMaxLength;
+        }
+
+        public void setUserAgentMaxLength(int userAgentMaxLength) {
+            this.userAgentMaxLength = userAgentMaxLength;
+        }
+
+        public int getUrlMaxLength() {
+            return urlMaxLength;
+        }
+
+        public void setUrlMaxLength(int urlMaxLength) {
+            this.urlMaxLength = urlMaxLength;
+        }
+
+        public int getMetadataMaxLength() {
+            return metadataMaxLength;
+        }
+
+        public void setMetadataMaxLength(int metadataMaxLength) {
+            this.metadataMaxLength = metadataMaxLength;
+        }
+
+        public int getEmailVisiblePrefix() {
+            return emailVisiblePrefix;
+        }
+
+        public void setEmailVisiblePrefix(int emailVisiblePrefix) {
+            this.emailVisiblePrefix = emailVisiblePrefix;
+        }
+
+        public List<String> getSensitiveKeys() {
+            return sensitiveKeys;
+        }
+
+        public void setSensitiveKeys(List<String> sensitiveKeys) {
+            this.sensitiveKeys = sensitiveKeys;
         }
     }
 

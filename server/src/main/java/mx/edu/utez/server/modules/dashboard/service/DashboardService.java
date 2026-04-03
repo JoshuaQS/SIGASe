@@ -27,6 +27,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.UUID;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
@@ -62,32 +63,37 @@ public class DashboardService {
     public DashboardSummaryResponse getSummary(
             Instant dateFrom,
             Instant dateTo,
-            String career,
+            UUID careerId,
+            String careerCode,
             StudentStatus studentStatus
     ) {
         Range range = resolveRange(dateFrom, dateTo);
-        String normalizedCareer = normalizeCareer(career);
+        String normalizedCareerCode = normalizeCareerCode(careerCode);
+        String effectiveCareerCode = careerId != null ? null : normalizedCareerCode;
 
-        long totalStudents = studentRepository.count(studentSpecification(normalizedCareer, studentStatus));
-        long activeStudents = studentRepository.count(studentSpecification(normalizedCareer, StudentStatus.ACTIVE, studentStatus));
-        long inactiveStudents = studentRepository.count(studentSpecification(normalizedCareer, StudentStatus.INACTIVE, studentStatus));
+        long totalStudents = studentRepository.count(studentSpecification(careerId, effectiveCareerCode, studentStatus));
+        long activeStudents = studentRepository.count(studentSpecification(careerId, effectiveCareerCode, StudentStatus.ACTIVE, studentStatus));
+        long inactiveStudents = studentRepository.count(studentSpecification(careerId, effectiveCareerCode, StudentStatus.INACTIVE, studentStatus));
 
         long successful = dashboardMetricsRepository.countSuccessfulAccesses(
                 range.dateFrom(),
                 range.dateTo(),
-                normalizedCareer,
+                careerId,
+                effectiveCareerCode,
                 studentStatus
         );
         long failed = dashboardMetricsRepository.countFailedAccesses(
                 range.dateFrom(),
                 range.dateTo(),
-                normalizedCareer,
+                careerId,
+                effectiveCareerCode,
                 studentStatus
         );
         long uniqueSuccessfulStudents = dashboardMetricsRepository.countUniqueStudentsWithSuccessfulAccess(
                 range.dateFrom(),
                 range.dateTo(),
-                normalizedCareer,
+                careerId,
+                effectiveCareerCode,
                 studentStatus
         );
 
@@ -107,16 +113,19 @@ public class DashboardService {
     public DashboardAccessTrendsResponse getAccessTrends(
             Instant dateFrom,
             Instant dateTo,
-            String career,
+            UUID careerId,
+            String careerCode,
             StudentStatus studentStatus,
             AccessResult result
     ) {
         Range range = resolveRange(dateFrom, dateTo);
-        String normalizedCareer = normalizeCareer(career);
+        String normalizedCareerCode = normalizeCareerCode(careerCode);
+        String effectiveCareerCode = careerId != null ? null : normalizedCareerCode;
         List<DashboardMetricsRepository.DailyResultCountProjection> rows = dashboardMetricsRepository.findDailyAccessCounts(
                 range.dateFrom(),
                 range.dateTo(),
-                normalizedCareer,
+                careerId,
+                effectiveCareerCode,
                 studentStatus,
                 result
         );
@@ -166,14 +175,16 @@ public class DashboardService {
     public DashboardTopStudentsResponse getTopStudents(
             Instant dateFrom,
             Instant dateTo,
-            String career,
+            UUID careerId,
+            String careerCode,
             StudentStatus studentStatus,
             AccessResult result,
             Integer limit,
             String sortDir
     ) {
         Range range = resolveRange(dateFrom, dateTo);
-        String normalizedCareer = normalizeCareer(career);
+        String normalizedCareerCode = normalizeCareerCode(careerCode);
+        String effectiveCareerCode = careerId != null ? null : normalizedCareerCode;
         int safeLimit = resolveLimit(limit);
         String safeSortDir = resolveSortDirection(sortDir);
 
@@ -187,10 +198,10 @@ public class DashboardService {
         PageRequest pageRequest = PageRequest.of(0, safeLimit);
         List<DashboardTopStudentItemResponse> items = ("asc".equals(safeSortDir)
                 ? dashboardMetricsRepository.findTopStudentsAsc(
-                        range.dateFrom(), range.dateTo(), normalizedCareer, studentStatus, pageRequest
+                        range.dateFrom(), range.dateTo(), careerId, effectiveCareerCode, studentStatus, pageRequest
                 )
                 : dashboardMetricsRepository.findTopStudentsDesc(
-                        range.dateFrom(), range.dateTo(), normalizedCareer, studentStatus, pageRequest
+                        range.dateFrom(), range.dateTo(), careerId, effectiveCareerCode, studentStatus, pageRequest
                 )).stream().map(dashboardMapper::toTopStudentItem).toList();
 
         return new DashboardTopStudentsResponse(
@@ -202,16 +213,29 @@ public class DashboardService {
         );
     }
 
-    private Specification<Student> studentSpecification(String career, StudentStatus exactStatus) {
-        return studentSpecification(career, exactStatus, null);
+    private Specification<Student> studentSpecification(UUID careerId, String careerCode, StudentStatus exactStatus) {
+        return studentSpecification(careerId, careerCode, exactStatus, null);
     }
 
-    private Specification<Student> studentSpecification(String career, StudentStatus exactStatus, StudentStatus statusFilter) {
+    private Specification<Student> studentSpecification(
+            UUID careerId,
+            String careerCode,
+            StudentStatus exactStatus,
+            StudentStatus statusFilter
+    ) {
         return (root, query, cb) -> {
             var predicate = cb.conjunction();
 
-            if (StringUtils.hasText(career)) {
-                predicate = cb.and(predicate, cb.equal(cb.lower(root.get("career")), career.toLowerCase(Locale.ROOT)));
+            if (careerId != null) {
+                predicate = cb.and(predicate, cb.equal(root.get("career").get("id"), careerId));
+            } else if (StringUtils.hasText(careerCode)) {
+                predicate = cb.and(
+                        predicate,
+                        cb.equal(
+                                cb.lower(root.get("career").get("code")),
+                                careerCode.toLowerCase(Locale.ROOT)
+                        )
+                );
             }
 
             if (statusFilter != null) {
@@ -293,11 +317,11 @@ public class DashboardService {
         return normalized;
     }
 
-    private String normalizeCareer(String career) {
-        if (!StringUtils.hasText(career)) {
+    private String normalizeCareerCode(String careerCode) {
+        if (!StringUtils.hasText(careerCode)) {
             return null;
         }
-        return career.trim();
+        return careerCode.trim();
     }
 
     private static class DashboardTrendAccumulator {

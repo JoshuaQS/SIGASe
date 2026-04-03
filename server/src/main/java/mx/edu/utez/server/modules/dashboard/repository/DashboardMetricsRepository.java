@@ -22,13 +22,15 @@ public interface DashboardMetricsRepository extends JpaRepository<AccessLog, UUI
             where a.occurredAt >= :dateFrom
               and a.occurredAt <= :dateTo
               and a.result = mx.edu.utez.server.shared.enums.AccessResult.SUCCESS
-              and (:career is null or (s is not null and lower(s.career) = lower(:career)))
+              and (:careerId is null or (s is not null and s.career.id = :careerId))
+              and (:careerCode is null or (s is not null and lower(s.career.code) = lower(:careerCode)))
               and (:studentStatus is null or (s is not null and s.status = :studentStatus))
             """)
     long countSuccessfulAccesses(
             @Param("dateFrom") Instant dateFrom,
             @Param("dateTo") Instant dateTo,
-            @Param("career") String career,
+            @Param("careerId") UUID careerId,
+            @Param("careerCode") String careerCode,
             @Param("studentStatus") StudentStatus studentStatus
     );
 
@@ -39,13 +41,15 @@ public interface DashboardMetricsRepository extends JpaRepository<AccessLog, UUI
             where a.occurredAt >= :dateFrom
               and a.occurredAt <= :dateTo
               and a.result <> mx.edu.utez.server.shared.enums.AccessResult.SUCCESS
-              and (:career is null or (s is not null and lower(s.career) = lower(:career)))
+              and (:careerId is null or (s is not null and s.career.id = :careerId))
+              and (:careerCode is null or (s is not null and lower(s.career.code) = lower(:careerCode)))
               and (:studentStatus is null or (s is not null and s.status = :studentStatus))
             """)
     long countFailedAccesses(
             @Param("dateFrom") Instant dateFrom,
             @Param("dateTo") Instant dateTo,
-            @Param("career") String career,
+            @Param("careerId") UUID careerId,
+            @Param("careerCode") String careerCode,
             @Param("studentStatus") StudentStatus studentStatus
     );
 
@@ -56,13 +60,15 @@ public interface DashboardMetricsRepository extends JpaRepository<AccessLog, UUI
             where a.occurredAt >= :dateFrom
               and a.occurredAt <= :dateTo
               and a.result = mx.edu.utez.server.shared.enums.AccessResult.SUCCESS
-              and (:career is null or lower(s.career) = lower(:career))
+              and (:careerId is null or s.career.id = :careerId)
+              and (:careerCode is null or lower(s.career.code) = lower(:careerCode))
               and (:studentStatus is null or s.status = :studentStatus)
             """)
     long countUniqueStudentsWithSuccessfulAccess(
             @Param("dateFrom") Instant dateFrom,
             @Param("dateTo") Instant dateTo,
-            @Param("career") String career,
+            @Param("careerId") UUID careerId,
+            @Param("careerCode") String careerCode,
             @Param("studentStatus") StudentStatus studentStatus
     );
 
@@ -74,7 +80,8 @@ public interface DashboardMetricsRepository extends JpaRepository<AccessLog, UUI
             left join a.student s
             where a.occurredAt >= :dateFrom
               and a.occurredAt <= :dateTo
-              and (:career is null or (s is not null and lower(s.career) = lower(:career)))
+              and (:careerId is null or (s is not null and s.career.id = :careerId))
+              and (:careerCode is null or (s is not null and lower(s.career.code) = lower(:careerCode)))
               and (:studentStatus is null or (s is not null and s.status = :studentStatus))
               and (:result is null or a.result = :result)
             group by function('date', a.occurredAt), a.result
@@ -83,7 +90,8 @@ public interface DashboardMetricsRepository extends JpaRepository<AccessLog, UUI
     List<DailyResultCountProjection> findDailyAccessCounts(
             @Param("dateFrom") Instant dateFrom,
             @Param("dateTo") Instant dateTo,
-            @Param("career") String career,
+            @Param("careerId") UUID careerId,
+            @Param("careerCode") String careerCode,
             @Param("studentStatus") StudentStatus studentStatus,
             @Param("result") AccessResult result
     );
@@ -92,22 +100,24 @@ public interface DashboardMetricsRepository extends JpaRepository<AccessLog, UUI
             select s.id as studentId,
                    s.name as name,
                    s.enrollmentId as enrollmentId,
-                   s.career as career,
+                   s.career.name as career,
                    count(a.id) as successfulAccesses
             from AccessLog a
             join a.student s
             where a.occurredAt >= :dateFrom
               and a.occurredAt <= :dateTo
               and a.result = mx.edu.utez.server.shared.enums.AccessResult.SUCCESS
-              and (:career is null or lower(s.career) = lower(:career))
+              and (:careerId is null or s.career.id = :careerId)
+              and (:careerCode is null or lower(s.career.code) = lower(:careerCode))
               and (:studentStatus is null or s.status = :studentStatus)
-            group by s.id, s.name, s.enrollmentId, s.career
+            group by s.id, s.name, s.enrollmentId, s.career.name
             order by count(a.id) desc, s.name asc
             """)
     Page<TopStudentProjection> findTopStudentsDesc(
             @Param("dateFrom") Instant dateFrom,
             @Param("dateTo") Instant dateTo,
-            @Param("career") String career,
+            @Param("careerId") UUID careerId,
+            @Param("careerCode") String careerCode,
             @Param("studentStatus") StudentStatus studentStatus,
             Pageable pageable
     );
@@ -116,22 +126,24 @@ public interface DashboardMetricsRepository extends JpaRepository<AccessLog, UUI
             select s.id as studentId,
                    s.name as name,
                    s.enrollmentId as enrollmentId,
-                   s.career as career,
+                   s.career.name as career,
                    count(a.id) as successfulAccesses
             from AccessLog a
             join a.student s
             where a.occurredAt >= :dateFrom
               and a.occurredAt <= :dateTo
               and a.result = mx.edu.utez.server.shared.enums.AccessResult.SUCCESS
-              and (:career is null or lower(s.career) = lower(:career))
+              and (:careerId is null or s.career.id = :careerId)
+              and (:careerCode is null or lower(s.career.code) = lower(:careerCode))
               and (:studentStatus is null or s.status = :studentStatus)
-            group by s.id, s.name, s.enrollmentId, s.career
+            group by s.id, s.name, s.enrollmentId, s.career.name
             order by count(a.id) asc, s.name asc
             """)
     Page<TopStudentProjection> findTopStudentsAsc(
             @Param("dateFrom") Instant dateFrom,
             @Param("dateTo") Instant dateTo,
-            @Param("career") String career,
+            @Param("careerId") UUID careerId,
+            @Param("careerCode") String careerCode,
             @Param("studentStatus") StudentStatus studentStatus,
             Pageable pageable
     );

@@ -3,7 +3,10 @@ package mx.edu.utez.server.modules.logs.access.controller;
 import mx.edu.utez.server.modules.admins.entity.Admin;
 import mx.edu.utez.server.modules.admins.repository.AdminRepository;
 import mx.edu.utez.server.modules.auth.repository.AdminPasswordResetTokenRepository;
+import mx.edu.utez.server.modules.careers.entity.Career;
+import mx.edu.utez.server.modules.careers.repository.CareerRepository;
 import mx.edu.utez.server.modules.elibro.repository.ElibroConfigRepository;
+import mx.edu.utez.server.modules.elibro.repository.ElibroValidationRunRepository;
 import mx.edu.utez.server.modules.logs.access.entity.AccessLog;
 import mx.edu.utez.server.modules.logs.access.repository.AccessLogRepository;
 import mx.edu.utez.server.modules.logs.audit.repository.AuditLogRepository;
@@ -57,7 +60,13 @@ class AccessLogQueryControllerIntegrationTest {
     private ElibroConfigRepository elibroConfigRepository;
 
     @Autowired
+    private ElibroValidationRunRepository validationRunRepository;
+
+    @Autowired
     private AdminPasswordResetTokenRepository passwordResetTokenRepository;
+
+    @Autowired
+    private CareerRepository careerRepository;
 
     private Admin adminTi;
     private Admin adminBiblioteca;
@@ -68,8 +77,10 @@ class AccessLogQueryControllerIntegrationTest {
     void setUp() {
         accessLogRepository.deleteAll();
         auditLogRepository.deleteAll();
+        validationRunRepository.deleteAll();
         elibroConfigRepository.deleteAll();
         studentRepository.deleteAll();
+        careerRepository.deleteAll();
         passwordResetTokenRepository.deleteAll();
         adminRepository.deleteAll();
 
@@ -198,8 +209,9 @@ class AccessLogQueryControllerIntegrationTest {
     }
 
     private Student saveStudent(Admin createdBy) {
+        Career career = saveCareer("SIS", "Sistemas");
         Student newStudent = new Student();
-        newStudent.setEnrollmentNumber("2026A0001");
+        newStudent.setEnrollmentId("2026A0001");
         newStudent.setName("Alice");
         newStudent.setLastNamePaternal("Tester");
         newStudent.setLastNameMaternal("Integration");
@@ -207,11 +219,19 @@ class AccessLogQueryControllerIntegrationTest {
         newStudent.setQuarter(3);
         newStudent.setInstitutionalEmail("alice@utez.edu.mx");
         newStudent.setInstitutionalEmailNormalized("alice@utez.edu.mx");
-        newStudent.setCareer("Sistemas");
+        newStudent.setCareer(career);
         newStudent.setStatus(StudentStatus.ACTIVE);
         newStudent.setCreatedByAdmin(createdBy);
         newStudent.setUpdatedByAdmin(createdBy);
         return studentRepository.save(newStudent);
+    }
+
+    private Career saveCareer(String code, String name) {
+        Career career = new Career();
+        career.setCode(code);
+        career.setName(name);
+        career.setActive(true);
+        return careerRepository.save(career);
     }
 
     private AccessLog saveAccessLog(

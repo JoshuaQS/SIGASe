@@ -1,5 +1,7 @@
 package mx.edu.utez.server.modules.elibro.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import mx.edu.utez.server.modules.elibro.dto.StudentElibroAccessResponse;
 import mx.edu.utez.server.modules.elibro.entity.ElibroConfig;
 import mx.edu.utez.server.modules.elibro.repository.ElibroConfigRepository;
@@ -27,6 +29,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.util.UriComponentsBuilder;
 
 @Service
@@ -42,6 +45,7 @@ public class ElibroSsoService {
     private final StudentAccessAlertService studentAccessAlertService;
     private final ClientIpResolver clientIpResolver;
     private final RestClient elibroRestClient;
+    private final ObjectMapper objectMapper;
 
     public ElibroSsoService(
             StudentRepository studentRepository,
@@ -51,7 +55,8 @@ public class ElibroSsoService {
             AccessLogService accessLogService,
             StudentAccessAlertService studentAccessAlertService,
             ClientIpResolver clientIpResolver,
-            RestClient elibroRestClient
+            RestClient elibroRestClient,
+            ObjectMapper objectMapper
     ) {
         this.studentRepository = studentRepository;
         this.elibroConfigRepository = elibroConfigRepository;
@@ -61,6 +66,7 @@ public class ElibroSsoService {
         this.studentAccessAlertService = studentAccessAlertService;
         this.clientIpResolver = clientIpResolver;
         this.elibroRestClient = elibroRestClient;
+        this.objectMapper = objectMapper;
     }
 
     @Transactional
@@ -177,18 +183,22 @@ public class ElibroSsoService {
         payload.put("secret", channelSecret);
         payload.put("channel_id", channelId);
         payload.put("user", attemptedEmail);
+        String payloadJson = serializePayload(payload);
+        byte[] payloadBytes = payloadJson.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        long payloadLength = payloadBytes.length;
 
         try {
-            @SuppressWarnings("unchecked")
-            Map<String, Object> responseBody = elibroRestClient.post()
+            Object responseBody = elibroRestClient.post()
                     .uri(requestUri)
                     .header(HttpHeaders.AUTHORIZATION, "Token " + authToken)
+                    .header(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
+                    .header(HttpHeaders.CONTENT_LENGTH, String.valueOf(payloadLength))
                     .contentType(MediaType.APPLICATION_JSON)
-                    .body(payload)
+                    .body(payloadBytes)
                     .retrieve()
-                    .body(Map.class);
+                    .body(Object.class);
 
-            String redirectUrl = responseBody == null ? null : (String) responseBody.get("url");
+            String redirectUrl = extractRedirectUrl(responseBody);
             if (!StringUtils.hasText(redirectUrl)) {
                 throw new IllegalStateException("No redirect URL in eLibro response");
             }
@@ -212,6 +222,7 @@ public class ElibroSsoService {
             ));
             return new StudentElibroAccessResponse(redirectUrl);
         } catch (Exception ex) {
+            String providerErrorDetail = buildProviderErrorDetail(ex);
             studentAccessAlertService.registerFailedAttempt(normalizedEmail, student);
             accessLogService.log(new AccessLogCommand(
                     student,
@@ -219,7 +230,7 @@ public class ElibroSsoService {
                     normalizedEmail,
                     AccessResult.FAILED_ELIBRO_API,
                     "ELIBRO_API_ERROR",
-                    "Error al consumir API SSO de eLibro.",
+                    providerErrorDetail,
                     elapsed(startMs),
                     requestId,
                     correlationId,
@@ -229,7 +240,7 @@ public class ElibroSsoService {
                     normalizedNext.orElse(null),
                     null
             ));
-            throw new BusinessException(ErrorCode.PROVIDER_ERROR, "Proveedor eLibro no disponible temporalmente.");
+            throw new BusinessException(ErrorCode.PROVIDER_ERROR, "No se pudo abrir sesión en eLibro. " + providerErrorDetail);
         }
     }
 
@@ -272,5 +283,76 @@ public class ElibroSsoService {
 
     private long elapsed(long startMs) {
         return Math.max(0, System.currentTimeMillis() - startMs);
+    }
+
+    private String extractRedirectUrl(Object responseBody) {
+        if (responseBody == null) {
+            return null;
+        }
+        if (responseBody instanceof Map<?, ?> map) {
+            String direct = firstText(map, "url", "redirectUrl", "redirect_url");
+            if (StringUtils.hasText(direct)) {
+                return direct;
+            }
+            Object nestedData = map.get("data");
+            if (nestedData instanceof Map<?, ?> nested) {
+                return firstText(nested, "url", "redirectUrl", "redirect_url");
+            }
+            return null;
+        }
+        if (responseBody instanceof String text) {
+            return text.trim();
+        }
+        return responseBody.toString();
+    }
+
+    private String firstText(Map<?, ?> map, String... keys) {
+        for (String key : keys) {
+            Object value = map.get(key);
+            if (value != null) {
+                String text = value.toString().trim();
+                if (StringUtils.hasText(text)) {
+                    return text;
+                }
+            }
+        }
+        return null;
+    }
+
+    private String buildProviderErrorDetail(Exception ex) {
+        if (ex instanceof RestClientResponseException restEx) {
+            String responseBody = sanitize(restEx.getResponseBodyAsString());
+            String statusLine = "HTTP " + restEx.getStatusCode().value();
+            if (StringUtils.hasText(responseBody)) {
+                return truncate(statusLine + " - " + responseBody, 220);
+            }
+            return statusLine;
+        }
+        return truncate(sanitize(ex.getMessage()), 220);
+    }
+
+    private String serializePayload(Map<String, String> payload) {
+        try {
+            return objectMapper.writeValueAsString(payload);
+        } catch (JsonProcessingException ex) {
+            throw new BusinessException(ErrorCode.INTERNAL_ERROR, "No se pudo preparar el payload de eLibro.");
+        }
+    }
+
+    private String sanitize(String text) {
+        if (!StringUtils.hasText(text)) {
+            return "error desconocido";
+        }
+        return text.replaceAll("[\\r\\n\\t]", " ").trim();
+    }
+
+    private String truncate(String text, int maxLen) {
+        if (!StringUtils.hasText(text)) {
+            return "error desconocido";
+        }
+        if (text.length() <= maxLen) {
+            return text;
+        }
+        return text.substring(0, maxLen);
     }
 }

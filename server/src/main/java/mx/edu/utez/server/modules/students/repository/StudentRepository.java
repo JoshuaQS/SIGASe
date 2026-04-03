@@ -1,6 +1,7 @@
 package mx.edu.utez.server.modules.students.repository;
 
 import mx.edu.utez.server.modules.students.entity.Student;
+import mx.edu.utez.server.shared.enums.StudentStatus;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -18,4 +19,5 @@ public interface StudentRepository extends JpaRepository<Student, UUID>, JpaSpec
     boolean existsByInstitutionalEmailNormalizedAndIdNot(String institutionalEmailNormalized, UUID id);
     boolean existsByEnrollmentId(String enrollmentId);
     boolean existsByEnrollmentIdAndIdNot(String enrollmentId, UUID id);
+    Optional<Student> findFirstByStatusAndInstitutionalEmailNormalizedIsNotNullOrderByUpdatedAtDesc(StudentStatus status);
 }

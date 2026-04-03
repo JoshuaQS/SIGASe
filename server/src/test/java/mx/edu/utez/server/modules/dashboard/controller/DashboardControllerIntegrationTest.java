@@ -3,8 +3,11 @@ package mx.edu.utez.server.modules.dashboard.controller;
 import mx.edu.utez.server.modules.admins.entity.Admin;
 import mx.edu.utez.server.modules.admins.repository.AdminRepository;
 import mx.edu.utez.server.modules.auth.repository.AdminPasswordResetTokenRepository;
+import mx.edu.utez.server.modules.careers.entity.Career;
+import mx.edu.utez.server.modules.careers.repository.CareerRepository;
 import mx.edu.utez.server.modules.elibro.entity.ElibroConfig;
 import mx.edu.utez.server.modules.elibro.repository.ElibroConfigRepository;
+import mx.edu.utez.server.modules.elibro.repository.ElibroValidationRunRepository;
 import mx.edu.utez.server.modules.logs.access.entity.AccessLog;
 import mx.edu.utez.server.modules.logs.access.repository.AccessLogRepository;
 import mx.edu.utez.server.modules.logs.audit.repository.AuditLogRepository;
@@ -58,7 +61,13 @@ class DashboardControllerIntegrationTest {
     private ElibroConfigRepository elibroConfigRepository;
 
     @Autowired
+    private ElibroValidationRunRepository validationRunRepository;
+
+    @Autowired
     private AdminPasswordResetTokenRepository passwordResetTokenRepository;
+
+    @Autowired
+    private CareerRepository careerRepository;
 
     private Admin adminTi;
     private Admin adminBiblioteca;
@@ -70,17 +79,21 @@ class DashboardControllerIntegrationTest {
     void setUp() {
         accessLogRepository.deleteAll();
         auditLogRepository.deleteAll();
+        validationRunRepository.deleteAll();
         elibroConfigRepository.deleteAll();
         studentRepository.deleteAll();
+        careerRepository.deleteAll();
         passwordResetTokenRepository.deleteAll();
         adminRepository.deleteAll();
 
         adminTi = saveAdmin("dashboard.ti@utez.edu.mx", AdminRole.ADMIN_TI);
         adminBiblioteca = saveAdmin("dashboard.biblioteca@utez.edu.mx", AdminRole.ADMIN_BIBLIOTECA);
 
-        studentOne = saveStudent("2026D001", "one@utez.edu.mx", "Sistemas", StudentStatus.ACTIVE);
-        studentTwo = saveStudent("2026D002", "two@utez.edu.mx", "Sistemas", StudentStatus.INACTIVE);
-        studentThree = saveStudent("2026D003", "three@utez.edu.mx", "Industrial", StudentStatus.ACTIVE);
+        Career sistemas = saveCareer("SIS", "Sistemas");
+        Career industrial = saveCareer("IND", "Industrial");
+        studentOne = saveStudent("2026D001", "one@utez.edu.mx", sistemas, StudentStatus.ACTIVE);
+        studentTwo = saveStudent("2026D002", "two@utez.edu.mx", sistemas, StudentStatus.INACTIVE);
+        studentThree = saveStudent("2026D003", "three@utez.edu.mx", industrial, StudentStatus.ACTIVE);
 
         saveElibroConfig();
         seedAccessLogs();
@@ -91,7 +104,7 @@ class DashboardControllerIntegrationTest {
         mockMvc.perform(get("/api/v1/dashboard/summary")
                         .param("dateFrom", "2026-03-20T00:00:00Z")
                         .param("dateTo", "2026-03-22T23:59:59Z")
-                        .param("career", "Sistemas")
+                        .param("careerCode", "SIS")
                         .with(auth(adminTi.getId().toString(), RoleConstants.ADMIN_TI)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.totalStudents").value(2))
@@ -109,7 +122,7 @@ class DashboardControllerIntegrationTest {
         mockMvc.perform(get("/api/v1/dashboard/access-trends")
                         .param("dateFrom", "2026-03-20T00:00:00Z")
                         .param("dateTo", "2026-03-22T23:59:59Z")
-                        .param("career", "Sistemas")
+                        .param("careerCode", "SIS")
                         .with(auth(adminTi.getId().toString(), RoleConstants.ADMIN_TI)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.points.length()").value(3))
@@ -129,15 +142,15 @@ class DashboardControllerIntegrationTest {
         mockMvc.perform(get("/api/v1/dashboard/top-students")
                         .param("dateFrom", "2026-03-20T00:00:00Z")
                         .param("dateTo", "2026-03-22T23:59:59Z")
-                        .param("career", "Sistemas")
+                        .param("careerCode", "SIS")
                         .param("limit", "2")
                         .param("sortDir", "desc")
                         .with(auth(adminBiblioteca.getId().toString(), RoleConstants.ADMIN_BIBLIOTECA)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.students.length()").value(2))
-                .andExpect(jsonPath("$.data.students[0].matricula").value("2026D001"))
+                .andExpect(jsonPath("$.data.students[0].enrollmentId").value("2026D001"))
                 .andExpect(jsonPath("$.data.students[0].successfulAccesses").value(2))
-                .andExpect(jsonPath("$.data.students[1].matricula").value("2026D002"))
+                .andExpect(jsonPath("$.data.students[1].enrollmentId").value("2026D002"))
                 .andExpect(jsonPath("$.data.students[1].successfulAccesses").value(1));
     }
 
@@ -193,6 +206,7 @@ class DashboardControllerIntegrationTest {
 
     private void saveElibroConfig() {
         ElibroConfig config = new ElibroConfig();
+        config.setName("Configuración Dashboard eLibro");
         config.setAuthTokenEncrypted("enc-token");
         config.setChannelIdEncrypted("enc-channel-id");
         config.setChannelSecretEncrypted("enc-channel-secret");
@@ -219,13 +233,13 @@ class DashboardControllerIntegrationTest {
         return adminRepository.save(admin);
     }
 
-    private Student saveStudent(String matricula, String email, String career, StudentStatus status) {
+    private Student saveStudent(String matricula, String email, Career career, StudentStatus status) {
         Student student = new Student();
-        student.setEnrollmentNumber(matricula);
+        student.setEnrollmentId(matricula);
         student.setName("Student");
         student.setLastNamePaternal("Dashboard");
         student.setLastNameMaternal("Kpi");
-        student.setSex(Sex.NOT_SPECIFIED);
+        student.setSex(Sex.NON_BINARY);
         student.setQuarter(4);
         student.setInstitutionalEmail(email);
         student.setInstitutionalEmailNormalized(email);
@@ -234,6 +248,14 @@ class DashboardControllerIntegrationTest {
         student.setCreatedByAdmin(adminTi);
         student.setUpdatedByAdmin(adminTi);
         return studentRepository.save(student);
+    }
+
+    private Career saveCareer(String code, String name) {
+        Career career = new Career();
+        career.setCode(code);
+        career.setName(name);
+        career.setActive(true);
+        return careerRepository.save(career);
     }
 
     private void saveAccessLog(Student student, AccessResult result, String occurredAt) {

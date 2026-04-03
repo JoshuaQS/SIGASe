@@ -4,6 +4,8 @@ import mx.edu.utez.server.modules.auth.entity.StudentPasswordResetToken;
 import mx.edu.utez.server.modules.auth.repository.StudentPasswordResetTokenRepository;
 import mx.edu.utez.server.modules.auth.service.StudentPasswordResetNotifier;
 import mx.edu.utez.server.modules.admins.entity.Admin;
+import mx.edu.utez.server.modules.careers.entity.Career;
+import mx.edu.utez.server.modules.careers.service.CareerService;
 import mx.edu.utez.server.modules.logs.audit.service.AuditTrailService;
 import mx.edu.utez.server.modules.logs.access.repository.AccessLogRepository;
 import mx.edu.utez.server.modules.logs.access.repository.StudentAccessAlertStateRepository;
@@ -54,6 +56,7 @@ public class StudentService {
     private final StudentAccessAlertStateRepository studentAccessAlertStateRepository;
     private final StudentPasswordResetTokenRepository studentPasswordResetTokenRepository;
     private final StudentPasswordResetNotifier studentPasswordResetNotifier;
+    private final CareerService careerService;
 
     public StudentService(
             StudentRepository studentRepository,
@@ -63,7 +66,8 @@ public class StudentService {
             AccessLogRepository accessLogRepository,
             StudentAccessAlertStateRepository studentAccessAlertStateRepository,
             StudentPasswordResetTokenRepository studentPasswordResetTokenRepository,
-            StudentPasswordResetNotifier studentPasswordResetNotifier
+            StudentPasswordResetNotifier studentPasswordResetNotifier,
+            CareerService careerService
     ) {
         this.studentRepository = studentRepository;
         this.studentMapper = studentMapper;
@@ -73,12 +77,14 @@ public class StudentService {
         this.studentAccessAlertStateRepository = studentAccessAlertStateRepository;
         this.studentPasswordResetTokenRepository = studentPasswordResetTokenRepository;
         this.studentPasswordResetNotifier = studentPasswordResetNotifier;
+        this.careerService = careerService;
     }
 
     @Transactional
     public StudentResponse create(CreateStudentRequest request, Admin actorAdmin, HttpServletRequest httpRequest) {
         String normalizedEmail = emailNormalizer.normalize(request.institutionalEmail());
         validateCreateRules(request.enrollmentId(), normalizedEmail);
+        Career career = careerService.resolveCareer(request.careerId(), request.careerCode());
 
         Student student = new Student();
         student.setEnrollmentId(request.enrollmentId().trim());
@@ -89,13 +95,13 @@ public class StudentService {
         student.setQuarter(request.quarter());
         student.setInstitutionalEmail(request.institutionalEmail().trim());
         student.setInstitutionalEmailNormalized(normalizedEmail);
-        student.setCareer(request.career().trim());
+        student.setCareer(career);
         student.setStatus(StudentStatus.ACTIVE);
         student.setMustChangePassword(true);
         student.setCreatedByAdmin(actorAdmin);
         student.setUpdatedByAdmin(actorAdmin);
 
-        Student saved = studentRepository.save(student);
+        Student saved = studentRepository.saveAndFlush(student);
         issueStudentOnboardingReset(saved);
         auditTrailService.auditAdminAction(
                 actorAdmin,
@@ -118,6 +124,7 @@ public class StudentService {
         Student student = findByIdOrThrow(studentId);
         String normalizedEmail = emailNormalizer.normalize(request.institutionalEmail());
         validateUpdateRules(studentId, request.enrollmentId(), normalizedEmail);
+        Career career = careerService.resolveCareer(request.careerId(), request.careerCode());
 
         student.setEnrollmentId(request.enrollmentId().trim());
         student.setName(request.name().trim());
@@ -127,7 +134,7 @@ public class StudentService {
         student.setQuarter(request.quarter());
         student.setInstitutionalEmail(request.institutionalEmail().trim());
         student.setInstitutionalEmailNormalized(normalizedEmail);
-        student.setCareer(request.career().trim());
+        student.setCareer(career);
         student.setUpdatedByAdmin(actorAdmin);
 
         Student saved = studentRepository.save(student);
@@ -140,7 +147,7 @@ public class StudentService {
                 Map.of(
                         "enrollmentId", saved.getEnrollmentId(),
                         "institutionalEmailNormalized", saved.getInstitutionalEmailNormalized(),
-                        "career", saved.getCareer()
+                        "careerCode", saved.getCareer().getCode()
                 ),
                 httpRequest
         );
@@ -156,7 +163,8 @@ public class StudentService {
     @Transactional(readOnly = true)
     public PageResponse<StudentResponse> list(
             String query,
-            String career,
+            UUID careerId,
+            String careerCode,
             StudentStatus status,
             int page,
             int size,
@@ -169,7 +177,7 @@ public class StudentService {
             throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Parámetros de paginación inválidos.");
         }
         Pageable pageable = PageRequest.of(page, size, buildSort(sortBy, sortDir));
-        Specification<Student> spec = buildSpecification(query, career, status);
+        Specification<Student> spec = buildSpecification(query, careerId, careerCode, status);
         Page<StudentResponse> result = studentRepository.findAll(spec, pageable).map(studentMapper::toResponse);
 
         return new PageResponse<>(
@@ -267,7 +275,7 @@ public class StudentService {
         );
     }
 
-    private Specification<Student> buildSpecification(String query, String career, StudentStatus status) {
+    private Specification<Student> buildSpecification(String query, UUID careerId, String careerCode, StudentStatus status) {
         return (root, q, cb) -> {
             var predicate = cb.conjunction();
 
@@ -282,8 +290,16 @@ public class StudentService {
                 ));
             }
 
-            if (StringUtils.hasText(career)) {
-                predicate = cb.and(predicate, cb.equal(cb.lower(root.get("career")), career.trim().toLowerCase(Locale.ROOT)));
+            if (careerId != null) {
+                predicate = cb.and(predicate, cb.equal(root.get("career").get("id"), careerId));
+            } else if (StringUtils.hasText(careerCode)) {
+                predicate = cb.and(
+                        predicate,
+                        cb.equal(
+                                cb.lower(root.get("career").get("code")),
+                                careerCode.trim().toLowerCase(Locale.ROOT)
+                        )
+                );
             }
 
             if (status != null) {
@@ -300,6 +316,9 @@ public class StudentService {
             throw new BusinessException(ErrorCode.VALIDATION_ERROR, "sortBy no permitido.");
         }
         Sort.Direction direction = "asc".equalsIgnoreCase(sortDir) ? Sort.Direction.ASC : Sort.Direction.DESC;
+        if ("career".equals(safeSortBy)) {
+            return Sort.by(direction, "career.name");
+        }
         return Sort.by(direction, safeSortBy);
     }
 
@@ -340,7 +359,13 @@ public class StudentService {
         studentPasswordResetTokenRepository.save(
                 new StudentPasswordResetToken(tokenHash, student, Instant.now().plus(24, ChronoUnit.HOURS))
         );
-        studentPasswordResetNotifier.sendStudentPasswordReset(student.getInstitutionalEmail(), rawToken);
+        boolean emailSent = studentPasswordResetNotifier.sendStudentPasswordReset(student.getInstitutionalEmail(), rawToken);
+        if (!emailSent) {
+            throw new BusinessException(
+                    ErrorCode.SERVICE_UNAVAILABLE,
+                    "No se pudo enviar el correo para establecer la contraseña del estudiante."
+            );
+        }
     }
 
     private static String sha256Hex(String input) {

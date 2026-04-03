@@ -14,22 +14,24 @@ import org.springframework.data.repository.query.Param;
 public interface ReportMetricsRepository extends JpaRepository<AccessLog, UUID> {
 
     @Query("""
-            select s.career as career, count(a.id) as total
+            select s.career.name as career, count(a.id) as total
             from AccessLog a
             join a.student s
             where a.occurredAt >= :dateFrom
               and a.occurredAt <= :dateTo
               and (:result is null or a.result = :result)
-              and (:career is null or lower(s.career) = lower(:career))
+              and (:careerId is null or s.career.id = :careerId)
+              and (:careerCode is null or lower(s.career.code) = lower(:careerCode))
               and (:studentStatus is null or s.status = :studentStatus)
-            group by s.career
+            group by s.career.name
             order by count(a.id) desc
             """)
     List<CareerCountProjection> findTopCareers(
             @Param("dateFrom") Instant dateFrom,
             @Param("dateTo") Instant dateTo,
             @Param("result") AccessResult result,
-            @Param("career") String career,
+            @Param("careerId") UUID careerId,
+            @Param("careerCode") String careerCode,
             @Param("studentStatus") StudentStatus studentStatus,
             Pageable pageable
     );
@@ -41,7 +43,8 @@ public interface ReportMetricsRepository extends JpaRepository<AccessLog, UUID> 
             where a.occurredAt >= :dateFrom
               and a.occurredAt <= :dateTo
               and a.result <> mx.edu.utez.server.shared.enums.AccessResult.SUCCESS
-              and (:career is null or (s is not null and lower(s.career) = lower(:career)))
+              and (:careerId is null or (s is not null and s.career.id = :careerId))
+              and (:careerCode is null or (s is not null and lower(s.career.code) = lower(:careerCode)))
               and (:studentStatus is null or (s is not null and s.status = :studentStatus))
             group by a.result
             order by count(a.id) desc
@@ -49,7 +52,8 @@ public interface ReportMetricsRepository extends JpaRepository<AccessLog, UUID> 
     List<ErrorBreakdownProjection> findErrorBreakdown(
             @Param("dateFrom") Instant dateFrom,
             @Param("dateTo") Instant dateTo,
-            @Param("career") String career,
+            @Param("careerId") UUID careerId,
+            @Param("careerCode") String careerCode,
             @Param("studentStatus") StudentStatus studentStatus
     );
 

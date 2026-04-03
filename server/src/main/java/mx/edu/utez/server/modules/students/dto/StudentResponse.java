@@ -14,7 +14,7 @@ public record StudentResponse(
         Sex sex,
         Integer quarter,
         String institutionalEmail,
-        String career,
+        CareerInfo career,
         StudentStatus status,
         Instant lastLoginAt,
         Instant deactivatedAt,
@@ -26,4 +26,10 @@ public record StudentResponse(
         Instant createdAt,
         Instant updatedAt
 ) {
+    public record CareerInfo(
+            UUID id,
+            String code,
+            String name
+    ) {
+    }
 }

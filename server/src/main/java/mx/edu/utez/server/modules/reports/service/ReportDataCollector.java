@@ -18,6 +18,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @Service
 public class ReportDataCollector {
@@ -37,13 +38,14 @@ public class ReportDataCollector {
     public ReportData collect(
             Instant dateFrom, Instant dateTo,
             AccessResult resultFilter,
-            String career, StudentStatus studentStatus
+            UUID careerId, String careerCode, StudentStatus studentStatus
     ) {
-        long successful = dashboardMetrics.countSuccessfulAccesses(dateFrom, dateTo, career, studentStatus);
-        long failed = dashboardMetrics.countFailedAccesses(dateFrom, dateTo, career, studentStatus);
+        String effectiveCareerCode = careerId != null ? null : careerCode;
+        long successful = dashboardMetrics.countSuccessfulAccesses(dateFrom, dateTo, careerId, effectiveCareerCode, studentStatus);
+        long failed = dashboardMetrics.countFailedAccesses(dateFrom, dateTo, careerId, effectiveCareerCode, studentStatus);
         long totalAccesses = successful + failed;
         long uniqueStudents = dashboardMetrics.countUniqueStudentsWithSuccessfulAccess(
-                dateFrom, dateTo, career, studentStatus);
+                dateFrom, dateTo, careerId, effectiveCareerCode, studentStatus);
 
         double successRate = totalAccesses > 0
                 ? BigDecimal.valueOf(successful).multiply(BigDecimal.valueOf(100))
@@ -52,7 +54,7 @@ public class ReportDataCollector {
 
         // Trend points
         List<DashboardMetricsRepository.DailyResultCountProjection> dailyRows =
-                dashboardMetrics.findDailyAccessCounts(dateFrom, dateTo, career, studentStatus, resultFilter);
+                dashboardMetrics.findDailyAccessCounts(dateFrom, dateTo, careerId, effectiveCareerCode, studentStatus, resultFilter);
 
         Map<LocalDate, long[]> byDay = new HashMap<>();
         LocalDate fromDay = dateFrom.atZone(ZoneOffset.UTC).toLocalDate();
@@ -83,20 +85,20 @@ public class ReportDataCollector {
 
         // Top students
         List<TopStudentItem> topStudents = dashboardMetrics.findTopStudentsDesc(
-                        dateFrom, dateTo, career, studentStatus, PageRequest.of(0, 10))
+                        dateFrom, dateTo, careerId, effectiveCareerCode, studentStatus, PageRequest.of(0, 10))
                 .map(p -> new TopStudentItem(p.getEnrollmentId(), p.getName(), p.getCareer(), p.getSuccessfulAccesses()))
                 .getContent();
 
         // Top careers
         List<CareerItem> topCareers = reportMetrics.findTopCareers(
-                        dateFrom, dateTo, resultFilter, career, studentStatus, PageRequest.of(0, 10))
+                        dateFrom, dateTo, resultFilter, careerId, effectiveCareerCode, studentStatus, PageRequest.of(0, 10))
                 .stream()
                 .map(p -> new CareerItem(p.getCareer(), p.getTotal()))
                 .toList();
 
         // Error breakdown
         List<ErrorBreakdownItem> errorBreakdown = reportMetrics.findErrorBreakdown(
-                        dateFrom, dateTo, career, studentStatus)
+                        dateFrom, dateTo, careerId, effectiveCareerCode, studentStatus)
                 .stream()
                 .map(p -> new ErrorBreakdownItem(p.getResult().name(), p.getTotal()))
                 .toList();
@@ -114,7 +116,8 @@ public class ReportDataCollector {
         appliedFilters.put("dateFrom", dateFrom.toString());
         appliedFilters.put("dateTo", dateTo.toString());
         if (resultFilter != null) appliedFilters.put("result", resultFilter.name());
-        if (career != null) appliedFilters.put("career", career);
+        if (careerId != null) appliedFilters.put("careerId", careerId.toString());
+        if (careerCode != null && !careerCode.isBlank()) appliedFilters.put("careerCode", careerCode);
         if (studentStatus != null) appliedFilters.put("studentStatus", studentStatus.name());
 
         return new ReportData(

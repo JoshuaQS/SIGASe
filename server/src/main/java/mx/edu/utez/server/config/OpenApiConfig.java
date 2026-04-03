@@ -12,10 +12,9 @@ public class OpenApiConfig {
     public OpenAPI backendOpenAPI() {
         return new OpenAPI()
                 .info(new Info()
-                        .title("SGB-UTEZ Backend API")
+                        .title("SIGASe Backend API")
                         .version("v1")
                         .description("API backend para Portal Biblioteca UTEZ. "
-                                + "En esta fase el logout de JWT es lógico (client-side) "
-                                + "y no existe revocación server-side."));
+                                + "Autenticación JWT stateless con invalidación por ciclo de contraseña."));
     }
 }

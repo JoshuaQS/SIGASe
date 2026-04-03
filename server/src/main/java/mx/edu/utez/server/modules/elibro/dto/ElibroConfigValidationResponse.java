@@ -8,6 +8,10 @@ public record ElibroConfigValidationResponse(
         UUID id,
         ElibroValidationStatus validationStatus,
         String validationMessage,
+        Long latencyMs,
+        String errorCode,
+        String requestId,
+        String correlationId,
         Instant lastValidatedAt
 ) {
 }

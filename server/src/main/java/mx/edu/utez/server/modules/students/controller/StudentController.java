@@ -83,7 +83,8 @@ public class StudentController {
     @Operation(summary = "Listar estudiantes con filtros")
     public ApiResponse<PageResponse<StudentResponse>> list(
             @RequestParam(required = false) String q,
-            @RequestParam(required = false) String career,
+            @RequestParam(required = false) UUID careerId,
+            @RequestParam(required = false) String careerCode,
             @RequestParam(required = false) StudentStatus status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
@@ -94,7 +95,7 @@ public class StudentController {
     ) {
         Admin actor = adminContextService.requireCurrentAdmin(authentication);
         PageResponse<StudentResponse> response = studentService.list(
-                q, career, status, page, size, sortBy, sortDir, actor, httpRequest
+                q, careerId, careerCode, status, page, size, sortBy, sortDir, actor, httpRequest
         );
         return new ApiResponse<>(true, "Listado de estudiantes.", response, HttpStatus.OK.value());
     }

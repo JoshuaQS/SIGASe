@@ -19,7 +19,7 @@ public interface StudentPasswordResetTokenRepository extends JpaRepository<Stude
     @Query("SELECT t FROM StudentPasswordResetToken t WHERE t.tokenHash = :tokenHash AND t.usedAt IS NULL")
     Optional<StudentPasswordResetToken> findByTokenHashAndUsedFalse(@Param("tokenHash") String tokenHash);
 
-    @Modifying(clearAutomatically = true)
+    @Modifying(flushAutomatically = true)
     @Query("UPDATE StudentPasswordResetToken t SET t.usedAt = :now WHERE t.student.id = :studentId AND t.usedAt IS NULL")
     void invalidatePendingByStudentId(@Param("studentId") UUID studentId, @Param("now") Instant now);
 

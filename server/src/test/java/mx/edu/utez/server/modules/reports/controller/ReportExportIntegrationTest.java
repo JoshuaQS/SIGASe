@@ -3,11 +3,14 @@ package mx.edu.utez.server.modules.reports.controller;
 import mx.edu.utez.server.modules.admins.entity.Admin;
 import mx.edu.utez.server.modules.admins.repository.AdminRepository;
 import mx.edu.utez.server.modules.auth.repository.AdminPasswordResetTokenRepository;
+import mx.edu.utez.server.modules.careers.entity.Career;
+import mx.edu.utez.server.modules.careers.repository.CareerRepository;
 import mx.edu.utez.server.modules.logs.access.entity.AccessLog;
 import mx.edu.utez.server.modules.logs.access.repository.AccessLogRepository;
 import mx.edu.utez.server.modules.logs.audit.entity.AuditLog;
 import mx.edu.utez.server.modules.logs.audit.repository.AuditLogRepository;
 import mx.edu.utez.server.modules.elibro.repository.ElibroConfigRepository;
+import mx.edu.utez.server.modules.elibro.repository.ElibroValidationRunRepository;
 import mx.edu.utez.server.modules.students.entity.Student;
 import mx.edu.utez.server.modules.students.repository.StudentRepository;
 import mx.edu.utez.server.security.RoleConstants;
@@ -51,9 +54,11 @@ class ReportExportIntegrationTest {
     @Autowired private AccessLogRepository accessLogRepository;
     @Autowired private AuditLogRepository auditLogRepository;
     @Autowired private StudentRepository studentRepository;
+    @Autowired private CareerRepository careerRepository;
     @Autowired private AdminRepository adminRepository;
     @Autowired private AdminPasswordResetTokenRepository passwordResetTokenRepository;
     @Autowired private ElibroConfigRepository elibroConfigRepository;
+    @Autowired private ElibroValidationRunRepository validationRunRepository;
 
     private Admin adminTi;
     private Admin adminBiblioteca;
@@ -63,13 +68,17 @@ class ReportExportIntegrationTest {
     void setUp() {
         accessLogRepository.deleteAll();
         auditLogRepository.deleteAll();
+        validationRunRepository.deleteAll();
         elibroConfigRepository.deleteAll();
         studentRepository.deleteAll();
+        careerRepository.deleteAll();
         passwordResetTokenRepository.deleteAll();
         adminRepository.deleteAll();
 
         adminTi = saveAdmin("admin.ti@utez.edu.mx", AdminRole.ADMIN_TI);
         adminBiblioteca = saveAdmin("admin.biblioteca@utez.edu.mx", AdminRole.ADMIN_BIBLIOTECA);
+        saveCareer("SIS", "Sistemas");
+        saveCareer("RED", "Redes");
         student = saveStudent(adminTi, "2026A0001", "alice@utez.edu.mx", "Sistemas", StudentStatus.ACTIVE);
 
         saveAccessLog(student, "alice@utez.edu.mx", "alice@utez.edu.mx",
@@ -121,7 +130,7 @@ class ReportExportIntegrationTest {
         saveStudent(adminTi, "2026A0002", "bob.student@utez.edu.mx", "Redes", StudentStatus.INACTIVE);
 
         MvcResult result = mockMvc.perform(get("/api/v1/reports/students/export")
-                        .param("career", "Sistemas")
+                        .param("careerCode", "SIS")
                         .param("status", "ACTIVE")
                         .with(auth(adminTi, RoleConstants.ADMIN_TI)))
                 .andExpect(status().isOk())
@@ -353,19 +362,32 @@ class ReportExportIntegrationTest {
 
     private Student saveStudent(Admin createdBy, String matricula, String email, String career, StudentStatus status) {
         Student s = new Student();
-        s.setEnrollmentNumber(matricula);
+        s.setEnrollmentId(matricula);
         s.setName("Student");
         s.setLastNamePaternal("Paternal");
         s.setLastNameMaternal("Maternal");
-        s.setSex(Sex.NOT_SPECIFIED);
+        s.setSex(Sex.NON_BINARY);
         s.setQuarter(3);
         s.setInstitutionalEmail(email);
         s.setInstitutionalEmailNormalized(email.toLowerCase());
-        s.setCareer(career);
+        s.setCareer(resolveCareer(career));
         s.setStatus(status);
         s.setCreatedByAdmin(createdBy);
         s.setUpdatedByAdmin(createdBy);
         return studentRepository.save(s);
+    }
+
+    private Career saveCareer(String code, String name) {
+        Career career = new Career();
+        career.setCode(code);
+        career.setName(name);
+        career.setActive(true);
+        return careerRepository.save(career);
+    }
+
+    private Career resolveCareer(String name) {
+        return careerRepository.findByNameIgnoreCase(name)
+                .orElseGet(() -> saveCareer(name.substring(0, Math.min(3, name.length())).toUpperCase(), name));
     }
 
     private AccessLog saveAccessLog(

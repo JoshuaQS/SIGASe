@@ -20,6 +20,7 @@ public final class ApiRoutes {
     public static final String AUDIT_LOGS = V1 + "/audit-logs";
     public static final String DASHBOARD = V1 + "/dashboard";
     public static final String REPORTS = V1 + "/reports";
+    public static final String CAREERS = V1 + "/careers";
 
     /** Prefijo completo {@code /api/v1} (útil para seguridad, filtros y tests HTTP). */
     public static final String BASE = API_SERVLET_PREFIX + V1;

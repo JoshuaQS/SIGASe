@@ -213,6 +213,7 @@ public class AdminManagementService {
         admin.setPasswordHash(passwordEncoder.encode(request.newPassword()));
         admin.setFailedLoginAttempts(0);
         admin.setLockedUntil(null);
+        admin.setTokenVersion(admin.getTokenVersion() + 1);
         adminRepository.save(admin);
 
         auditTrailService.auditAdminAction(

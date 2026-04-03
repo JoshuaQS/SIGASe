@@ -20,8 +20,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 
 import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -39,6 +41,9 @@ class PasswordResetIntegrationTest {
 
     private static final String REQUEST_URL = "/api/v1/auth/admin/reset-password/request";
     private static final String CONFIRM_URL = "/api/v1/auth/admin/reset-password/confirm";
+    private static final String LOGIN_URL = "/api/v1/auth/admin/login";
+    private static final String ME_URL = "/api/v1/auth/admin/me";
+    private static final String INITIAL_PASSWORD = "AdminPass.123";
     private static final String VALID_PASSWORD = "NuevaContraseña123!";
 
     @Autowired private MockMvc mockMvc;
@@ -46,6 +51,7 @@ class PasswordResetIntegrationTest {
     @Autowired private AdminPasswordResetTokenRepository tokenRepository;
     @Autowired private AuditLogRepository auditLogRepository;
     @Autowired private PasswordResetService passwordResetService;
+    @Autowired private PasswordEncoder passwordEncoder;
     @Autowired private ObjectMapper objectMapper;
 
     private Admin activeAdmin;
@@ -209,6 +215,29 @@ class PasswordResetIntegrationTest {
     }
 
     @Test
+    void shouldInvalidatePreviousAdminTokenOnResetConfirm() throws Exception {
+        String oldToken = loginAndGetAdminToken(activeAdmin.getEmail(), INITIAL_PASSWORD);
+        String rawToken = "revocation1234567890revocation1234567890revocation1234567890revocation";
+        String tokenHash = sha256Hex(rawToken);
+        saveResetToken(activeAdmin, tokenHash, Instant.now().plus(30, ChronoUnit.MINUTES));
+
+        mockMvc.perform(post(CONFIRM_URL)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(toJson(Map.of("token", rawToken, "newPassword", VALID_PASSWORD))))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/v1/auth/admin/logout")
+                        .header("Authorization", "Bearer " + oldToken))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.errorCode", is("INVALID_TOKEN")));
+
+        mockMvc.perform(post(LOGIN_URL)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(toJson(Map.of("email", activeAdmin.getEmail(), "password", VALID_PASSWORD))))
+                .andExpect(status().isOk());
+    }
+
+    @Test
     void shouldRejectConfirmForInactiveAdmin() throws Exception {
         Admin inactiveAdmin = saveAdmin("inactive@utez.edu.mx", AdminRole.ADMIN_BIBLIOTECA, false);
 
@@ -231,7 +260,7 @@ class PasswordResetIntegrationTest {
         admin.setName("Admin");
         admin.setLastNamePaternal(role.name());
         admin.setLastNameMaternal(null);
-        admin.setPasswordHash("$2a$10$123456789012345678901u2sNfJ0wYl8Bv0p5Wn4eC6zYkM8d8vS.");
+        admin.setPasswordHash(passwordEncoder.encode(INITIAL_PASSWORD));
         admin.setRole(role);
         admin.setActive(active);
         return adminRepository.save(admin);
@@ -261,5 +290,17 @@ class PasswordResetIntegrationTest {
         } catch (Exception ex) {
             throw new RuntimeException(ex);
         }
+    }
+
+    private String loginAndGetAdminToken(String email, String password) throws Exception {
+        MvcResult result = mockMvc.perform(post(LOGIN_URL)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(toJson(Map.of("email", email, "password", password))))
+                .andExpect(status().isOk())
+                .andReturn();
+        return objectMapper.readTree(result.getResponse().getContentAsString())
+                .path("data")
+                .path("token")
+                .asText();
     }
 }

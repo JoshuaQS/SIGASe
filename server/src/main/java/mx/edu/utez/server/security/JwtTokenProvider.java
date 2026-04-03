@@ -29,10 +29,24 @@ public class JwtTokenProvider {
     }
 
     public String generateToken(UUID userId, String role, JwtTokenType tokenType) {
-        return generateToken(userId, role, tokenType, false);
+        return generateToken(userId, role, tokenType, false, 0);
+    }
+
+    public String generateToken(UUID userId, String role, JwtTokenType tokenType, int tokenVersion) {
+        return generateToken(userId, role, tokenType, false, tokenVersion);
     }
 
     public String generateToken(UUID userId, String role, JwtTokenType tokenType, boolean mustChangePassword) {
+        return generateToken(userId, role, tokenType, mustChangePassword, 0);
+    }
+
+    public String generateToken(
+            UUID userId,
+            String role,
+            JwtTokenType tokenType,
+            boolean mustChangePassword,
+            int tokenVersion
+    ) {
         Instant now = Instant.now();
         long expirationSeconds = tokenType == JwtTokenType.ADMIN
                 ? appProperties.getJwt().getAdminExpirationSeconds()
@@ -47,6 +61,7 @@ public class JwtTokenProvider {
                 .claim("role", role)
                 .claim("tokenType", tokenType.name())
                 .claim("mustChangePassword", mustChangePassword)
+                .claim("tokenVersion", tokenVersion)
                 .signWith(signingKey)
                 .compact();
     }
@@ -59,7 +74,8 @@ public class JwtTokenProvider {
                 student.getId(),
                 RoleConstants.STUDENT,
                 JwtTokenType.STUDENT,
-                student.isMustChangePassword()
+                student.isMustChangePassword(),
+                student.getTokenVersion()
         );
     }
 
@@ -74,11 +90,13 @@ public class JwtTokenProvider {
             String role = claims.get("role", String.class);
             String tokenType = claims.get("tokenType", String.class);
             Boolean mustChange = claims.get("mustChangePassword", Boolean.class);
+            Integer tokenVersion = claims.get("tokenVersion", Integer.class);
             return new ParsedToken(
                     userId,
                     role,
                     JwtTokenType.valueOf(tokenType),
-                    Boolean.TRUE.equals(mustChange)
+                    Boolean.TRUE.equals(mustChange),
+                    tokenVersion != null ? tokenVersion : 0
             );
         } catch (ExpiredJwtException ex) {
             throw new SessionExpiredAuthenticationException("Sesión expirada.", ex);

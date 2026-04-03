@@ -1,6 +1,7 @@
 package mx.edu.utez.server.modules.students.entity;
 
 import mx.edu.utez.server.modules.admins.entity.Admin;
+import mx.edu.utez.server.modules.careers.entity.Career;
 import mx.edu.utez.server.shared.entity.BaseAuditableEntity;
 import mx.edu.utez.server.shared.enums.Sex;
 import mx.edu.utez.server.shared.enums.StudentStatus;
@@ -22,7 +23,7 @@ import java.time.Instant;
         @Index(name = "idx_students_email_norm", columnList = "institutional_email_normalized", unique = true),
         @Index(name = "idx_students_google_sub", columnList = "google_subject", unique = true),
         @Index(name = "idx_students_status", columnList = "status"),
-        @Index(name = "idx_students_career", columnList = "career")
+        @Index(name = "idx_students_career_id", columnList = "career_id")
 })
 public class Student extends BaseAuditableEntity {
 
@@ -51,8 +52,9 @@ public class Student extends BaseAuditableEntity {
     @Column(name = "institutional_email_normalized", nullable = false, length = 254, unique = true)
     private String institutionalEmailNormalized;
 
-    @Column(name = "career", nullable = false, length = 120)
-    private String career;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "career_id", nullable = false)
+    private Career career;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 16)
@@ -98,6 +100,9 @@ public class Student extends BaseAuditableEntity {
 
     @Column(name = "last_password_change_at")
     private Instant lastPasswordChangeAt;
+
+    @Column(name = "token_version", nullable = false)
+    private int tokenVersion = 0;
 
     public String getEnrollmentId() {
         return enrollmentId;
@@ -163,11 +168,11 @@ public class Student extends BaseAuditableEntity {
         this.institutionalEmailNormalized = institutionalEmailNormalized;
     }
 
-    public String getCareer() {
+    public Career getCareer() {
         return career;
     }
 
-    public void setCareer(String career) {
+    public void setCareer(Career career) {
         this.career = career;
     }
 
@@ -281,5 +286,13 @@ public class Student extends BaseAuditableEntity {
 
     public void setLastPasswordChangeAt(Instant lastPasswordChangeAt) {
         this.lastPasswordChangeAt = lastPasswordChangeAt;
+    }
+
+    public int getTokenVersion() {
+        return tokenVersion;
+    }
+
+    public void setTokenVersion(int tokenVersion) {
+        this.tokenVersion = tokenVersion;
     }
 }

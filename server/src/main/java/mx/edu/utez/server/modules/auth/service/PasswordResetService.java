@@ -9,6 +9,7 @@ import mx.edu.utez.server.shared.enums.AuditOutcome;
 import mx.edu.utez.server.shared.exception.BusinessException;
 import mx.edu.utez.server.shared.exception.ErrorCode;
 import mx.edu.utez.server.shared.util.EmailNormalizer;
+import mx.edu.utez.server.shared.util.SecurityLogSanitizer;
 import jakarta.servlet.http.HttpServletRequest;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -21,21 +22,12 @@ import java.util.Map;
 import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Public password-reset flow (request + confirm).
- * <p>
- * In this phase the raw token is logged to console instead of being sent by
- * email.  In production the log shows only a partial token; in dev/local the
- * full token is logged so that it can be used for testing.
- * <p>
- * <b>Important:</b> confirming a reset does NOT revoke any JWT tokens that
- * were previously issued.  The admin's existing sessions remain valid until
- * they expire naturally.  JWT revocation can be added in a future phase.
  */
 @Service
 public class PasswordResetService {
@@ -52,21 +44,22 @@ public class PasswordResetService {
     private final AuditTrailService auditTrailService;
     private final SecureRandom secureRandom = new SecureRandom();
 
-    @Value("${spring.profiles.active:default}")
-    private String activeProfile;
+    private final SecurityLogSanitizer securityLogSanitizer;
 
     public PasswordResetService(
             AdminRepository adminRepository,
             AdminPasswordResetTokenRepository tokenRepository,
             PasswordEncoder passwordEncoder,
             EmailNormalizer emailNormalizer,
-            AuditTrailService auditTrailService
+            AuditTrailService auditTrailService,
+            SecurityLogSanitizer securityLogSanitizer
     ) {
         this.adminRepository = adminRepository;
         this.tokenRepository = tokenRepository;
         this.passwordEncoder = passwordEncoder;
         this.emailNormalizer = emailNormalizer;
         this.auditTrailService = auditTrailService;
+        this.securityLogSanitizer = securityLogSanitizer;
     }
 
     /**
@@ -100,7 +93,7 @@ public class PasswordResetService {
         resetToken.setExpiresAt(Instant.now().plus(TOKEN_EXPIRATION_MINUTES, ChronoUnit.MINUTES));
         tokenRepository.save(resetToken);
 
-        // Log the token — full in dev/test, partial in production.
+        // Never log raw reset tokens; keep only a short redacted fingerprint.
         logToken(normalizedEmail, rawToken);
 
         auditTrailService.auditAdminAction(
@@ -149,6 +142,7 @@ public class PasswordResetService {
         admin.setPasswordHash(passwordEncoder.encode(newPassword));
         admin.setFailedLoginAttempts(0);
         admin.setLockedUntil(null);
+        admin.setTokenVersion(admin.getTokenVersion() + 1);
         adminRepository.save(admin);
 
         auditTrailService.auditAdminAction(
@@ -182,15 +176,10 @@ public class PasswordResetService {
     }
 
     private void logToken(String email, String rawToken) {
-        if (isProductionProfile()) {
-            log.info("Password reset token generated for {}. Token: {}...(redacted)",
-                    email, rawToken.substring(0, 8));
-        } else {
-            log.info("Password reset token generated for {}: {}", email, rawToken);
-        }
-    }
-
-    private boolean isProductionProfile() {
-        return activeProfile != null && activeProfile.contains("prod");
+        log.info(
+                "Password reset token generated for {}: {}",
+                email,
+                securityLogSanitizer.redactToken(rawToken)
+        );
     }
 }

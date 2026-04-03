@@ -6,6 +6,7 @@ public record ParsedToken(
         UUID userId,
         String role,
         JwtTokenType tokenType,
-        boolean mustChangePassword
+        boolean mustChangePassword,
+        int tokenVersion
 ) {
 }
