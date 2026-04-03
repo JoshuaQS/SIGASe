@@ -1,6 +1,8 @@
 package mx.edu.utez.server.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import mx.edu.utez.server.shared.api.ApiRoutes;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.config.annotation.PathMatchConfigurer;
@@ -15,5 +17,10 @@ public class ApiWebConfiguration implements WebMvcConfigurer {
     @Override
     public void configurePathMatch(PathMatchConfigurer configurer) {
         configurer.addPathPrefix(ApiRoutes.API_SERVLET_PREFIX, c -> c.isAnnotationPresent(RestController.class));
+    }
+    
+    @Bean
+    public ObjectMapper objectMapper() {
+        return new ObjectMapper();
     }
 }

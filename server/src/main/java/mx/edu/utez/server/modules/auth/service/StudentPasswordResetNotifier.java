@@ -33,7 +33,7 @@ public class StudentPasswordResetNotifier {
     }
 
     public String buildStudentResetLink(String rawToken) {
-        return UriComponentsBuilder.fromHttpUrl(frontendBaseUrl)
+        return UriComponentsBuilder.fromUriString(frontendBaseUrl)
                 .path("/reset-password")
                 .queryParam("mode", "student")
                 .queryParam("token", rawToken)
