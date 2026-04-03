@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { ArrowLeft, KeyRound, Mail } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -77,19 +77,18 @@ function RecoveryRequestForm({
       <fieldset className="flex flex-col gap-6" disabled={isSubmitting}>
         <FormField
           label="Correo institucional"
-          htmlFor="recovery-email"
+          controlId="recovery-email"
           error={errors.email?.message}
-          hint="Usaremos este correo para enviarte el código de acceso."
+          description="Usaremos este correo para enviarte el código de acceso."
         >
           <Input
             {...register('email')}
             id="recovery-email"
             type="email"
             placeholder={emailPlaceholder}
-            leadingIcon={Mail}
-            className="h-10"
-            state={errors.email ? 'error' : 'default'}
-            aria-invalid={errors.email ? 'true' : 'false'}
+            size="lg"
+            startAdornment={<Mail className="h-4 w-4" />}
+            invalid={Boolean(errors.email)}
           />
         </FormField>
 
@@ -151,7 +150,7 @@ function PasswordResetForm({
           label="Nueva contraseña"
           error={errors.newPassword?.message}
           placeholder="Escribe tu nueva clave"
-          className="h-10"
+          size="lg"
           requirementHint="Mínimo 10 caracteres, una mayúscula, un número y un símbolo."
         />
 
@@ -161,7 +160,7 @@ function PasswordResetForm({
           label="Confirmar contraseña"
           error={errors.confirmPassword?.message}
           placeholder="Repite tu nueva clave"
-          className="h-10"
+          size="lg"
           showCapsLockWarning={false} // Evitar duplicar el warning si ya está arriba
         />
 
@@ -186,22 +185,25 @@ export default function RecoveryCard({
   emailPlaceholder = 'admin@utez.edu.mx',
 }: RecoveryCardProps) {
   const isRequest = mode === 'request';
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [feedbackState, setFeedbackState] = useState<{
+    mode: RecoveryMode;
+    error: string | null;
+    success: string | null;
+  }>({
+    mode,
+    error: null,
+    success: null,
+  });
 
-  useEffect(() => {
-    setErrorMessage(null);
-    setSuccessMessage(null);
-  }, [mode]);
+  const errorMessage = feedbackState.mode === mode ? feedbackState.error : null;
+  const successMessage = feedbackState.mode === mode ? feedbackState.success : null;
 
   const handleSuccess = (msg: string) => {
-    setSuccessMessage(msg);
-    setErrorMessage(null);
+    setFeedbackState({ mode, error: null, success: msg });
   };
 
   const handleError = (msg: string) => {
-    setErrorMessage(msg);
-    setSuccessMessage(null);
+    setFeedbackState({ mode, error: msg, success: null });
   };
 
   return (

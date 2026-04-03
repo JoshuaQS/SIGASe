@@ -1,11 +1,13 @@
 # macOS / editor
 .DS_Store
 .vscode/
+**/.idea/
+**/__MACOSX/
 
 # Dependencies and build outputs
 **/node_modules/
 client/dist/
-server/target/
+**/target/
 tests/playwright/playwright-report/
 tests/playwright/test-results/
 tests/playwright/storage-states/
@@ -16,3 +18,5 @@ tests/playwright/storage-states/
 
 .env
 .env.*
+!.env.example
+!**/.env.example

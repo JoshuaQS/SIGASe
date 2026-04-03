@@ -5,13 +5,13 @@ export type BadgeVariant =
   | "default"
   | "secondary"
   | "destructive"
-  | "outline"
   | "outlined"
   | "success"
   | "warning"
   | "info"
   | "muted"
-  | "reserved";
+  | "reserved"
+  | "filled";
 
 export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
   variant?: BadgeVariant;
@@ -22,13 +22,13 @@ const variantClass: Record<BadgeVariant, string> = {
   default: "border-primary/30 bg-primary/10 text-primary",
   secondary: "border-transparent bg-secondary text-secondary-foreground",
   destructive: "border-destructive/30 bg-destructive/10 text-destructive",
-  outline: "border-border bg-background text-foreground",
   outlined: "border-border bg-transparent text-foreground",
   success: "border-success/30 bg-success/10 text-success",
   warning: "border-warning/30 bg-warning/10 text-warning",
   info: "border-info/30 bg-info/10 text-info",
   muted: "border-border bg-muted text-muted-foreground",
   reserved: "border-reserved/30 bg-reserved/10 text-reserved",
+  filled: "border-transparent bg-primary text-primary-foreground",
 };
 
 const Badge = React.forwardRef<HTMLSpanElement, BadgeProps>(

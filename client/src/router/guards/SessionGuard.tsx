@@ -1,8 +1,9 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuthSession } from '@//hooks/use-auth-user';
+import { authSession } from '@//auth/auth-session-store';
 
 export function SessionGuard() {
-  const { user, isInitializing, isSessionValidated } = useAuthSession();
+  const { user, isInitializing, isSessionValidated, bootstrapError } = useAuthSession();
   const location = useLocation();
 
   if (isInitializing) {
@@ -14,6 +15,26 @@ export function SessionGuard() {
             <p className="text-sm font-medium text-foreground">Validando sesión</p>
             <p className="text-sm text-muted-foreground">Espera un momento…</p>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (bootstrapError) {
+    return (
+      <div className="flex min-h-svh items-center justify-center bg-background px-6 py-10">
+        <div className="flex w-full max-w-sm flex-col items-center gap-4 rounded-xl border border-border bg-card px-6 py-8 text-center shadow-sm">
+          <div className="space-y-1">
+            <p className="text-sm font-medium text-foreground">No se pudo conectar con el servidor</p>
+            <p className="text-sm text-muted-foreground">Verifica tu conexión e intenta de nuevo.</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => void authSession.initializeAuth()}
+            className="text-sm font-medium text-foreground underline underline-offset-4"
+          >
+            Reintentar
+          </button>
         </div>
       </div>
     );

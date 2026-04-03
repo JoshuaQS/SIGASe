@@ -67,15 +67,15 @@ export function AdminProfileMenu() {
         )}
         aria-label="Abrir menú de perfil"
       >
-        <Avatar className="size-10 cursor-pointer">
+        <Avatar className="size-10 cursor-pointer border border-border/70 bg-card ring-1 ring-foreground/5">
           <AvatarImage alt={displayName} />
-          <AvatarFallback>{initials}</AvatarFallback>
+          <AvatarFallback className="bg-card font-semibold text-foreground">{initials}</AvatarFallback>
         </Avatar>
       </button>
 
       <div
         className={cn(
-          'invisible absolute right-0 bottom-full z-50 mb-3 w-64 translate-y-2 rounded-xl border border-border bg-popover p-1 opacity-0 shadow-xl',
+          'invisible absolute right-0 top-full z-50 mt-3 w-64 -translate-y-2 rounded-xl border border-border bg-popover p-1 opacity-0 shadow-xl',
           'transition-all duration-200',
           'group-hover:visible group-hover:translate-y-0 group-hover:opacity-100',
           'group-focus-within:visible group-focus-within:translate-y-0 group-focus-within:opacity-100',
@@ -84,7 +84,7 @@ export function AdminProfileMenu() {
         <div className="flex items-center gap-3 rounded-lg px-3 py-3">
           <Avatar className="size-10">
             <AvatarImage alt={displayName} />
-            <AvatarFallback>{initials}</AvatarFallback>
+            <AvatarFallback className="bg-muted text-foreground">{initials}</AvatarFallback>
           </Avatar>
           <div className="min-w-0">
             <p className="truncate text-sm font-medium text-popover-foreground">{displayName}</p>

@@ -10,14 +10,14 @@
   align-items: center;
   justify-content: center;
   gap: 0.75rem;
-  padding: 1.125rem 2.75rem;
-  min-width: 18.5rem;
+  padding: 1.25rem 3.4rem;
+  min-width: 21rem;
   overflow: visible;
   border: none;
   border-radius: 16px;
   cursor: pointer;
   font-family: inherit;
-  font-size: 1.0625rem;
+  font-size: 1.125rem;
   font-weight: 700;
   letter-spacing: 0.03em;
   color: hsl(var(--primary-foreground));
@@ -25,13 +25,13 @@
   background: linear-gradient(
     155deg,
     hsl(var(--primary-muted-surface)) 0%,
-    hsl(var(--primary-muted-surface-hover)) 42%,
-    hsl(var(--primary)) 100%
+    hsl(var(--success) / 0.5) 44%,
+    hsl(var(--success)) 100%
   );
   box-shadow:
-    0 0 0 1px hsl(var(--info) / 0.18),
+    0 0 0 1px hsl(var(--success) / 0.15),
     0 14px 44px -14px hsl(var(--primary-muted-surface) / 0.95),
-    0 0 52px -18px hsl(var(--info) / 0.24);
+    0 0 52px -18px hsl(var(--success) / 0.2);
   transition:
     transform 0.22s ease,
     box-shadow 0.22s ease,
@@ -41,16 +41,16 @@
 .button:hover:not(:disabled) {
   transform: translateY(-2px);
   box-shadow:
-    0 0 0 1px hsl(var(--info) / 0.34),
+    0 0 0 1px hsl(var(--success) / 0.3),
     0 18px 52px -12px hsl(var(--primary-muted-surface) / 0.98),
-    0 0 64px -14px hsl(var(--info) / 0.4);
+    0 0 64px -14px hsl(var(--success) / 0.35);
 }
 
 .button:focus-visible {
   outline: none;
   box-shadow:
     0 0 0 2px hsl(var(--background)),
-    0 0 0 4px hsl(var(--info) / 0.55),
+    0 0 0 4px hsl(var(--success) / 0.5),
     0 14px 44px -14px hsl(var(--primary-muted-surface) / 0.95);
 }
 
@@ -94,7 +94,7 @@
   stroke-dasharray: 24 76;
   animation: edge-travel 2.6s linear infinite;
   vector-effect: non-scaling-stroke;
-  filter: drop-shadow(0 0 8px hsl(var(--info) / 0.45));
+  filter: drop-shadow(0 0 8px hsl(var(--success) / 0.4));
 }
 
 @keyframes edge-travel {
@@ -127,8 +127,8 @@
   background: radial-gradient(
     circle,
     hsl(var(--card)) 0%,
-    hsl(var(--warning)) 35%,
-    hsl(var(--info) / 0.9) 65%,
+    hsl(var(--success) / 0.55) 35%,
+    hsl(var(--success) / 0.9) 65%,
     transparent 78%
   );
   opacity: 0.55;
@@ -168,6 +168,12 @@
   color: hsl(var(--primary-foreground));
 }
 
+:global(.dark) .button,
+:global(.dark) .label,
+:global(.dark) .icon {
+  color: #fff;
+}
+
 .explosion {
   position: absolute;
   left: 50%;
@@ -191,7 +197,7 @@
   background: radial-gradient(
     circle,
     hsl(var(--card) / 0.95) 0%,
-    hsl(var(--info) / 0.45) 38%,
+    hsl(var(--success) / 0.42) 38%,
     transparent 68%
   );
   animation: flash-pop 0.58s ease-out forwards;
@@ -219,9 +225,9 @@
   border-radius: 1px;
   background: linear-gradient(
     140deg,
-    hsl(var(--warning)),
-    hsl(var(--chart-2)) 45%,
-    hsl(var(--info))
+    #6ee7b7,
+    #34d399 45%,
+    #059669
   );
   opacity: 0;
   animation: shard-fly 0.62s ease-out forwards;

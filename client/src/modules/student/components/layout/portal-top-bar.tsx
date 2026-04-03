@@ -1,0 +1,49 @@
+import type { ReactNode } from 'react';
+import { BookOpen } from 'lucide-react';
+
+import { Badge } from '@/components/ui/badge';
+import { ThemeToggle } from '@/components/ui/theme-toggle';
+import StudentProfileMenu from './student-profile-menu';
+
+type PortalTopBarProps = {
+  children?: ReactNode;
+};
+
+export const PortalTopBar = ({ children }: PortalTopBarProps) => {
+  return (
+    <header className="sticky top-0 z-50 border-b border-border bg-topbar shadow-sm">
+      <div className="flex items-center justify-between px-6 py-5">
+        <div className="flex items-center gap-4">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary shadow-lg shadow-primary/20">
+            <BookOpen className="h-5 w-5 text-primary-foreground" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-lg font-bold tracking-tight text-foreground">Portal estudiantil</span>
+              <Badge variant="filled">SIGASe</Badge>
+            </div>
+            <p className="mt-1 text-md leading-none text-muted-foreground">
+              Sistema Integral de Gestión y Acceso SSO eLibro
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3">
+          {children ? (
+            <div className="flex items-center gap-2">{children}</div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <button className="relative p-2.5 text-muted-foreground transition-colors hover:text-foreground">
+              </button>
+              <ThemeToggle className="h-10 w-10" />
+              <div className="mx-1 h-6 w-px bg-muted-foreground/50" />
+              <StudentProfileMenu />
+            </div>
+          )}
+        </div>
+      </div>
+    </header>
+  );
+};
+
+export default PortalTopBar;

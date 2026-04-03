@@ -17,12 +17,14 @@ export type AuthSessionSnapshot = {
   user: AuthUser | null;
   isInitializing: boolean;
   isSessionValidated: boolean;
+  bootstrapError: boolean;
 };
 
 const SERVER_SNAPSHOT: AuthSessionSnapshot = {
   user: null,
   isInitializing: false,
   isSessionValidated: false,
+  bootstrapError: false,
 };
 
 function readStorage(): AuthUser | null {
@@ -42,11 +44,13 @@ const hasCachedToken = Boolean(cache?.token);
 
 let isInitializing = hasBrowser && hasCachedToken;
 let isSessionValidated = false;
+let bootstrapError = false;
 let snapshot: AuthSessionSnapshot = hasBrowser
   ? {
     user: cache,
     isInitializing,
     isSessionValidated,
+    bootstrapError,
   }
   : SERVER_SNAPSHOT;
 const listeners = new Set<() => void>();
@@ -68,16 +72,18 @@ function syncSnapshot() {
     user: cache,
     isInitializing,
     isSessionValidated,
+    bootstrapError,
   };
 }
 
-function setBootstrapState(next: { isInitializing?: boolean; isSessionValidated?: boolean }) {
+function setBootstrapState(next: { isInitializing?: boolean; isSessionValidated?: boolean; bootstrapError?: boolean }) {
   if (typeof next.isInitializing === 'boolean') {
     isInitializing = next.isInitializing;
   }
   if (typeof next.isSessionValidated === 'boolean') {
     isSessionValidated = next.isSessionValidated;
   }
+  bootstrapError = next.bootstrapError ?? false;
   syncSnapshot();
   emit();
 }
@@ -141,10 +147,10 @@ function isRecoverableUnauthorized(error: unknown) {
   return (
     error instanceof ApiClientError &&
     error.status === 401 &&
-    (error.errorCode === 'UNAUTHORIZED' ||
-      error.errorCode === 'INVALID_TOKEN' ||
+    (error.errorCode === 'INVALID_TOKEN' ||
       error.errorCode === 'SESSION_EXPIRED' ||
-      error.errorCode === undefined)
+      error.errorCode === 'TOKEN_EXPIRED' ||
+      error.errorCode === 'JWT_EXPIRED')
   );
 }
 
@@ -171,6 +177,7 @@ export const authSession = {
     cache = readStorage();
     isInitializing = Boolean(cache?.token);
     isSessionValidated = false;
+    bootstrapError = false;
     syncSnapshot();
     emit();
   },
@@ -310,7 +317,17 @@ export const authSession = {
         this.clearSession();
         return null;
       }
-      setBootstrapState({ isInitializing: false, isSessionValidated: false });
+      if (error instanceof ApiClientError && error.status === 401) {
+        if (!cache?.token) {
+          setBootstrapState({ isInitializing: false, isSessionValidated: false });
+          return null;
+        }
+        // Keep the cached session and surface retry UI for ambiguous unauthorized responses.
+        // This avoids aggressive logout loops for request-level 401 responses.
+        setBootstrapState({ isInitializing: false, isSessionValidated: false, bootstrapError: true });
+        return null;
+      }
+      setBootstrapState({ isInitializing: false, isSessionValidated: false, bootstrapError: true });
       return null;
     }
   },
@@ -337,10 +354,16 @@ syncSnapshot();
 
 if (typeof window !== 'undefined') {
   window.addEventListener('storage', (e) => {
-    if (e.key === STORAGE_KEY || e.key === null) {
+    if (e.key === STORAGE_KEY) {
       cache = readStorage();
-      isInitializing = false;
-      isSessionValidated = cache ? !isAdminRole(cache.role) : false;
+      if (e.newValue === null) {
+        // Key removed: another tab explicitly logged out or cleared the session.
+        isInitializing = false;
+        isSessionValidated = false;
+        bootstrapError = false;
+      }
+      // Key written (non-null): another tab logged in or completed bootstrap.
+      // Keep this tab's own validated state — do not reset isSessionValidated.
       syncSnapshot();
       emit();
     }

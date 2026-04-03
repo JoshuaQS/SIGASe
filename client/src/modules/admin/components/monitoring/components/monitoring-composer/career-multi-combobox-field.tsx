@@ -1,21 +1,16 @@
-import { Search, Sparkles, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Check, ChevronDown, Loader2, Sparkles } from "lucide-react";
+import { button as Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
-  Combobox,
-  ComboboxChips,
-  ComboboxChip,
-  ComboboxChipRemove,
-  ComboboxChipsInput,
-  ComboboxCollection,
-  ComboboxContent,
-  ComboboxEmpty,
-  ComboboxGroup,
-  ComboboxLabel,
-  ComboboxLabelGroup,
-  ComboboxList,
-  ComboboxItem,
-} from "@/components/ui/combobox";
-import { InputGroup, InputGroupAddon } from "@/components/ui/input-group";
-import { CAREER_OPTIONS } from "./composer.config";
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { listActiveCareers, type CareerDto } from "@/lib/api/careers-api";
 
 interface CareerMultiComboboxFieldProps {
   values: string[];
@@ -23,66 +18,152 @@ interface CareerMultiComboboxFieldProps {
 }
 
 export function CareerMultiComboboxField({ values, onChange }: CareerMultiComboboxFieldProps) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const [careers, setCareers] = useState<CareerDto[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadCareers = async () => {
+      setIsLoading(true);
+      setLoadError(null);
+      try {
+        const data = await listActiveCareers();
+        if (cancelled) return;
+        setCareers(data);
+      } catch {
+        if (cancelled) return;
+        setLoadError("No se pudieron cargar las carreras.");
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    void loadCareers();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const selectedByCode = useMemo(() => new Set(values), [values]);
+  const visibleCareers = useMemo(() => {
+    const safeSearch = search.trim().toLowerCase();
+    if (!safeSearch) return careers;
+
+    return careers.filter((career) => {
+      const haystack = `${career.code} ${career.name}`.toLowerCase();
+      return haystack.includes(safeSearch);
+    });
+  }, [careers, search]);
+
+  const selectedCount = values.length;
+  const allSelected = careers.length > 0 && selectedCount === careers.length;
+
+  const toggleCareer = (careerCode: string) => {
+    if (selectedByCode.has(careerCode)) {
+      onChange(values.filter((code) => code !== careerCode));
+      return;
+    }
+    onChange([...values, careerCode]);
+  };
+
+  const selectedCareerLabels = useMemo(() => {
+    const byCode = new Map(careers.map((career) => [career.code, career]));
+    return values.map((code) => byCode.get(code)?.name ?? code);
+  }, [careers, values]);
+
+  const summaryLabel =
+    selectedCount === 0
+      ? "Selecciona una o más carreras"
+      : selectedCount === 1
+        ? selectedCareerLabels[0]
+        : `${selectedCount} carreras seleccionadas`;
+
+  const selectAll = () => {
+    onChange(careers.map((career) => career.code));
+  };
+
   return (
-    <Combobox<string, true>
-      multiple
-      value={values}
-      onValueChange={(next) => onChange(Array.isArray(next) ? next : [])}
-      items={[...CAREER_OPTIONS]}
-      itemToStringLabel={(item) => item}
-      itemToStringValue={(item) => item}
-    >
-      <div className="w-[300px] space-y-1">
-        <ComboboxLabel>Carrera(s)</ComboboxLabel>
-
-        <InputGroup className="min-h-10 rounded-lg border border-input bg-background px-2">
-          <InputGroupAddon>
-            <Search className="h-4 w-4" />
-          </InputGroupAddon>
-          <ComboboxChips className="flex flex-1 flex-wrap gap-1 py-1">
-            {values.map((career) => (
-              <ComboboxChip key={career}>
-                <span className="max-w-[170px] truncate">{career}</span>
-                <ComboboxChipRemove />
-              </ComboboxChip>
-            ))}
-            <ComboboxChipsInput placeholder={values.length ? "Agregar carrera..." : "Buscar carrera..."} />
-          </ComboboxChips>
-        </InputGroup>
-      </div>
-
-      <ComboboxContent>
-        <div className="flex items-center gap-2 border-b border-border px-2 pb-2 pt-1">
-          <button
+    <div className="w-[300px] space-y-1">
+      <p className="text-xs font-medium text-muted-foreground">Carrera(s)</p>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
             type="button"
-            className="inline-flex items-center gap-1 rounded-md bg-secondary px-2 py-1 text-xs"
-            onClick={() => onChange([...CAREER_OPTIONS])}
+            variant="outline"
+            size="md"
+            className="w-full justify-between rounded-lg"
           >
-            <Sparkles className="h-3 w-3" />
-            Seleccionar todas las carreras
-          </button>
-          <button
-            type="button"
-            className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs"
-            onClick={() => onChange([])}
-          >
-            <Trash2 className="h-3 w-3" />
-            Limpiar
-          </button>
-        </div>
-
-        <ComboboxList>
-          <ComboboxGroup>
-            <ComboboxLabelGroup className="px-2 py-1 text-[11px] uppercase tracking-wide text-muted-foreground">
-              Carreras
-            </ComboboxLabelGroup>
-            <ComboboxCollection>
-              {(career) => <ComboboxItem value={career}>{career}</ComboboxItem>}
-            </ComboboxCollection>
-          </ComboboxGroup>
-          <ComboboxEmpty>Sin coincidencias.</ComboboxEmpty>
-        </ComboboxList>
-      </ComboboxContent>
-    </Combobox>
+            <span className="truncate text-left">{summaryLabel}</span>
+            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-[320px] p-0" align="start" sideOffset={8}>
+          <Command>
+            <CommandInput
+              placeholder="Buscar carrera por nombre o clave"
+              value={search}
+              onValueChange={setSearch}
+            />
+            <CommandList>
+              <CommandEmpty>
+                {isLoading ? "Cargando carreras..." : "No hay carreras que coincidan."}
+              </CommandEmpty>
+              <CommandGroup>
+                <CommandItem
+                  className="text-muted-foreground"
+                  onSelect={() => {
+                    if (allSelected) {
+                      onChange([]);
+                      return;
+                    }
+                    selectAll();
+                  }}
+                >
+                  <Sparkles className="h-4 w-4" />
+                  {allSelected ? "Deseleccionar todo" : "Seleccionar todo"}
+                </CommandItem>
+                {isLoading ? (
+                  <CommandItem disabled className="text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Cargando carreras...
+                  </CommandItem>
+                ) : null}
+                {loadError ? (
+                  <CommandItem disabled className="text-muted-foreground">
+                    {loadError}
+                  </CommandItem>
+                ) : null}
+                {!isLoading && !loadError
+                  ? visibleCareers.map((career) => {
+                      const checked = selectedByCode.has(career.code);
+                      return (
+                        <CommandItem
+                          key={career.id}
+                          value={`${career.code} ${career.name}`}
+                          className="text-muted-foreground"
+                          onSelect={() => toggleCareer(career.code)}
+                        >
+                          <span className="min-w-14 text-xs font-semibold text-muted-foreground">
+                            {career.code}
+                          </span>
+                          <span className="truncate text-muted-foreground">{career.name}</span>
+                          {checked ? <Check className="ml-auto h-4 w-4 text-muted-foreground" /> : null}
+                        </CommandItem>
+                      );
+                    })
+                  : null}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+    </div>
   );
 }

@@ -111,7 +111,7 @@ function StatusDialog({
             </>
           }
           badges={
-            <Badge variant="outline" className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            <Badge variant="outlined" className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
               Confirmado
             </Badge>
           }

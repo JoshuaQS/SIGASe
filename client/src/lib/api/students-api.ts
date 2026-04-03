@@ -1,4 +1,5 @@
 import { api } from '@//lib/api/api-client';
+import { authSession } from '@//auth/auth-session-store';
 import type { ApiEnvelope, StudentSex, StudentStatus } from '@//types/api';
 
 type PageEnvelope<T> = {
@@ -12,12 +13,12 @@ type PageEnvelope<T> = {
 export type StudentBackendStatus = Extract<StudentStatus, 'ACTIVE' | 'INACTIVE'>;
 export type StudentBackendSex = Extract<
   StudentSex,
-  'FEMALE' | 'MALE' | 'NON_BINARY' | 'NOT_SPECIFIED'
+  'FEMALE' | 'MALE' | 'NON_BINARY'
 >;
 
 export type StudentListParams = {
   query?: string;
-  career?: string;
+  careerCode?: string;
   status?: StudentBackendStatus;
   page?: number;
   size?: number;
@@ -27,14 +28,18 @@ export type StudentListParams = {
 
 export type StudentResponseDto = {
   id: string;
-  enrollmentNumber: string;
+  enrollmentId: string;
   name: string;
   lastNamePaternal: string;
   lastNameMaternal: string | null;
   sex: StudentBackendSex;
   quarter: number;
   institutionalEmail: string;
-  career: string;
+  career: {
+    id: string;
+    code: string;
+    name: string;
+  } | null;
   status: StudentBackendStatus;
   lastLoginAt: string | null;
   deactivatedAt: string | null;
@@ -48,14 +53,15 @@ export type StudentResponseDto = {
 };
 
 export type CreateStudentInput = {
-  enrollmentNumber: string;
+  enrollmentId: string;
   name: string;
   lastNamePaternal: string;
   lastNameMaternal?: string | null;
   sex: StudentBackendSex;
   quarter: number;
   institutionalEmail: string;
-  career: string;
+  careerId?: string;
+  careerCode?: string;
 };
 
 export type UpdateStudentInput = CreateStudentInput;
@@ -75,11 +81,28 @@ export type StudentImportResultResponse = {
   }>;
 };
 
+export type StudentExportFormat = 'csv' | 'xlsx';
+
+export type StudentExportParams = {
+  query?: string;
+  careerCode?: string;
+  status?: StudentBackendStatus;
+  format?: StudentExportFormat;
+};
+
+export type StudentExportResult = {
+  blob: Blob;
+  filename: string;
+};
+
+const viteEnv = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env;
+const BASE_URL = viteEnv?.VITE_API_URL || 'http://localhost:8080/api/v1';
+
 function buildStudentListQuery(params: StudentListParams) {
   const searchParams = new URLSearchParams();
 
   if (params.query) searchParams.set('q', params.query);
-  if (params.career) searchParams.set('career', params.career);
+  if (params.careerCode) searchParams.set('careerCode', params.careerCode);
   if (params.status) searchParams.set('status', params.status);
   if (params.page !== undefined) searchParams.set('page', String(params.page));
   if (params.size !== undefined) searchParams.set('size', String(params.size));
@@ -144,4 +167,57 @@ export async function importStudentsCsv(file: File) {
     { headers: {} },
   );
   return response.data;
+}
+
+function extractFilenameFromContentDisposition(header: string | null, fallback: string) {
+  if (!header) return fallback;
+  const utf8Match = header.match(/filename\*=UTF-8''([^;]+)/i);
+  if (utf8Match?.[1]) {
+    return decodeURIComponent(utf8Match[1]);
+  }
+  const basicMatch = header.match(/filename="?([^"]+)"?/i);
+  if (basicMatch?.[1]) {
+    return basicMatch[1];
+  }
+  return fallback;
+}
+
+export async function exportStudentsReport(params: StudentExportParams = {}): Promise<StudentExportResult> {
+  const token = authSession.getSnapshot().user?.token;
+  const query = new URLSearchParams();
+  const format = params.format ?? 'csv';
+
+  if (params.query) query.set('q', params.query);
+  if (params.careerCode) query.set('careerCode', params.careerCode);
+  if (params.status) query.set('status', params.status);
+  query.set('format', format);
+
+  const response = await fetch(`${BASE_URL}/reports/students/export?${query.toString()}`, {
+    method: 'GET',
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+  });
+
+  if (!response.ok) {
+    let message = 'No se pudo exportar el reporte de estudiantes.';
+    try {
+      const errorPayload = await response.json() as { message?: string };
+      if (errorPayload.message) {
+        message = errorPayload.message;
+      }
+    } catch {
+      const fallback = await response.text();
+      if (fallback) {
+        message = fallback;
+      }
+    }
+    throw new Error(message);
+  }
+
+  const blob = await response.blob();
+  const filename = extractFilenameFromContentDisposition(
+    response.headers.get('Content-Disposition'),
+    `students-export.${format}`,
+  );
+
+  return { blob, filename };
 }

@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Search, X } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { STUDENT_OPTIONS } from "./composer.config";
 
 interface StudentLookupFieldProps {
@@ -28,29 +29,33 @@ export function StudentLookupField({ query, selectedId, label, onChange }: Stude
     <div className="relative flex flex-col gap-1">
       {label ? <span className="text-xs font-medium text-muted-foreground">{label}</span> : null}
       {selectedStudent ? (
-        <div className="flex h-10 items-center gap-2 rounded-lg border border-input bg-background px-3 text-sm">
-          <span className="min-w-0 flex-1 truncate">{selectedStudent.name}</span>
+        <div className="relative">
+          <Input
+            readOnly
+            size="lg"
+            variant="protected"
+            value={selectedStudent.name}
+            className="pr-12"
+          />
           <button
             type="button"
             onClick={() => onChange({ query: "" })}
-            className="text-muted-foreground hover:text-foreground"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
       ) : (
-        <div className="flex h-10 items-center gap-2 rounded-lg border border-input bg-background px-3 text-sm">
-          <Search className="h-4 w-4 text-muted-foreground" />
-          <input
-            type="text"
-            value={query}
-            placeholder="Buscar (nombre o matrícula)"
-            className="w-full bg-transparent outline-none"
-            onFocus={() => setFocused(true)}
-            onBlur={() => setTimeout(() => setFocused(false), 100)}
-            onChange={(event) => onChange({ query: event.target.value })}
-          />
-        </div>
+        <Input
+          type="text"
+          value={query}
+          size="lg"
+          placeholder="Buscar (nombre o matrícula)"
+          startAdornment={<Search className="h-4 w-4 text-muted-foreground" />}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setTimeout(() => setFocused(false), 100)}
+          onChange={(event) => onChange({ query: event.target.value })}
+        />
       )}
 
       {focused && !selectedStudent && (

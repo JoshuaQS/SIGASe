@@ -108,7 +108,7 @@
   --warning: 38 95% 52%;
   --warning-foreground: 0 0% 100%;
 
-  --info: 186 58% 40%;
+  --info: 199 89% 48%  ;
   --info-foreground: 0 0% 100%;
 
   /* Inputs / borders */
@@ -210,7 +210,7 @@
   --warning: 38 95% 52%;
   --warning-foreground: 0 0% 100%;
 
-  --info: 186 58% 40%;
+  --info: 199 89% 48%  ;
   --info-foreground: 0 0% 100%;
 
   --border: 190 12% 84%;
@@ -297,7 +297,7 @@
   --destructive: 0 70% 55%;
   --destructive-foreground: 0 0% 100%;
 
-  --info: 186 58% 45%;
+  --info: 199 89% 48%;
   --info-foreground: 0 0% 100%;
 
   --border: 217 14% 20%;
@@ -642,6 +642,7 @@ tbody tr {
   }
 
   body {
+    margin: 0;
     @apply bg-background text-foreground;
   }
 

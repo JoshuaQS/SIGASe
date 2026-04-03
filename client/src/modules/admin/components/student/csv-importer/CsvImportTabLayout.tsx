@@ -3,6 +3,7 @@ import { AlertTriangle, CheckCircle2, FileSpreadsheet, History, Info, XCircle } 
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { FileImportForm } from "./FileImportForm";
+import type { CsvImportParsed } from "./CsvImport";
 
 const templateColumns = [
   { name: "matricula", type: "text", required: true, example: "20230001" },
@@ -117,18 +118,22 @@ type CsvImportTabLayoutProps = {
   /** Dropzone a ancho de columna (recomendado en modal) */
   fullWidth?: boolean;
   className?: string;
+  importing?: boolean;
+  onImport?: (data: CsvImportParsed) => void | Promise<void>;
 };
 
 export function CsvImportTabLayout({
   invertedOrder = false,
   fullWidth = false,
   className,
+  importing = false,
+  onImport,
 }: CsvImportTabLayoutProps) {
   const uploadCell = (
     <div className="flex h-full min-h-0 min-w-0 flex-col gap-1.5">
       <SectionLabel>Cargar archivo</SectionLabel>
       <div className="flex min-h-0 flex-1 flex-col">
-        <FileImportForm fullWidth={fullWidth} />
+        <FileImportForm fullWidth={fullWidth} importing={importing} onImport={onImport} />
       </div>
     </div>
   );
@@ -156,7 +161,7 @@ export function CsvImportTabLayout({
               <div className="flex shrink-0 items-center gap-1.5">
                 <span className="font-mono text-[10px] tabular-nums text-muted-foreground">{col.example}</span>
                 <Badge
-                  variant="outline"
+                  variant="outlined"
                   className={cn(
                     "px-1.5 py-px text-[9px] font-semibold uppercase tracking-wide",
                     col.required

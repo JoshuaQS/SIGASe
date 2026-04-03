@@ -1,0 +1,50 @@
+.zapTrailGroup {
+  --zap-idle: rgb(16 185 129 / 0.28);
+  --zap-hover: rgb(16 185 129 / 0.75);
+  --zap-glow: rgb(34 197 94 / 0.4);
+}
+
+:global(.dark) .zapTrailGroup {
+  --zap-idle: rgb(52 211 153 / 0.34);
+  --zap-hover: rgb(110 231 183 / 0.92);
+  --zap-glow: rgb(74 222 128 / 0.55);
+}
+
+.readingZapIcon {
+  transition: opacity 280ms ease, transform 280ms ease;
+}
+
+.readingZap {
+  color: var(--zap-idle);
+}
+
+.readingZap path {
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 16 10;
+  stroke-dashoffset: 0;
+  filter: drop-shadow(0 0 2px transparent);
+  transition: stroke 220ms ease, filter 220ms ease, opacity 220ms ease;
+  animation: none;
+}
+
+.zapTrailGroup:hover .readingZapIcon {
+  opacity: 0.42;
+  transform: translate(10px, 10px) scale(1.02);
+}
+
+.zapTrailGroup:hover .readingZap {
+  color: var(--zap-hover);
+}
+
+.zapTrailGroup:hover .readingZap path {
+  filter: drop-shadow(0 0 7px var(--zap-glow));
+  animation: zap-stroke-travel 2.2s linear infinite;
+}
+
+@keyframes zap-stroke-travel {
+  to {
+    stroke-dashoffset: -78;
+  }
+}

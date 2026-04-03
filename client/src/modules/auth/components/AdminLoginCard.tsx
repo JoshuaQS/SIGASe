@@ -86,7 +86,7 @@ export default function AdminLoginCard({
 
   return (
     <div className="flex flex-col gap-8 transition-all">
-      <Card className="overflow-visible border-border bg-card shadow-lg ring-1 ring-border/5">
+      <Card className="overflow-visible rounded-2xl bg-card shadow-lg">
         <CardContent className="p-8 sm:p-10">
           <form className="flex flex-col gap-8" onSubmit={handleSubmit(onAdminLogin)}>
             <div className="flex flex-col items-center gap-6">
@@ -102,7 +102,7 @@ export default function AdminLoginCard({
               <fieldset className="space-y-5" disabled={isSubmitting}>
                 <FormField
                   label="Correo"
-                  htmlFor="admin-email"
+                  controlId="admin-email"
                   error={errors.email?.message}
                 >
                   <Input
@@ -111,9 +111,8 @@ export default function AdminLoginCard({
                     type="email"
                     autoComplete="email"
                     placeholder="admin.ti@utez.edu.mx"
-                    className="h-10 rounded-lg"
-                    state={errors.email ? 'error' : 'default'}
-                    aria-invalid={errors.email ? 'true' : 'false'}
+                    size="lg"
+                    invalid={Boolean(errors.email)}
                   />
                 </FormField>
 
@@ -134,7 +133,7 @@ export default function AdminLoginCard({
                     label="" // Ya tenemos el label arriba con el link de "olvidaste"
                     error={errors.password?.message}
                     placeholder="Ingresa tu contraseña"
-                    className="h-10"
+                    size="lg"
                   />
                 </div>
 

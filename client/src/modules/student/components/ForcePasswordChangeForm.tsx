@@ -1,9 +1,7 @@
 import { useMemo, useState } from 'react';
 import { AlertTriangle, Eye, EyeOff, LockKeyhole, LogOut, ShieldCheck } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 
 type ChangePasswordPayload = {
-  currentPassword: string;
   newPassword: string;
 };
 
@@ -15,11 +13,11 @@ type ChangePasswordResult = {
 type StudentForcePasswordChangeViewProps = {
   studentName?: string;
   onSubmit: (payload: ChangePasswordPayload) => Promise<ChangePasswordResult>;
+  onCompleted?: () => Promise<void> | void;
   onLogout: () => Promise<void> | void;
 };
 
 type FormState = {
-  currentPassword: string;
   newPassword: string;
   confirmPassword: string;
 };
@@ -47,17 +45,14 @@ function validatePassword(password: string): string[] {
 function StudentForcePasswordChangeView({
   studentName,
   onSubmit,
+  onCompleted,
   onLogout,
 }: StudentForcePasswordChangeViewProps) {
-  const navigate = useNavigate();
-
   const [form, setForm] = useState<FormState>({
-    currentPassword: '',
     newPassword: '',
     confirmPassword: '',
   });
 
-  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -73,7 +68,6 @@ function StudentForcePasswordChangeView({
       : '';
 
   const canSubmit =
-    form.currentPassword.trim().length > 0 &&
     form.newPassword.trim().length > 0 &&
     form.confirmPassword.trim().length > 0 &&
     passwordErrors.length === 0 &&
@@ -97,7 +91,6 @@ function StudentForcePasswordChangeView({
 
     try {
       const result = await onSubmit({
-        currentPassword: form.currentPassword,
         newPassword: form.newPassword,
       });
 
@@ -109,7 +102,7 @@ function StudentForcePasswordChangeView({
       setSuccessMessage(result.message || 'Contraseña actualizada correctamente.');
 
       setTimeout(() => {
-        navigate('/student/portal', { replace: true });
+        void onCompleted?.();
       }, 900);
     } catch {
       setServerError('Ocurrió un error al actualizar la contraseña.');
@@ -120,7 +113,6 @@ function StudentForcePasswordChangeView({
 
   const handleLogout = async () => {
     await onLogout();
-    navigate('/login', { replace: true });
   };
 
   return (
@@ -142,8 +134,8 @@ function StudentForcePasswordChangeView({
             </h1>
 
             <p className="text-sm leading-6 text-muted-foreground">
-              {studentName ? `${studentName}, e` : 'E'}stás usando una contraseña temporal.
-              Antes de acceder al portal, necesitas establecer una contraseña nueva y segura.
+              {studentName ? `${studentName}, p` : 'P'}ara acceder al portal por primera vez,
+              necesitas establecer una contraseña nueva y segura.
             </p>
           </div>
 
@@ -168,15 +160,6 @@ function StudentForcePasswordChangeView({
           </div>
 
           <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
-            <PasswordField
-              label="Contraseña temporal actual"
-              value={form.currentPassword}
-              onChange={(value) => handleChange('currentPassword', value)}
-              showPassword={showCurrentPassword}
-              onToggleShow={() => setShowCurrentPassword((prev) => !prev)}
-              autoComplete="current-password"
-            />
-
             <PasswordField
               label="Nueva contraseña"
               value={form.newPassword}

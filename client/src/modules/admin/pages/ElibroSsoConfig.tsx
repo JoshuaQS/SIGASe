@@ -1,372 +1,359 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-
-import { useAppToast } from '@/components/ui/app-toast-provider';
-import { button as Button } from '@/components/ui/button';
-import { useAuthUser } from '@/hooks/use-auth-user';
-import { ROLE_ADMIN_TI } from '@/auth/auth-user';
-import { buildSsoPageSchema } from '@/lib/elibro-sso-page-schemas';
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { motion } from 'framer-motion'
 import {
-  getActiveElibroConfig,
-  updateElibroConfig,
-  createElibroConfig,
-  validateElibroConfig,
-} from '@/lib/api/elibro-api';
-
-import { SsoConfigHeader } from '../components/elibro-sso/SsoConfigHeader';
-import { SsoStatusOverviewCard } from '../components/elibro-sso/SsoStatusOverviewCard';
-import { SsoCredentialsCard } from '../components/elibro-sso/SsoCredentialsCard';
-import { SsoSecurityCard } from '../components/elibro-sso/SsoSecurityCard';
-import { SsoValidationCard } from '../components/elibro-sso/SsoValidationCard';
-import type {
-  SsoConfigViewState,
-  SsoEditingFields,
-  SsoFormValues,
-  SsoProtectedKey,
-  SsoProtectedOriginals,
-} from '../components/elibro-sso/elibro-sso.types';
+  KeyRound, CheckCircle2, XCircle, AlertTriangle,
+  Clock,
+  Activity, Gauge, Calendar,
+} from 'lucide-react'
+import { SectionHeader } from '@/components/ui/section-header'
+import StatusCard from '@/components/ui/StatusCard'
+import { useAppToast } from '@/components/ui/app-toast-provider'
+import { ElibroCredentialsStaticCard } from '@/modules/admin/components/elibro-sso/ElibroCredentialsStaticCard'
+import { ElibroGeneralStatusCard } from '@/modules/admin/components/elibro-sso/ElibroGeneralStatusCard'
+import { ElibroLatencyCard } from '@/modules/admin/components/elibro-sso/ElibroLatencyCard'
+import { ElibroOperationalValidationCard } from '@/modules/admin/components/elibro-sso/ElibroOperationalValidationCard'
+import { ElibroRecentActivityCard } from '@/modules/admin/components/elibro-sso/ElibroRecentActivityCard'
+import { ElibroValidationsWeekCard } from '@/modules/admin/components/elibro-sso/ElibroValidationsWeekCard'
 import {
-  EMPTY_EDITING,
-  FIXED_AUTH_ENDPOINT,
-  SSO_PROTECTED_KEYS,
-} from '../components/elibro-sso/elibro-sso.types';
+  getElibroConfigs,
+  getElibroActiveOverview,
+  type ElibroConfigOverviewResponse,
+  type ElibroRecentActivityType,
+} from '@/lib/api/elibro-config-api'
+import { ApiClientError } from '@/lib/api/api-client'
+// ─── Types ────────────────────────────────────────────────────────────────────
+type ConnectionStatus = 'configured' | 'incomplete' | 'invalid' | 'pending'
 
-// ---------------------------------------------------------------------------
-// Mock state — reemplazar con llamadas reales al activar backend
-// ---------------------------------------------------------------------------
-const MOCK_CONFIG: SsoConfigViewState = {
-  id: 'cfg-elibro-mock-001',
-  channelName: 'ITSLP-2024',
-  authEndpoint: FIXED_AUTH_ENDPOINT,
-  active: true,
-  validationStatus: 'VALID',
-  validationMessage: 'Autenticación SSO verificada. Ticket generado correctamente en el último chequeo.',
-  lastValidatedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-  updatedAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-  updatedByAdminId: null,
-  createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-};
-
-const USE_MOCK = true; // Cambiar a false para conectar con backend real
-
-function toOriginals(configExists: boolean): SsoProtectedOriginals {
-  const sentinel = configExists ? '__configured__' : '';
-  return { authToken: sentinel, channelId: sentinel, channelSecret: sentinel };
+interface ValidationState {
+  status: 'idle' | 'loading' | 'success' | 'error'
+  message: string
+  latency?: number
+  checkedAt?: string
 }
 
-// ---------------------------------------------------------------------------
-// Página principal
-// ---------------------------------------------------------------------------
-export default function ElibroSsoConfig() {
-  const { showToast } = useAppToast();
-  const authUser = useAuthUser();
-  const canEdit = USE_MOCK || authUser?.role === ROLE_ADMIN_TI;
+const EMPTY_LATENCY_HISTORY: Array<{ hora: string; ms: number }> = []
+const EMPTY_VALIDATION_HISTORY: Array<{ day: string; ok: number; err: number }> = []
 
-  const [config, setConfig] = useState<SsoConfigViewState | null>(USE_MOCK ? MOCK_CONFIG : null);
-  const [originals, setOriginals] = useState<SsoProtectedOriginals>(() =>
-    toOriginals(USE_MOCK ? !!MOCK_CONFIG.id : false),
-  );
-  const [editingFields, setEditingFields] = useState<SsoEditingFields>(EMPTY_EDITING);
-  const [isEditMode, setIsEditMode] = useState(false);
-  const [isValidating, setIsValidating] = useState(false);
-  const [isLoading, setIsLoading] = useState(!USE_MOCK);
+const statusConfig: Record<ConnectionStatus, { label: string; color: string; icon: React.ElementType; bg: string }> = {
+  configured: { label: 'Configurado', color: 'text-emerald-700 dark:text-emerald-300', icon: CheckCircle2, bg: 'bg-emerald-50 border-emerald-200 dark:bg-emerald-500/10 dark:border-emerald-400/30' },
+  incomplete:  { label: 'Incompleto',  color: 'text-amber-700 dark:text-amber-300',   icon: AlertTriangle, bg: 'bg-amber-50 border-amber-200 dark:bg-amber-500/10 dark:border-amber-400/30' },
+  invalid:     { label: 'Inválido',    color: 'text-destructive dark:text-rose-300',  icon: XCircle,       bg: 'bg-destructive/5 border-destructive/20 dark:bg-destructive/10 dark:border-destructive/35' },
+  pending:     { label: 'Pendiente',   color: 'text-primary dark:text-sky-300',      icon: Clock,         bg: 'bg-primary/5 border-primary/20 dark:bg-primary/10 dark:border-primary/35' },
+}
 
-  const isUpdate = !!config?.id;
-  const initialChannelName = config?.channelName ?? '';
+const relativeTime = new Intl.RelativeTimeFormat('es-MX', { numeric: 'auto' })
 
-  // Cargar desde backend si no usamos mock
-  useEffect(() => {
-    if (USE_MOCK) return;
-    setIsLoading(true);
-    getActiveElibroConfig()
-      .then((res) => {
-        setConfig(res as unknown as SsoConfigViewState);
-        setOriginals(toOriginals(true));
-      })
-      .catch(() => {
-        setConfig(null);
-        setOriginals(toOriginals(false));
-      })
-      .finally(() => setIsLoading(false));
-  }, []);
+function formatRelativeTime(iso?: string | null) {
+  if (!iso) return 'Sin datos'
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return 'Sin datos'
 
-  const schema = useMemo(
-    () =>
-      buildSsoPageSchema({
-        mode: isUpdate ? 'update' : 'create',
-        editingFields,
-        initialChannelName,
-      }),
-    [editingFields, initialChannelName, isUpdate],
-  );
+  const diffMs = date.getTime() - Date.now()
+  const diffMin = Math.round(diffMs / 60000)
 
-  const {
-    register,
-    watch,
-    setValue,
-    reset,
-    trigger,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-  } = useForm<SsoFormValues>({
-    resolver: zodResolver(schema),
-    mode: 'onTouched',
-    defaultValues: {
-      channelName: initialChannelName,
-      authToken: '',
-      channelId: '',
-      channelSecret: '',
-    },
-  });
-
-  // Sincronizar cuando config cambia
-  useEffect(() => {
-    reset({
-      channelName: config?.channelName ?? '',
-      authToken: '',
-      channelId: '',
-      channelSecret: '',
-    });
-    setOriginals(toOriginals(!!config?.id));
-    setEditingFields(EMPTY_EDITING);
-  }, [config, reset]);
-
-  // -----------------------------------------------------------------------
-  // Handlers de campos protegidos
-  // -----------------------------------------------------------------------
-  const handleStartEdit = (key: SsoProtectedKey) => {
-    setEditingFields((prev) => ({ ...prev, [key]: true }));
-    setValue(key, '');
-  };
-
-  const handleCancelEdit = (key: SsoProtectedKey) => {
-    setEditingFields((prev) => ({ ...prev, [key]: false }));
-    setValue(key, '');
-  };
-
-  // -----------------------------------------------------------------------
-  // Activar / cancelar modo edición (solo ROLE_ADMIN_TI)
-  // -----------------------------------------------------------------------
-  const handleEnterEdit = () => {
-    if (!canEdit) return;
-    setIsEditMode(true);
-  };
-
-  const handleCancelEdit_ = () => {
-    setIsEditMode(false);
-    setEditingFields(EMPTY_EDITING);
-    reset({
-      channelName: config?.channelName ?? '',
-      authToken: '',
-      channelId: '',
-      channelSecret: '',
-    });
-  };
-
-  // -----------------------------------------------------------------------
-  // Guardar
-  // -----------------------------------------------------------------------
-  const onSubmit = async (values: SsoFormValues) => {
-    const valid = await trigger();
-    if (!valid) return;
-
-    try {
-      if (USE_MOCK) {
-        // Simular guardado
-        await new Promise((r) => setTimeout(r, 800));
-        setConfig((prev) =>
-          prev
-            ? { ...prev, channelName: values.channelName.trim(), updatedAt: new Date().toISOString() }
-            : prev,
-        );
-        showToast({
-          severity: 'success',
-          title: 'Configuración guardada (mock)',
-          description: 'Los cambios se persistieron localmente. Conecta con el backend para guardar de verdad.',
-        });
-      } else {
-        const saved = isUpdate
-          ? await updateElibroConfig(config!.id, {
-              ...(values.channelName.trim() !== initialChannelName ? { channelName: values.channelName.trim() } : {}),
-              ...(editingFields.authToken && values.authToken.trim() ? { authToken: values.authToken.trim() } : {}),
-              ...(editingFields.channelId && values.channelId.trim() ? { channelId: values.channelId.trim() } : {}),
-              ...(editingFields.channelSecret && values.channelSecret.trim()
-                ? { channelSecret: values.channelSecret.trim() }
-                : {}),
-            })
-          : await createElibroConfig({
-              channelName: values.channelName.trim(),
-              authToken: values.authToken.trim(),
-              channelId: values.channelId.trim(),
-              channelSecret: values.channelSecret.trim(),
-              authEndpoint: FIXED_AUTH_ENDPOINT,
-              active: true,
-            });
-
-        setConfig(saved as unknown as SsoConfigViewState);
-        setOriginals(toOriginals(true));
-        showToast({
-          severity: 'success',
-          title: 'Configuración guardada',
-          description: isUpdate
-            ? 'Los campos editados fueron actualizados correctamente.'
-            : 'Configuración SSO creada y activada.',
-        });
-      }
-
-      setEditingFields(EMPTY_EDITING);
-      setIsEditMode(false);
-    } catch (err) {
-      showToast({
-        severity: 'error',
-        title: 'No se pudo guardar',
-        description: err instanceof Error ? err.message : 'Error al guardar la configuración.',
-      });
-    }
-  };
-
-  // -----------------------------------------------------------------------
-  // Validar conexión
-  // -----------------------------------------------------------------------
-  const handleValidate = async () => {
-    if (!config?.id || isValidating) return;
-    setIsValidating(true);
-
-    try {
-      if (USE_MOCK) {
-        await new Promise((r) => setTimeout(r, 1200));
-        setConfig((prev) =>
-          prev
-            ? { ...prev, validationStatus: 'VALID', lastValidatedAt: new Date().toISOString(), validationMessage: 'Conexión verificada exitosamente (mock).' }
-            : prev,
-        );
-        showToast({ severity: 'success', title: 'Validación exitosa (mock)', description: 'La conexión SSO responde correctamente.' });
-      } else {
-        const res = await validateElibroConfig(config.id);
-        setConfig((prev) =>
-          prev
-            ? {
-                ...prev,
-                validationStatus: res.validationStatus,
-                validationMessage: res.validationMessage,
-                lastValidatedAt: res.lastValidatedAt,
-              }
-            : prev,
-        );
-        showToast({
-          severity: res.validationStatus === 'VALID' ? 'success' : 'warning',
-          title: res.validationStatus === 'VALID' ? 'Conexión verificada' : 'Validación con observaciones',
-          description: res.validationMessage ?? undefined,
-        });
-      }
-    } catch (err) {
-      showToast({
-        severity: 'error',
-        title: 'No se pudo validar',
-        description: err instanceof Error ? err.message : 'Error al validar la configuración.',
-      });
-    } finally {
-      setIsValidating(false);
-    }
-  };
-
-  // -----------------------------------------------------------------------
-  // Determinar si el botón guardar está habilitado
-  // -----------------------------------------------------------------------
-  const channelName = watch('channelName');
-  const hasNameChange = channelName?.trim() !== initialChannelName.trim();
-  const hasSecretEdits = SSO_PROTECTED_KEYS.some((k) => editingFields[k]);
-  const canSave = !isSubmitting && (isUpdate ? hasNameChange || hasSecretEdits : true);
-
-  // -----------------------------------------------------------------------
-  // Loading
-  // -----------------------------------------------------------------------
-  if (isLoading) {
-    return (
-      <div className="flex h-64 items-center justify-center">
-        <p className="text-sm text-muted-foreground">Cargando configuración SSO…</p>
-      </div>
-    );
+  if (Math.abs(diffMin) < 60) {
+    return relativeTime.format(diffMin, 'minute')
   }
 
+  const diffHour = Math.round(diffMin / 60)
+  if (Math.abs(diffHour) < 24) {
+    return relativeTime.format(diffHour, 'hour')
+  }
+
+  const diffDay = Math.round(diffHour / 24)
+  if (Math.abs(diffDay) <= 7) {
+    return relativeTime.format(diffDay, 'day')
+  }
+
+  return date.toLocaleString('es-MX', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
+function formatDateTime(iso?: string | null) {
+  if (!iso) return 'Sin datos'
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return 'Sin datos'
+  return date.toLocaleString('es-MX', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
+const ElibroSsoConfig = () => {
+  const [validation, setValidation] = useState<ValidationState>({ status: 'idle', message: '' })
+  const [activitySearch, setActivitySearch] = useState('')
+  const [activityTypeFilter, setActivityTypeFilter] = useState<'todos' | 'success' | 'warning' | 'info' | 'error'>('todos')
+  const [overview, setOverview] = useState<ElibroConfigOverviewResponse | null>(null)
+  const { showToast } = useAppToast()
+
+  const loadOverview = useCallback(async (withSuccessToast = false) => {
+    try {
+      const configs = await getElibroConfigs()
+      const hasActiveConfig = configs.some((config) => config.active)
+      if (!hasActiveConfig) {
+        setOverview(null)
+        return
+      }
+
+      const payload = await getElibroActiveOverview()
+      setOverview(payload)
+      if (withSuccessToast) {
+        showToast({
+          severity: 'success',
+          title: 'Vista actualizada',
+          description: 'Los datos de eLibro se sincronizaron con el backend.',
+        })
+      }
+    } catch (error) {
+      if (error instanceof ApiClientError && (error.status === 404 || error.status === 500)) {
+        setOverview(null)
+        return
+      }
+      const message = error instanceof Error ? error.message : 'No se pudo cargar el overview de eLibro.'
+      setOverview(null)
+      showToast({
+        severity: 'error',
+        title: 'Error cargando monitoreo',
+        description: message,
+      })
+    }
+  }, [showToast])
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      void loadOverview()
+    }, 0)
+    return () => window.clearTimeout(timeoutId)
+  }, [loadOverview])
+
+  const statusKey: ConnectionStatus = useMemo(() => {
+    const rawState = overview?.status.state
+    if (rawState === 'configured' || rawState === 'incomplete' || rawState === 'invalid' || rawState === 'pending') {
+      return rawState
+    }
+    return 'pending'
+  }, [overview?.status.state])
+
+  const statusInfo = statusConfig[statusKey]
+  const StatusIcon = statusInfo.icon
+
+  const runtimeStatus = useMemo(() => ({
+    provider: overview?.status.provider ?? 'Sin datos',
+    lastValidationAt: overview?.status.lastValidationAt ?? null,
+    lastValidationMessage: overview?.status.lastValidationMessage ?? validation.message,
+    updatedAt: overview?.status.updatedAt ?? null,
+    updatedByName: overview?.status.updatedByName ?? 'Sin datos',
+    endpoint: overview?.config.endpoint ?? 'Sin datos',
+  }), [overview, validation.message])
+
+  const runtimeChecklist = useMemo(() => ({
+    hasAuthToken: overview?.checklist.hasAuthToken ?? false,
+    hasChannelId: overview?.checklist.hasChannelId ?? false,
+    hasChannelSecret: overview?.checklist.hasChannelSecret ?? false,
+    validEndpoint: overview?.checklist.validEndpoint ?? false,
+    buildableChannel: overview?.checklist.buildableChannel ?? false,
+  }), [overview])
+
+  const runtimeKpis = useMemo(() => ({
+    integrationStateLabel: overview?.kpis.integrationStateLabel ?? 'Sin datos',
+    uptimeWeeklyPct: overview?.kpis.uptimeWeeklyPct ?? null,
+    avgLatency24hMs: overview?.kpis.avgLatency24hMs ?? null,
+    validations7dTotal: overview?.kpis.validations7dTotal ?? 0,
+  }), [overview])
+
+  const runtimeLatencyHistory = useMemo(() => {
+    if (!overview?.charts.latency24h?.length) return EMPTY_LATENCY_HISTORY
+    return overview.charts.latency24h.map((point) => ({
+      hora: point.hour,
+      ms: point.avgLatencyMs ?? 0,
+    }))
+  }, [overview])
+
+  const runtimeValidationHistory = useMemo(() => {
+    if (!overview?.charts.validations7d?.length) return EMPTY_VALIDATION_HISTORY
+    return overview.charts.validations7d.map((point) => ({
+      day: point.day,
+      ok: point.ok,
+      err: point.err,
+    }))
+  }, [overview])
+
+  const runtimeUptime = useMemo(() => {
+    const pct = overview?.charts.uptimeWeekly.pct ?? runtimeKpis.uptimeWeeklyPct
+    return {
+      pct,
+      statusLabel: overview?.charts.uptimeWeekly.statusLabel ?? statusInfo.label,
+    }
+  }, [overview?.charts.uptimeWeekly, runtimeKpis.uptimeWeeklyPct, statusInfo.label])
+
+  const uptimeChartData = useMemo(() => ([
+    { name: 'Uptime', value: runtimeUptime.pct ?? 0, fill: '#10b981' },
+  ]), [runtimeUptime.pct])
+
+  const tableActivityRows = useMemo(() => {
+    if (!overview?.recentActivity?.length) return []
+    return overview.recentActivity.map((item) => {
+      const type = (item.type as ElibroRecentActivityType)
+      return {
+        action: item.action,
+        description: item.action,
+        user: item.actorName || 'Sistema',
+        time: formatRelativeTime(item.occurredAt),
+        type: type === 'success' || type === 'warning' || type === 'info' || type === 'error' ? type : 'info',
+        ip: 'N/D',
+      }
+    })
+  }, [overview])
+
+  const filteredActivity = useMemo(() => (
+    tableActivityRows.filter((activity) => {
+      const matchesSearch = (
+        activity.user
+        + activity.action
+        + activity.description
+        + activity.ip
+      ).toLowerCase().includes(activitySearch.toLowerCase())
+
+      const matchesType = activityTypeFilter === 'todos' || activity.type === activityTypeFilter
+      return matchesSearch && matchesType
+    })
+  ), [tableActivityRows, activitySearch, activityTypeFilter])
+
+  const uptimeStatusTone = useMemo(() => {
+    if (statusKey === 'configured') return { dot: 'bg-emerald-500', text: 'text-emerald-700 dark:text-emerald-300' }
+    if (statusKey === 'incomplete') return { dot: 'bg-amber-500', text: 'text-amber-700 dark:text-amber-300' }
+    if (statusKey === 'invalid') return { dot: 'bg-destructive', text: 'text-destructive dark:text-rose-300' }
+    return { dot: 'bg-primary', text: 'text-primary dark:text-sky-300' }
+  }, [statusKey])
+
+  const handleConfigChanged = useCallback(async () => {
+    await loadOverview()
+  }, [loadOverview])
+
+  const fade = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } }
+
+
   return (
-    <form
-      onSubmit={(e) => { e.preventDefault(); void handleSubmit(onSubmit)(); }}
-      noValidate
-      className="flex flex-col gap-6"
-    >
-      {/* 1. Header */}
-      <SsoConfigHeader
-        config={config}
-        isEditMode={isEditMode}
-        isValidating={isValidating}
-        canEdit={canEdit}
-        onEdit={handleEnterEdit}
-        onValidate={() => void handleValidate()}
+    <motion.div initial="hidden" animate="show" variants={{ show: { transition: { staggerChildren: 0.06 } } }} className="space-y-6">
+
+      {/* Header */}
+      <motion.div variants={fade}>
+      <SectionHeader
+        icon={KeyRound}
+        title="Configuración de eLibro"
+        subtitle="Configuración de integración con eLibro"
       />
+      </motion.div>
 
-      {/* 2. Estado general (full width) */}
-      <SsoStatusOverviewCard config={config} />
-
-      {/* 3. Grid principal */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* Columna izquierda: credenciales */}
-        <div className="lg:col-span-2">
-          <SsoCredentialsCard
-            isEditMode={isEditMode}
-            editingFields={editingFields}
-            originals={originals}
-            register={register}
-            errors={errors}
-            watch={watch}
-            setValue={setValue}
-            onStartEdit={handleStartEdit}
-            onCancelEdit={handleCancelEdit}
-          />
-        </div>
-
-        {/* Columna derecha: seguridad + validación */}
-        <div className="flex flex-col gap-6">
-          <SsoSecurityCard />
-          <SsoValidationCard
-            config={config}
-            isValidating={isValidating}
-            onValidate={() => void handleValidate()}
-          />
-        </div>
+      {/* ── KPIs ── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatusCard
+          title="Estado de integración"
+          value={runtimeKpis.integrationStateLabel}
+          icon={CheckCircle2}
+          iconBg="bg-emerald-500/10"
+          iconFg="text-emerald-600"
+          subtitle="Estado actual backend"
+          delay={0}
+        />
+        <StatusCard
+          title="Uptime del servicio"
+          value={runtimeKpis.uptimeWeeklyPct != null ? `${runtimeKpis.uptimeWeeklyPct.toFixed(1)}%` : 'Sin datos'}
+          icon={Gauge}
+          iconBg="bg-indigo-500/10"
+          iconFg="text-indigo-600"
+          subtitle="Sondas programadas 7 días"
+          delay={0.05}
+        />
+        <StatusCard
+          title="Latencia promedio"
+          value={runtimeKpis.avgLatency24hMs != null ? `${runtimeKpis.avgLatency24hMs} ms` : 'Sin datos'}
+          icon={Activity}
+          iconBg="bg-violet-500/10"
+          iconFg="text-violet-600"
+          subtitle="Últimas 24 horas"
+          delay={0.1}
+        />
+        <StatusCard
+          title="Validaciones esta semana"
+          value={runtimeKpis.validations7dTotal}
+          icon={Calendar}
+          iconBg="bg-cyan-500/10"
+          iconFg="text-cyan-600"
+          subtitle="Runs registradas"
+          delay={0.15}
+        />
       </div>
 
-      {/* 4. Barra de acciones (solo en modo edición) */}
-      {isEditMode && (
-        <div className="sticky bottom-0 z-10 -mx-1 rounded-xl border border-border bg-card/95 px-6 py-4 shadow-lg backdrop-blur-sm">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-xs text-muted-foreground">
-              Los secretos no editados permanecen sin cambios en el servidor.
-            </p>
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleCancelEdit_}
-                disabled={isSubmitting}
-              >
-                Cancelar
-              </Button>
-              <Button
-                type="submit"
-                variant="primary"
-                size="sm"
-                isLoading={isSubmitting}
-                disabled={!canSave}
-              >
-                {isSubmitting ? 'Guardando…' : 'Guardar cambios'}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-    </form>
-  );
+      {/* ── Row principal: credenciales + métricas operativas ── */}
+      <div className="grid grid-cols-1 gap-4">
+
+        {/* Credenciales y canal */}
+        <motion.div variants={fade} className="space-y-3">
+          <ElibroCredentialsStaticCard
+            onConfigChanged={handleConfigChanged}
+            onValidationStateChange={setValidation}
+          />
+        </motion.div>
+
+      </div>
+
+      {/* ── Estado general (con uptime) + validación operativa ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
+        <motion.div variants={fade}>
+          <ElibroGeneralStatusCard
+            uptimeChartData={uptimeChartData}
+            uptimePct={runtimeUptime.pct}
+            uptimeStatusLabel={runtimeUptime.statusLabel}
+            uptimeStatusTone={uptimeStatusTone}
+            statusInfo={statusInfo}
+            statusIcon={StatusIcon}
+            runtimeStatus={runtimeStatus}
+            formatRelativeTime={formatRelativeTime}
+            formatDateTime={formatDateTime}
+          />
+        </motion.div>
+        <motion.div variants={fade}>
+          <ElibroOperationalValidationCard
+            validation={validation}
+            runtimeStatus={runtimeStatus}
+            runtimeChecklist={runtimeChecklist}
+          />
+        </motion.div>
+      </div>
+
+      {/* ── Validaciones + latencia (mitad y mitad) ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+        <motion.div variants={fade}>
+          <ElibroValidationsWeekCard validationHistory={runtimeValidationHistory} />
+        </motion.div>
+        <motion.div variants={fade}>
+          <ElibroLatencyCard latencyHistory={runtimeLatencyHistory} />
+        </motion.div>
+      </div>
+
+      {/* ── Actividad reciente (data table) ── */}
+      <motion.div variants={fade}>
+        <ElibroRecentActivityCard
+          filteredActivity={filteredActivity}
+          totalRows={tableActivityRows.length}
+          activitySearch={activitySearch}
+          activityTypeFilter={activityTypeFilter}
+          onSearchChange={setActivitySearch}
+          onFilterChange={setActivityTypeFilter}
+        />
+        </motion.div>
+    </motion.div>
+  )
 }
+
+export default ElibroSsoConfig

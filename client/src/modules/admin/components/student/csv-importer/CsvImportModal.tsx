@@ -1,5 +1,6 @@
 import { X } from "lucide-react";
 import { CsvImportTabLayout } from "@/modules/admin/components/student/csv-importer/CsvImportTabLayout";
+import type { CsvImportParsed } from "@/modules/admin/components/student/csv-importer/CsvImport";
 import {
   Dialog,
   DialogClose,
@@ -13,6 +14,8 @@ export type CsvImportModalProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title?: string;
+  importing?: boolean;
+  onImport?: (data: CsvImportParsed) => void | Promise<void>;
 };
 
 /**
@@ -22,6 +25,8 @@ export function CsvImportModal({
   open,
   onOpenChange,
   title = "Importar estudiantes (CSV)",
+  importing = false,
+  onImport,
 }: CsvImportModalProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -51,7 +56,7 @@ export function CsvImportModal({
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-4 sm:px-6 sm:py-5">
             <div className="flex min-h-[min(52vh,560px)] flex-1 flex-col">
-              <CsvImportTabLayout invertedOrder fullWidth />
+              <CsvImportTabLayout invertedOrder fullWidth importing={importing} onImport={onImport} />
             </div>
           </div>
         </div>

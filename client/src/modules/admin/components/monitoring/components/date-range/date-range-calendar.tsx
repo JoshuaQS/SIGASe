@@ -1,6 +1,5 @@
-import { useMemo, useState } from "react";
-import { startOfMonth } from "date-fns";
-import { Calendar } from "@/components/ui/calendar";
+import { useMemo } from "react";
+import CalendarRange from "@/components/ui/calendarrange";
 import type { DateRange } from "react-day-picker";
 import type { DateRangeValue } from "./date-range.types";
 
@@ -12,8 +11,6 @@ interface DateRangeCalendarProps {
 }
 
 export function DateRangeCalendar({ value, onChange, minDate, maxDate }: DateRangeCalendarProps) {
-  const [month, setMonth] = useState<Date>(startOfMonth(maxDate));
-
   const selected = useMemo<DateRange | undefined>(() => {
     if (!value?.from && !value?.to) return undefined;
     return {
@@ -23,12 +20,9 @@ export function DateRangeCalendar({ value, onChange, minDate, maxDate }: DateRan
   }, [value]);
 
   return (
-    <Calendar
-      mode="range"
-      month={month}
-      onMonthChange={setMonth}
-      selected={selected}
-      onSelect={(range) => {
+    <CalendarRange
+      value={selected}
+      onChange={(range) => {
         if (!range?.from && !range?.to) {
           onChange(undefined);
           return;
@@ -36,13 +30,9 @@ export function DateRangeCalendar({ value, onChange, minDate, maxDate }: DateRan
         onChange({ from: range?.from, to: range?.to ?? range?.from });
       }}
       numberOfMonths={2}
-      disabled={{ before: minDate, after: maxDate }}
-      pagedNavigation
-      className="p-0"
-      classNames={{
-        months: "flex flex-col md:flex-row gap-4 justify-center",
-        month: "space-y-2",
-      }}
+      minDate={minDate}
+      maxDate={maxDate}
+      className="rounded-none border-0 p-0"
     />
   );
 }

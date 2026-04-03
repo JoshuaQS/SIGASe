@@ -48,10 +48,48 @@ type GoogleIdentity = {
 declare global {
   interface Window {
     google?: GoogleIdentity;
+    __sigaseGsiInitializedClientId?: string;
+    __sigaseGsiCredentialDispatcher?: ((response: GoogleCredentialResponse) => void) | null;
   }
 }
 
 const GOOGLE_IDENTITY_SCRIPT_ID = 'google-identity-services-script';
+ 
+function getInitializedGoogleClientId() {
+  return window.__sigaseGsiInitializedClientId ?? null;
+}
+ 
+function setInitializedGoogleClientId(clientId: string | null) {
+  if (!clientId) {
+    delete window.__sigaseGsiInitializedClientId;
+    return;
+  }
+  window.__sigaseGsiInitializedClientId = clientId;
+}
+ 
+function setGoogleCredentialDispatcher(dispatcher: ((response: GoogleCredentialResponse) => void) | null) {
+  window.__sigaseGsiCredentialDispatcher = dispatcher;
+}
+
+function initializeGoogleIdentity(clientId: string) {
+  if (!window.google?.accounts?.id) {
+    throw new Error('Google Identity Services no está disponible.');
+  }
+
+  const initializedGoogleClientId = getInitializedGoogleClientId();
+  if (initializedGoogleClientId === clientId) {
+    return;
+  }
+
+  window.google.accounts.id.initialize({
+    client_id: clientId,
+    callback: (response) => {
+      window.__sigaseGsiCredentialDispatcher?.(response);
+    },
+  });
+
+  setInitializedGoogleClientId(clientId);
+}
 
 function loadGoogleIdentityScript() {
   return new Promise<void>((resolve, reject) => {
@@ -99,7 +137,9 @@ export default function StudentsLoginCard({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
   const [googleError, setGoogleError] = useState<string | null>(null);
+  const [isGoogleIdentityReady, setIsGoogleIdentityReady] = useState(false);
   const googleButtonRef = useRef<HTMLDivElement | null>(null);
+  const googleCredentialHandlerRef = useRef<(idToken: string) => void>(() => undefined);
 
   const googleClientId = useMemo(() => {
     const env = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env;
@@ -179,69 +219,115 @@ export default function StudentsLoginCard({
   );
 
   useEffect(() => {
+    googleCredentialHandlerRef.current = (idToken: string) => {
+      void handleGoogleCredential(idToken);
+    };
+  }, [handleGoogleCredential]);
+
+  useEffect(() => {
     if (!googleClientId) {
       setGoogleError('Configura VITE_GOOGLE_CLIENT_ID para habilitar acceso con Google.');
+      setIsGoogleIdentityReady(false);
       return;
     }
 
     let cancelled = false;
-    let resizeObserver: ResizeObserver | null = null;
+    setGoogleError(null);
 
-    const renderGoogleButton = () => {
+    void loadGoogleIdentityScript()
+      .then(() => {
+        if (cancelled) return;
+
+        setGoogleCredentialDispatcher((response) => {
+          if (!response.credential) {
+            setGoogleError('Google no regresó credencial válida.');
+            return;
+          }
+          googleCredentialHandlerRef.current(response.credential);
+        });
+
+        initializeGoogleIdentity(googleClientId);
+        setIsGoogleIdentityReady(true);
+      })
+      .catch((error: unknown) => {
+        if (cancelled) return;
+        setIsGoogleIdentityReady(false);
+        setGoogleError(error instanceof Error ? error.message : 'No se pudo inicializar Google OAuth.');
+      });
+
+    return () => {
+      cancelled = true;
+      setGoogleCredentialDispatcher(null);
+    };
+  }, [googleClientId]);
+
+  useEffect(() => {
+    if (!googleClientId || !isGoogleIdentityReady) return;
+
+    let cancelled = false;
+    let resizeObserver: ResizeObserver | null = null;
+    let frameId: number | null = null;
+    let lastRenderedWidth = -1;
+
+    const renderGoogleButton = (targetWidth: number) => {
       if (cancelled || !googleButtonRef.current || !window.google?.accounts?.id) return;
 
       googleButtonRef.current.innerHTML = '';
-      const containerWidth = Math.round(googleButtonRef.current.getBoundingClientRect().width);
-      const targetWidth = Math.min(400, Math.max(280, containerWidth));
+      lastRenderedWidth = targetWidth;
 
       window.google.accounts.id.renderButton(googleButtonRef.current, {
         type: 'standard',
         theme: isDark ? 'filled_black' : 'outline',
         size: 'large',
-        text: 'continue_with',
+        text: 'signin_with',
         shape: 'rectangular',
         width: targetWidth,
         logo_alignment: 'left',
       });
     };
 
-    void loadGoogleIdentityScript()
-      .then(() => {
-        if (cancelled || !googleButtonRef.current || !window.google?.accounts?.id) return;
+    const scheduleGoogleButtonRender = () => {
+      if (cancelled || !googleButtonRef.current || !window.google?.accounts?.id) return;
 
-        window.google.accounts.id.initialize({
-          client_id: googleClientId,
-          callback: (response) => {
-            if (!response.credential) {
-              setGoogleError('Google no regresó credencial válida.');
-              return;
-            }
-            void handleGoogleCredential(response.credential);
-          },
-        });
+      const containerWidth = Math.round(googleButtonRef.current.getBoundingClientRect().width);
+      if (!Number.isFinite(containerWidth) || containerWidth <= 0) return;
 
-        renderGoogleButton();
-        window.google.accounts.id.prompt();
+      const targetWidth = Math.min(384, containerWidth);
+      if (targetWidth === lastRenderedWidth) return;
 
-        resizeObserver = new ResizeObserver(() => {
-          renderGoogleButton();
-        });
-        resizeObserver.observe(googleButtonRef.current);
-      })
-      .catch((error: unknown) => {
-        if (cancelled) return;
-        setGoogleError(error instanceof Error ? error.message : 'No se pudo inicializar Google OAuth.');
+      if (frameId !== null) {
+        window.cancelAnimationFrame(frameId);
+      }
+
+      // Run render in the next frame to avoid ResizeObserver recursive layout loops.
+      frameId = window.requestAnimationFrame(() => {
+        frameId = null;
+        renderGoogleButton(targetWidth);
       });
+    };
+
+    scheduleGoogleButtonRender();
+
+    resizeObserver = new ResizeObserver(() => {
+      scheduleGoogleButtonRender();
+    });
+    const observedElement = googleButtonRef.current?.parentElement ?? googleButtonRef.current;
+    if (observedElement) {
+      resizeObserver.observe(observedElement);
+    }
 
     return () => {
       cancelled = true;
+      if (frameId !== null) {
+        window.cancelAnimationFrame(frameId);
+      }
       resizeObserver?.disconnect();
     };
-  }, [googleClientId, handleGoogleCredential, isDark]);
+  }, [googleClientId, isGoogleIdentityReady, isDark]);
 
   return (
     <div className="flex flex-col gap-8 transition-all">
-      <Card className="overflow-visible rounded-lg border-border bg-card shadow-lg ring-1 ring-border/5">
+      <Card className="overflow-visible rounded-2xl bg-card shadow-2xl ">
         <CardContent className="p-8 sm:p-10">
           <form className="flex flex-col gap-8" onSubmit={handleSubmit(onPasswordLogin)}>
             <div className="flex flex-col items-center gap-6">
@@ -257,7 +343,7 @@ export default function StudentsLoginCard({
               <fieldset className="flex flex-col gap-5" disabled={isBusy}>
                 <FormField
                   label="Correo"
-                  htmlFor="student-email"
+                  controlId="student-email"
                   error={errors.email?.message}
                 >
                   <Input
@@ -266,15 +352,14 @@ export default function StudentsLoginCard({
                     type="email"
                     autoComplete="email"
                     placeholder="estudiante@utez.edu.mx"
-                    className="h-10 w-full"
-                    state={errors.email ? 'error' : 'default'}
-                    aria-invalid={errors.email ? 'true' : 'false'}
+                    size="lg"
+                    invalid={Boolean(errors.email)}
                   />
                 </FormField>
 
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between gap-2 px-0.5">
-                    <Label htmlFor="student-password-field-contraseña" className="text-sm font-semibold">
+                    <Label htmlFor="student-password" className="text-sm font-semibold">
                       Contraseña
                     </Label>
                     <button
@@ -291,7 +376,7 @@ export default function StudentsLoginCard({
                     label="" // Ya tenemos el label arriba con el link de "olvidaste"
                     error={errors.password?.message}
                     placeholder="Ingresa tu contraseña"
-                    className="h-10 w-full"
+                    size="lg"
                   />
                 </div>
 
@@ -313,10 +398,10 @@ export default function StudentsLoginCard({
               </fieldset>
 
               <div className="my-6">
-                <div className="mx-auto w-full max-w-[400px]">
+                <div className="mx-auto w-full max-w-sm">
                   <div
                     ref={googleButtonRef}
-                    className="w-full transition-opacity hover:opacity-95 [&>div]:!w-full [&>div]:!max-w-[400px] [&>div]:!mx-auto [&_iframe]:!w-full"
+                    className="min-h-11 w-full overflow-visible transition-opacity hover:opacity-95"
                   >
                     {!googleClientId ? (
                       <span className="px-3 text-center text-[11px] text-muted-foreground">

@@ -1,9 +1,76 @@
-const ForcePasswordChange = () => {
-    return (
-        <div>
-            <h1>Force Password Change</h1>
-        </div>
-    );
+import { useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+
+import { authSession } from '@/auth/auth-session-store';
+import { ApiClientError } from '@/lib/api/api-client';
+import { changeStudentPassword } from '@/lib/api/auth-api';
+import { useAppToast } from '@/components/ui/app-toast-provider';
+import { useAuthUser } from '@/hooks/use-auth-user';
+import { StudentForcePasswordChangeView } from '@/modules/student/components/ForcePasswordChangeForm';
+
+function resolveErrorMessage(error: unknown): string {
+  if (error instanceof ApiClientError) {
+    return error.message || 'No se pudo actualizar la contraseña.';
+  }
+
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return 'No se pudo actualizar la contraseña.';
 }
 
-export default ForcePasswordChange;
+export default function ForcePasswordChangePage() {
+  const navigate = useNavigate();
+  const user = useAuthUser();
+  const { showToast } = useAppToast();
+
+  const handleSubmit = useCallback(
+    async ({ newPassword }: { newPassword: string }) => {
+      try {
+        await changeStudentPassword(newPassword);
+
+        // The backend rotates tokenVersion after password changes, so current token becomes stale.
+        authSession.clearSession();
+
+        showToast({
+          severity: 'success',
+          title: 'Contraseña actualizada',
+          description: 'Inicia sesión con tu nueva contraseña para continuar.',
+        });
+
+        return {
+          success: true,
+          message: 'Contraseña actualizada. Redirigiendo a inicio de sesión...',
+        };
+      } catch (error) {
+        const message = resolveErrorMessage(error);
+        showToast({
+          severity: 'error',
+          title: 'No se pudo actualizar la contraseña',
+          description: message,
+        });
+        return { success: false, message };
+      }
+    },
+    [showToast],
+  );
+
+  const handleCompleted = useCallback(() => {
+    navigate('/login?mode=student', { replace: true, state: { mode: 'student' } });
+  }, [navigate]);
+
+  const handleLogout = useCallback(async () => {
+    await authSession.logout();
+    navigate('/login?mode=student', { replace: true, state: { mode: 'student' } });
+  }, [navigate]);
+
+  return (
+    <StudentForcePasswordChangeView
+      studentName={user?.displayName}
+      onSubmit={handleSubmit}
+      onCompleted={handleCompleted}
+      onLogout={handleLogout}
+    />
+  );
+}

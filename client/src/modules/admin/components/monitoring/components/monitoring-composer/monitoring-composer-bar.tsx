@@ -1,21 +1,20 @@
-import { Download, Filter, Sparkles, Trash2, X } from "lucide-react";
+import { ArrowUpDown, Check, ListFilter, Sparkles, Trash2, Users, X } from "lucide-react";
 import { subDays } from "date-fns";
-import { Badge } from "@/components/ui/badge";
+import { button as Button } from "@/components/ui/button";
 import {
-  Combobox,
-  ComboboxCollection,
-  ComboboxContent,
-  ComboboxEmpty,
-  ComboboxItem,
-  ComboboxList,
-  ComboboxTrigger,
-  ComboboxValue,
-} from "@/components/ui/combobox";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { StudentLookupField } from "./student-lookup-field";
 import { AccessStatusField } from "./access-status-field";
+import { CareerMultiComboboxField } from "./career-multi-combobox-field";
 import { DateRangeField } from "./date-range-field";
+import { TopNField } from "./top-n-field";
+import { TOP_N_OPTIONS } from "./composer.config";
 import { DEFAULT_COMPOSER_DRAFT_STATE, type ComposerDraftState } from "./composer.types";
-
 interface MonitoringComposerBarProps {
   value: ComposerDraftState;
   onChange: (next: ComposerDraftState) => void;
@@ -23,7 +22,8 @@ interface MonitoringComposerBarProps {
 }
 
 const activeChipClass =
-  "inline-flex h-8 items-center gap-1 rounded-full border border-border bg-secondary/50 px-2.5 text-xs font-medium";
+  "inline-flex items-center gap-1 rounded-full border border-border bg-secondary/50 px-2.5 py-1 text-xs font-medium";
+const quickFilterChipClass = `${activeChipClass} cursor-pointer text-foreground transition-colors hover:bg-secondary/70`;
 
 export function MonitoringComposerBar({ value, onChange, minDate }: MonitoringComposerBarProps) {
   const updateState = (patch: Partial<ComposerDraftState>) => {
@@ -43,11 +43,15 @@ export function MonitoringComposerBar({ value, onChange, minDate }: MonitoringCo
       ...value,
       studentMode: undefined,
       mode: undefined,
+      careers: [],
       status: undefined,
       dateRange: undefined,
       student: { query: "" },
       didFilter: false,
     });
+  };
+  const removeStatus = () => {
+    updateState({ status: undefined });
   };
 
   const applyQuickFilter = (preset: "success-students" | "failed-careers" | "all-careers" | "last-30") => {
@@ -84,90 +88,129 @@ export function MonitoringComposerBar({ value, onChange, minDate }: MonitoringCo
     });
   };
 
-  const hasType = value.type === "students";
-  const hasMode = value.studentMode === "individual";
+  const hasType = Boolean(value.type);
+  const hasMode = value.type === "students" ? Boolean(value.studentMode) : value.type === "careers";
 
   const typeOptions = [
     { id: "students", label: "Estudiante(s)" },
     { id: "careers", label: "Carrera(s)" },
-  ];
+  ] as const;
 
   const modeOptions = [
     { id: "individual", label: "Individual" },
     { id: "all", label: "Todos" },
-  ];
+  ] as const;
 
-  const canFilter =
-    hasType &&
-    hasMode &&
-    Boolean(value.student?.selectedId) &&
-    Boolean(value.status);
+  const hasStatus = Boolean(value.status);
+  const hasSort = Boolean(value.sortDirection);
+  const hasRanking = Boolean(value.topEnabled);
+  const selectedCareersCount = value.careers?.length ?? 0;
+  const showRankingControls =
+    (value.type === "students" && value.studentMode === "all") ||
+    (value.type === "careers" && selectedCareersCount >= 2);
+  const statusLabel =
+    value.status === "SUCCESS"
+      ? "Exitoso"
+      : value.status === "FAILED"
+        ? "Fallido"
+        : "Ambos";
+  const sortLabel = value.sortDirection === "asc" ? "Menor a mayor" : "Mayor a menor";
 
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-end gap-2">
         {!hasType ? (
           <div className="w-[240px] space-y-1">
-            <p className="text-xs font-medium text-muted-foreground">Tipo de filtrado</p>
-            <Combobox
-              items={typeOptions}
-              value={null}
+          <span className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground">
+            <ListFilter className="h-3.5 w-3.5" />
+            Tipo de filtrado:
+          </span>
+            <Select
+              value={value.type ?? ""}
               onValueChange={(next) => {
-                if (next?.id === "students") {
-                  updateState({ type: "students", mode: undefined, studentMode: undefined, status: undefined });
+                if (next === "students") {
+                  updateState({
+                    type: "students",
+                    mode: undefined,
+                    studentMode: undefined,
+                    careers: [],
+                    status: undefined,
+                  });
+                  return;
+                }
+                if (next === "careers") {
+                  updateState({
+                    type: "careers",
+                    mode: "all-careers",
+                    studentMode: undefined,
+                    student: { query: "" },
+                    careers: [],
+                    status: undefined,
+                  });
                 }
               }}
-              itemToStringLabel={(item) => item.label}
             >
-              <ComboboxTrigger className="w-full">
-                <ComboboxValue placeholder="Combobox" />
-              </ComboboxTrigger>
-              <ComboboxContent>
-                <ComboboxList>
-                  <ComboboxCollection>
-                    {(item) => <ComboboxItem value={item}>{item.label}</ComboboxItem>}
-                  </ComboboxCollection>
-                  <ComboboxEmpty>Sin opciones.</ComboboxEmpty>
-                </ComboboxList>
-              </ComboboxContent>
-            </Combobox>
+              <SelectTrigger className="w-full" size="md">
+                <SelectValue placeholder="Selecciona una opción" />
+              </SelectTrigger>
+              <SelectContent>
+                {typeOptions.map((item) => (
+                  <SelectItem key={item.id} value={item.id}>
+                    {item.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-        ) : !hasMode ? (
+        ) : value.type === "students" && !hasMode ? (
           <div className="w-[240px] space-y-1">
-            <p className="text-xs font-medium text-muted-foreground">Modo</p>
-            <Combobox
-              items={modeOptions}
-              value={modeOptions.find((item) => item.id === (value.studentMode ?? "")) ?? null}
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground">
+              <Users className="h-3.5 w-3.5" />
+              Modo:
+            </span>
+            <Select
+              value={value.studentMode ?? ""}
               onValueChange={(next) => {
-                if (next?.id === "individual") {
+                if (next === "individual") {
                   updateState({ studentMode: "individual", mode: "single-student" });
+                  return;
+                }
+                if (next === "all") {
+                  updateState({ studentMode: "all", mode: "all-students", student: { query: "" } });
                 }
               }}
-              itemToStringLabel={(item) => item.label}
             >
-              <ComboboxTrigger className="w-full">
-                <ComboboxValue placeholder="Individual" />
-              </ComboboxTrigger>
-              <ComboboxContent>
-                <ComboboxList>
-                  <ComboboxCollection>
-                    {(item) => <ComboboxItem value={item}>{item.label}</ComboboxItem>}
-                  </ComboboxCollection>
-                  <ComboboxEmpty>Sin opciones.</ComboboxEmpty>
-                </ComboboxList>
-              </ComboboxContent>
-            </Combobox>
+              <SelectTrigger className="w-full" size="md">
+                <SelectValue placeholder="Selecciona una opción" />
+              </SelectTrigger>
+              <SelectContent>
+                {modeOptions.map((item) => (
+                  <SelectItem key={item.id} value={item.id}>
+                    {item.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         ) : (
           <>
-            <div className="w-[240px] space-y-1">
-              <p className="text-xs font-medium text-muted-foreground">Buscar</p>
-              <StudentLookupField
-                query={value.student?.query ?? ""}
-                selectedId={value.student?.selectedId}
-                onChange={(student) => updateState({ student })}
+            {value.type === "students" && value.studentMode === "individual" ? (
+              <div className="w-[240px] space-y-1">
+                <p className="text-xs font-medium text-muted-foreground">Buscar</p>
+                <StudentLookupField
+                  query={value.student?.query ?? ""}
+                  selectedId={value.student?.selectedId}
+                  onChange={(student) => updateState({ student })}
+                />
+              </div>
+            ) : null}
+
+            {value.type === "careers" ? (
+              <CareerMultiComboboxField
+                values={value.careers ?? []}
+                onChange={(careers) => updateState({ careers })}
               />
-            </div>
+            ) : null}
 
             <div className="w-[180px] space-y-1">
               <p className="text-xs font-medium text-muted-foreground">Accesos</p>
@@ -179,84 +222,174 @@ export function MonitoringComposerBar({ value, onChange, minDate }: MonitoringCo
               <DateRangeField value={value.dateRange} minDate={minDate} onChange={(dateRange) => updateState({ dateRange })} />
             </div>
 
-            <div className="ml-auto flex items-end gap-2">
-              <button
-                type="button"
-                disabled={!canFilter}
-                className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-border bg-primary px-4 text-sm font-medium text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50"
-                onClick={() => onChange({ ...value, didFilter: true })}
-              >
-                <Filter className="h-4 w-4" />
-                Filtrar
-              </button>
-              <button
-                type="button"
-                disabled={!value.didFilter}
-                className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-border bg-background px-4 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <Download className="h-4 w-4" />
-                Descargar
-              </button>
-            </div>
+            {showRankingControls ? (
+              <>
+                <div className="w-[210px] space-y-1">
+                  <p className="text-xs font-medium text-muted-foreground">Orden</p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="md"
+                    className="w-full justify-between rounded-lg"
+                    onClick={() =>
+                      updateState({
+                        sortDirection: value.sortDirection === "desc" ? "asc" : "desc",
+                      })
+                    }
+                  >
+                    {value.sortDirection === "desc" ? "Mayor a menor" : "Menor a mayor"}
+                    <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
+                  </Button>
+                </div>
+                <div className="flex items-end gap-2">
+                  <div className="w-[108px] space-y-1">
+                    <p className="text-xs font-medium text-muted-foreground">Ranking</p>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={value.topEnabled ?? false}
+                      onClick={() => {
+                        const nextEnabled = !(value.topEnabled ?? false);
+                        updateState({
+                          topEnabled: nextEnabled,
+                          topN: nextEnabled ? (value.topN ?? TOP_N_OPTIONS[0]) : undefined,
+                        });
+                      }}
+                      className="relative inline-grid h-10 w-24 grid-cols-[1fr_1fr] items-center rounded-md border border-input bg-background px-0.5 text-xs transition-colors hover:bg-accent/40"
+                    >
+                      <span
+                        className={`relative z-10 flex items-center justify-center transition-colors ${
+                          value.topEnabled ? "text-muted-foreground" : "text-primary-foreground"
+                        }`}
+                      >
+                        <X className="h-5 w-5" />
+                      </span>
+                      <span
+                        className={`relative z-10 flex items-center justify-center transition-colors ${
+                          value.topEnabled ? "text-primary-foreground" : "text-muted-foreground"
+                        }`}
+                      >
+                        <Check className="h-5 w-5" />
+                      </span>
+                      <span
+                        aria-hidden="true"
+                        className={`absolute top-1/2 h-[calc(100%-4px)] w-[calc(50%-0.25rem)] -translate-y-1/2 rounded-sm border border-primary/70 bg-primary shadow-sm transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+                          value.topEnabled ? "left-[calc(50%+0.125rem)]" : "left-0.5"
+                        }`}
+                      />
+                    </button>
+                  </div>
+                  {value.topEnabled ? (
+                    <div className="w-[120px] space-y-1">
+                      <TopNField
+                        label="Top"
+                        value={value.topN}
+                        options={TOP_N_OPTIONS}
+                        onChange={(topN) => updateState({ topN })}
+                      />
+                    </div>
+                  ) : null}
+                </div>
+              </>
+            ) : null}
           </>
         )}
+
       </div>
-
       {(hasType || hasMode) ? (
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs font-medium text-muted-foreground">Filtros activos:</span>
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-medium text-muted-foreground">Filtros activos:</span>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="icon-xs"
+              onClick={resetAll}
+              className="h-6 w-6 rounded-full text-muted-foreground hover:border-destructive/40 hover:bg-destructive/10 hover:text-destructive"
+              aria-label="Reestablecer filtros"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
 
-          {hasType ? (
-            <span className={activeChipClass}>
-              Estudiante(s)
-              <button type="button" onClick={removeType} className="text-muted-foreground hover:text-foreground">
-                <X className="h-3.5 w-3.5" />
-              </button>
-            </span>
-          ) : null}
-
-          {hasMode ? (
-            <>
-              <span className="text-xs text-muted-foreground">&gt;</span>
+            {hasType ? (
               <span className={activeChipClass}>
-                Individual
-                <button type="button" onClick={removeMode} className="text-muted-foreground hover:text-foreground">
+                {value.type === "careers" ? "Carrera(s)" : "Estudiante(s)"}
+                <button type="button" onClick={removeType} className="text-muted-foreground hover:text-foreground">
                   <X className="h-3.5 w-3.5" />
                 </button>
               </span>
-            </>
-          ) : null}
+            ) : null}
 
-          <button
-            type="button"
-            onClick={resetAll}
-            className="ml-1 inline-flex h-7 w-7 items-center justify-center rounded-md border border-border text-muted-foreground hover:bg-secondary hover:text-foreground"
-            aria-label="Reestablecer filtros"
-          >
-            <Trash2 className="h-4 w-4" />
-          </button>
+            {value.type === "students" && hasMode ? (
+              <>
+                <span className="text-xs text-muted-foreground">&gt;</span>
+                <span className={activeChipClass}>
+                  {value.studentMode === "all" ? "Todos" : "Individual"}
+                  <button type="button" onClick={removeMode} className="text-muted-foreground hover:text-foreground">
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </span>
+              </>
+            ) : null}
+
+            {hasStatus ? (
+              <>
+                <span className="text-xs text-muted-foreground">&gt;</span>
+                <span className={activeChipClass}>
+                  Accesos: {statusLabel}
+                  <button type="button" onClick={removeStatus} className="text-muted-foreground hover:text-foreground">
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </span>
+              </>
+            ) : null}
+
+            {value.type === "careers" && selectedCareersCount > 0 ? (
+              <>
+                <span className="text-xs text-muted-foreground">&gt;</span>
+                <span className={activeChipClass}>Carreras: {selectedCareersCount}</span>
+              </>
+            ) : null}
+
+            {showRankingControls && hasSort ? (
+              <>
+                <span className="text-xs text-muted-foreground">&gt;</span>
+                <span className={activeChipClass}>Orden: {sortLabel}</span>
+              </>
+            ) : null}
+
+            {showRankingControls && hasRanking ? (
+              <>
+                <span className="text-xs text-muted-foreground">&gt;</span>
+                <span className={activeChipClass}>Ranking: Sí</span>
+              </>
+            ) : null}
+          </div>
         </div>
       ) : null}
 
       {!hasType ? (
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="space-y-2">
           <span className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground">
             <Sparkles className="h-3.5 w-3.5" />
-            Filtrado rápido
+            Filtrado rápido:
           </span>
-
-          <button type="button" onClick={() => applyQuickFilter("success-students")}>
-            <Badge variant="outline" className="cursor-pointer">Exitosos estudiantes</Badge>
-          </button>
-          <button type="button" onClick={() => applyQuickFilter("failed-careers")}>
-            <Badge variant="outline" className="cursor-pointer">Fallidos carrera</Badge>
-          </button>
-          <button type="button" onClick={() => applyQuickFilter("all-careers")}>
-            <Badge variant="outline" className="cursor-pointer">Ambos carreras</Badge>
-          </button>
-          <button type="button" onClick={() => applyQuickFilter("last-30")}>
-            <Badge variant="outline" className="cursor-pointer">Últimos 30 días</Badge>
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <button type="button" onClick={() => applyQuickFilter("success-students")}>
+              <span className={quickFilterChipClass}>Accesos Exitosos estudiantes</span>
+            </button>
+            <button type="button" onClick={() => applyQuickFilter("failed-careers")}>
+              <span className={quickFilterChipClass}>Accesos Fallidos carreras</span>
+            </button>
+            <button type="button" onClick={() => applyQuickFilter("all-careers")}>
+              <span className={quickFilterChipClass}>Ambos accesos carreras</span>
+            </button>
+            <button type="button" onClick={() => applyQuickFilter("last-30")}>
+              <span className={quickFilterChipClass}>Ambos accesos estudiantes</span>
+            </button>
+          </div>
         </div>
       ) : null}
     </div>

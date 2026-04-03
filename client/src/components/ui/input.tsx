@@ -1,71 +1,113 @@
-import * as React from "react";
-import type { LucideIcon } from "lucide-react";
-import { cn } from "@/lib/utils";
+import * as React from 'react';
+import { Loader2 } from 'lucide-react';
+import {
+  FORM_CONTROL_DEFAULT_SIZE,
+  FORM_CONTROL_DEFAULT_VARIANT,
+  type FormControlSize,
+  type FormControlVariant,
+} from '@/components/ui/forms/form-control-contract';
+import {
+  getFormControlBaseClass,
+  getFormControlSize,
+  getInputAdornmentInsetClass,
+  getInputAdornmentPaddingClass,
+} from '@/components/ui/forms/form-control-styles';
+import { cn } from '@/lib/utils';
 
-type InputState = "default" | "error" | "success";
-
-export interface InputProps
-  extends React.InputHTMLAttributes<HTMLInputElement> {
-  state?: InputState;
-  leadingIcon?: LucideIcon;
-  trailingIcon?: LucideIcon;
+export interface InputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'size'> {
+  size?: FormControlSize;
+  variant?: FormControlVariant;
+  invalid?: boolean;
+  success?: boolean;
+  loading?: boolean;
+  startAdornment?: React.ReactNode;
+  endAdornment?: React.ReactNode;
 }
 
 export const Input = React.forwardRef<HTMLInputElement, InputProps>(
   (
     {
       className,
-      state = "default",
-      leadingIcon: LeadingIcon,
-      trailingIcon: TrailingIcon,
+      size = FORM_CONTROL_DEFAULT_SIZE,
+      variant = FORM_CONTROL_DEFAULT_VARIANT,
+      invalid,
+      success,
+      loading,
+      startAdornment,
+      endAdornment,
       disabled,
+      readOnly,
       ...props
     },
-    ref
+    ref,
   ) => {
+    const hasStartAdornment = Boolean(startAdornment);
+    const hasEndAdornment = Boolean(endAdornment) || Boolean(loading);
+    const cfg = getFormControlSize(size);
+
     return (
-      <div className="relative">
-        {LeadingIcon ? (
-          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-            <LeadingIcon className="h-4 w-4" />
+      <div className="relative w-full" data-slot="input-root">
+        {hasStartAdornment ? (
+          <span
+            className={cn(
+              'pointer-events-none absolute top-1/2 -translate-y-1/2 text-muted-foreground',
+              getInputAdornmentInsetClass(size, 'start'),
+            )}
+            aria-hidden="true"
+          >
+            <span className="flex items-center justify-center">{startAdornment}</span>
           </span>
         ) : null}
 
         <input
           ref={ref}
           disabled={disabled}
+          readOnly={readOnly}
+          aria-invalid={invalid || undefined}
           className={cn(
-            "flex h-9 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground outline-none transition-all",
-            "placeholder:text-muted-foreground",
-            "focus:outline-none focus-visible:border-transparent focus-visible:ring-2",
-            "disabled:cursor-not-allowed disabled:border-border disabled:bg-muted disabled:opacity-60",
-            state === "default" && "focus-visible:ring-ring",
-            state === "error" &&
-            "border-destructive focus-visible:ring-destructive/30",
-            state === "success" &&
-            "border-success focus-visible:ring-success/30",
-            LeadingIcon && "pl-9",
-            TrailingIcon && "pr-9",
-            className
+            getFormControlBaseClass({
+              size,
+              variant,
+              invalid,
+              success,
+              loading,
+              disabled,
+              readOnly,
+            }),
+            getInputAdornmentPaddingClass({
+              size,
+              startAdornment: hasStartAdornment,
+              endAdornment: hasEndAdornment,
+            }),
+            className,
           )}
           {...props}
         />
 
-        {TrailingIcon ? (
+        {loading && !disabled ? (
           <span
             className={cn(
-              "pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2",
-              state === "error" && "text-destructive",
-              state === "success" && "text-success",
-              state === "default" && "text-muted-foreground"
+              'pointer-events-none absolute top-1/2 -translate-y-1/2 text-muted-foreground',
+              getInputAdornmentInsetClass(size, 'end'),
             )}
+            aria-hidden="true"
           >
-            <TrailingIcon className="h-4 w-4" />
+            <Loader2 className={cn('animate-spin', cfg.icon)} />
+          </span>
+        ) : endAdornment ? (
+          <span
+            className={cn(
+              'pointer-events-none absolute top-1/2 -translate-y-1/2 text-muted-foreground',
+              getInputAdornmentInsetClass(size, 'end'),
+            )}
+            aria-hidden="true"
+          >
+            <span className="flex items-center justify-center">{endAdornment}</span>
           </span>
         ) : null}
       </div>
     );
-  }
+  },
 );
 
-Input.displayName = "Input";
+Input.displayName = 'Input';

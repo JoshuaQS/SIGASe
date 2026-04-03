@@ -4,7 +4,7 @@ import {
     Users, Search, Plus, Edit2, Trash2, MoreHorizontal,
     Shield, Crown, UserCheck, Clock, Download,
 } from 'lucide-react'
-import { RadarChart, Radar, PolarGrid, PolarAngleAxis, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts'
+import { RadarChart, Radar, PolarGrid, PolarAngleAxis, ResponsiveContainer, Tooltip } from 'recharts'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { button as Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -75,10 +75,10 @@ const AdminsManagement = () => {
                 subtitle={`${admins.length} administradores · ${admins.filter(a => a.estado === 'activo').length} activos`}
                 actions={
                     <>
-                        <Button variant="outline" size="sm" className="gap-2" onClick={() => showToast({ severity: 'success', title: 'Exportando reporte', description: 'La lista de administradores se está generando...' })}>
+                        <Button variant="outline" size="md" className="gap-2" onClick={() => showToast({ severity: 'success', title: 'Exportando reporte', description: 'La lista de administradores se está generando...' })}>
                             <Download className="w-3.5 h-3.5" /> Exportar
                         </Button>
-                        <Button size="sm" className="gap-2" onClick={() => showToast({ severity: 'info', title: 'Invitación enviada', description: 'Se ha abierto el formulario para invitar a un nuevo administrador.' })}>
+                        <Button size="md" className="gap-2" onClick={() => showToast({ severity: 'info', title: 'Invitación enviada', description: 'Se ha abierto el formulario para invitar a un nuevo administrador.' })}>
                             <Plus className="w-3.5 h-3.5" /> Invitar Admin
                         </Button>
                     </>
@@ -158,10 +158,16 @@ const AdminsManagement = () => {
                     <div className="flex flex-wrap items-center gap-3">
                         <div className="relative flex-1 min-w-[200px] max-w-xs">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-                            <Input placeholder="Buscar administrador..." className="pl-9 h-8 text-sm" value={search} onChange={e => { setSearch(e.target.value); setPage(0) }} />
+                            <Input
+                                placeholder="Buscar administrador..."
+                                className="pl-9"
+                                size="sm"
+                                value={search}
+                                onChange={e => { setSearch(e.target.value); setPage(0) }}
+                            />
                         </div>
                         <Select value={rolFilter} onValueChange={v => { setRolFilter(v); setPage(0) }}>
-                            <SelectTrigger className="w-36 h-8 text-sm"><SelectValue placeholder="Rol" /></SelectTrigger>
+                            <SelectTrigger className="w-36" size="sm"><SelectValue placeholder="Rol" /></SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="todos">Todos los roles</SelectItem>
                                 <SelectItem value="superadmin">Superadmin</SelectItem>
@@ -197,13 +203,13 @@ const AdminsManagement = () => {
                                             </td>
                                             <td className="px-4 py-3 text-xs text-muted-foreground font-mono">{admin.email}</td>
                                             <td className="px-4 py-3">
-                                                <Badge variant="outline" className={`text-xs gap-1 ${rol.badge}`}>
+                                                <Badge variant="outlined" className={`text-xs gap-1 ${rol.badge}`}>
                                                     <rol.icon className="w-3 h-3" />{rol.label}
                                                 </Badge>
                                             </td>
                                             <td className="px-4 py-3 text-xs text-muted-foreground">{admin.area}</td>
                                             <td className="px-4 py-3">
-                                                <Badge variant="outline" className={`text-xs ${admin.estado === 'activo' ? 'text-emerald-600 border-emerald-200 bg-emerald-50' : 'text-muted-foreground'}`}>
+                                                <Badge variant="outlined" className={`text-xs ${admin.estado === 'activo' ? 'text-emerald-600 border-emerald-200 bg-emerald-50' : 'text-muted-foreground'}`}>
                                                     {admin.estado}
                                                 </Badge>
                                             </td>

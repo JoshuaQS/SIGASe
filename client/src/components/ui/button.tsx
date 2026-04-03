@@ -1,4 +1,5 @@
 import * as React from "react";
+import { Slot } from "@radix-ui/react-slot";
 import { cn } from "@/lib/utils";
 import { Loader2 } from "lucide-react";
 
@@ -13,10 +14,19 @@ export type buttonVariant =
   | "info"
   | "link";
 
-export type buttonSize = "xs" | "sm" | "md" | "lg" | "icon" | "icon-sm" | "icon-xs";
+export type buttonSize =
+  | "xs"
+  | "sm"
+  | "md"
+  | "lg"
+  | "icon"
+  | "icon-sm"
+  | "icon-xs";
+
 export type buttonShape = "rounded" | "pill";
 
-export interface buttonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+export interface buttonProps
+  extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: buttonVariant;
   size?: buttonSize;
   shape?: buttonShape;
@@ -24,16 +34,24 @@ export interface buttonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
   isLoading?: boolean;
   leftIcon?: React.ReactNode | React.ElementType;
   rightIcon?: React.ReactNode | React.ElementType;
+  asChild?: boolean;
 }
 
 const variantClass: Record<buttonVariant, string> = {
-  primary: "bg-primary text-primary-foreground hover:bg-primary/90 shadow-md active:scale-[0.98]",
-  secondary: "bg-secondary text-secondary-foreground border border-border hover:bg-muted active:bg-secondary/80 active:scale-[0.98]",
-  outline: "border border-border text-foreground hover:bg-accent active:bg-accent/80 active:scale-[0.98]",
-  ghost: "text-foreground hover:bg-accent active:bg-accent/80 active:scale-[0.98]",
-  destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-md active:scale-[0.98]",
-  success: "bg-success text-success-foreground hover:bg-success/90 shadow-md active:scale-[0.98]",
-  warning: "bg-warning text-warning-foreground hover:bg-warning/90 shadow-md active:scale-[0.98]",
+  primary:
+    "bg-primary text-primary-foreground hover:bg-primary/90 shadow-md active:scale-[0.98]",
+  secondary:
+    "bg-secondary text-secondary-foreground border border-border hover:bg-muted active:bg-secondary/80 active:scale-[0.98]",
+  outline:
+    "border border-border text-foreground hover:bg-accent active:bg-accent/80 active:scale-[0.98]",
+  ghost:
+    "text-foreground hover:bg-accent active:bg-accent/80 active:scale-[0.98]",
+  destructive:
+    "bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-md active:scale-[0.98]",
+  success:
+    "bg-success text-success-foreground hover:bg-success/90 shadow-md active:scale-[0.98]",
+  warning:
+    "bg-warning text-warning-foreground hover:bg-warning/90 shadow-md active:scale-[0.98]",
   info: "bg-info text-info-foreground hover:bg-info/90 shadow-md active:scale-[0.98]",
   link: "text-primary underline-offset-4 hover:underline p-0 h-auto active:scale-100",
 };
@@ -61,25 +79,31 @@ const button = React.forwardRef<HTMLButtonElement, buttonProps>(
       rightIcon,
       disabled,
       children,
+      asChild = false,
       ...props
     },
     ref
   ) => {
     const isDisabled = disabled || isLoading;
+    const Comp = asChild ? Slot : "button";
 
-    const renderIcon = (icon: React.ReactNode | React.ElementType, iconSize: string) => {
+    const renderIcon = (
+      icon: React.ReactNode | React.ElementType,
+      iconSize: string
+    ) => {
       if (!icon) return null;
       if (React.isValidElement(icon)) return icon;
       const IconComp = icon as React.ElementType;
       return <IconComp className={cn("shrink-0", iconSize)} />;
     };
 
-    const iconSize = size === "sm" || size === "xs" ? "h-3.5 w-3.5" : "h-4 w-4";
+    const iconSize =
+      size === "sm" || size === "xs" ? "h-3.5 w-3.5" : "h-4 w-4";
 
     return (
-      <button
+      <Comp
         ref={ref}
-        disabled={isDisabled}
+        disabled={asChild ? undefined : isDisabled}
         className={cn(
           "inline-flex items-center justify-center font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:border-transparent disabled:opacity-50 disabled:pointer-events-none cursor-pointer",
           variantClass[variant],
@@ -94,7 +118,7 @@ const button = React.forwardRef<HTMLButtonElement, buttonProps>(
         {!isLoading && renderIcon(leftIcon, iconSize)}
         {children}
         {!isLoading && renderIcon(rightIcon, iconSize)}
-      </button>
+      </Comp>
     );
   }
 );

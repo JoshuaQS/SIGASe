@@ -14,23 +14,49 @@ type ApiErrorPayload = {
 };
 
 const AUTH_INVALID_ERROR_CODES = new Set([
-  'UNAUTHORIZED',
   'INVALID_TOKEN',
   'SESSION_EXPIRED',
   'TOKEN_EXPIRED',
   'JWT_EXPIRED',
+  'UNAUTHORIZED',
+]);
+
+const SESSION_PROBE_ENDPOINTS = new Set([
+  '/auth/admin/me',
+  '/auth/student/me',
 ]);
 
 export class ApiClientError extends Error {
   status: number;
   errorCode?: string;
+  endpoint: string;
+  method: string;
 
-  constructor(message: string, status: number, errorCode?: string) {
+  constructor(message: string, status: number, errorCode: string | undefined, endpoint: string, method: string) {
     super(message);
     this.name = 'ApiClientError';
     this.status = status;
     this.errorCode = errorCode;
+    this.endpoint = endpoint;
+    this.method = method;
   }
+}
+
+function shouldInvalidateSessionOnUnauthorized(endpoint: string, errorCode?: string) {
+  if (SESSION_PROBE_ENDPOINTS.has(endpoint)) {
+    return true;
+  }
+
+  // Login/reset-password flows can return 401 by business rules and should not force a global logout.
+  if (endpoint.startsWith('/auth/')) {
+    return false;
+  }
+
+  if (errorCode && AUTH_INVALID_ERROR_CODES.has(errorCode)) {
+    return true;
+  }
+
+  return false;
 }
 
 export function cancelPendingRequests() {
@@ -77,16 +103,15 @@ async function fetchClient<T>(endpoint: string, options: RequestInit = {}): Prom
 
   try {
     const response = await fetch(`${BASE_URL}${endpoint}`, config);
+    const method = String(config.method || 'GET').toUpperCase();
 
     if (response.status === 401) {
       const error = await parseErrorResponse(response);
-      const shouldInvalidateSession = error.errorCode
-        ? AUTH_INVALID_ERROR_CODES.has(error.errorCode)
-        : false;
+      const shouldInvalidateSession = shouldInvalidateSessionOnUnauthorized(endpoint, error.errorCode);
       if (shouldInvalidateSession) {
         authSession.clearSession();
       }
-      throw new ApiClientError(error.message, response.status, error.errorCode);
+      throw new ApiClientError(error.message, response.status, error.errorCode, endpoint, method);
     }
 
     if (response.status === 403) {
@@ -98,12 +123,12 @@ async function fetchClient<T>(endpoint: string, options: RequestInit = {}): Prom
       ) {
         authSession.setUser({ ...currentUser, mustChangePassword: true });
       }
-      throw new ApiClientError(error.message || 'No tienes permisos para realizar esta acción.', response.status, error.errorCode);
+      throw new ApiClientError(error.message || 'No tienes permisos para realizar esta acción.', response.status, error.errorCode, endpoint, method);
     }
 
     if (!response.ok) {
       const error = await parseErrorResponse(response);
-      throw new ApiClientError(error.message, response.status, error.errorCode);
+      throw new ApiClientError(error.message, response.status, error.errorCode, endpoint, method);
     }
 
     if (response.status === 204) {
@@ -111,8 +136,6 @@ async function fetchClient<T>(endpoint: string, options: RequestInit = {}): Prom
     }
 
     return (await response.json()) as T;
-  } catch (error) {
-    throw error;
   } finally {
     pendingControllers.delete(controller);
   }

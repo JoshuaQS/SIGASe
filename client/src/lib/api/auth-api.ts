@@ -83,8 +83,11 @@ export async function getStudentMe() {
   return response.data;
 }
 
-export async function changeStudentPassword(currentPassword: string, newPassword: string) {
-  await api.post<null>('/auth/student/change-password', { currentPassword, newPassword });
+export async function changeStudentPassword(newPassword: string, currentPassword?: string) {
+  await api.post<null>('/auth/student/change-password', {
+    currentPassword,
+    newPassword,
+  });
 }
 
 export async function logoutStudent() {

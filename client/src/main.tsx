@@ -5,6 +5,14 @@ import App from './app/App';
 import { ThemeProvider } from '@//hooks/use-theme';
 import { initTheme } from '@//lib/theme';
 
+if (import.meta.env.DEV) {
+  window.addEventListener('error', (event) => {
+    if (event.message?.includes('ResizeObserver loop completed with undelivered notifications.')) {
+      event.stopImmediatePropagation();
+    }
+  });
+}
+
 initTheme();
 
 const basename = window.location.pathname.startsWith('/client') ? '/client' : '/';

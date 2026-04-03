@@ -1,5 +1,5 @@
 import { Navigate, type RouteObject } from 'react-router-dom';
-import { ADMIN_ROLES } from '@//auth/auth-user';
+import { ADMIN_ROLES, ROLE_ADMIN_TI } from '@//auth/auth-user';
 
 import { GuestGuard } from './guards/GuestGuard';
 import { SessionGuard } from './guards/SessionGuard';
@@ -21,8 +21,8 @@ import ResetPasswordPage from '@/modules/auth/pages/ResetPasswordPage';
 import StudentsManagement from '@/modules/admin/pages/StudentsManagment';
 import AdminsManagement from '@/modules/admin/pages/AdminsManagement';
 import ReportsOverviewSection from '@/modules/admin/pages/MonitoringAndReports';
-import AccessLogsSection from '@/modules/admin/pages/AccessLogs';
-import AuditLogsSection from '@/modules/admin/pages/AuditLogs';
+import AccessLogs from '@/modules/admin/pages/AccessLogs';
+import AuditLogs from '@/modules/admin/pages/AuditLogs';
 import ElibroSsoConfig from '@/modules/admin/pages/ElibroSsoConfig';
 
 import Portal from '@/modules/student/pages/Portal';
@@ -63,11 +63,16 @@ export const routes: RouteObject[] = [
             children: [
               { index: true, element: <Navigate to="monitoreo-reportes" replace /> },
               { path: 'monitoreo-reportes', element: <ReportsOverviewSection /> },
-              { path: 'elibro-status', element: <ElibroSsoConfig /> },
               { path: 'estudiantes', element: <StudentsManagement /> },
-              { path: 'administradores', element: <AdminsManagement /> },
-              { path: 'logs-acceso', element: <AccessLogsSection /> },
-              { path: 'logs-auditoria', element: <AuditLogsSection /> },
+              { path: 'logs-acceso', element: <AccessLogs /> },
+              { path: 'logs-auditoria', element: <AuditLogs/> },
+              {
+                element: <RoleGuard allowedRoles={[ROLE_ADMIN_TI]} redirectTo="/403" />,
+                children: [
+                  { path: 'elibro-status', element: <ElibroSsoConfig /> },
+                  { path: 'administradores', element: <AdminsManagement /> },
+                ],
+              },
             ],
           },
         ],

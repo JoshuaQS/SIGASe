@@ -159,10 +159,10 @@ export function EnergyElibroCtaButton({
           >
             <defs>
               <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stopColor="hsl(var(--info))" />
-                <stop offset="42%" stopColor="hsl(var(--warning))" />
-                <stop offset="75%" stopColor="hsl(var(--chart-2))" />
-                <stop offset="100%" stopColor="hsl(var(--info))" />
+                <stop offset="0%" stopColor="#6ee7b7" />
+                <stop offset="42%" stopColor="#34d399" />
+                <stop offset="75%" stopColor="#10b981" />
+                <stop offset="100%" stopColor="#059669" />
               </linearGradient>
             </defs>
             <rect
@@ -201,7 +201,7 @@ export function EnergyElibroCtaButton({
 
         <span className={styles.icon}>
           {busy ? (
-            <Loader2 className="h-5 w-5 animate-spin text-primary-foreground" />
+            <Loader2 className="h-5 w-5 animate-spin text-current" />
           ) : (
             <ArrowRight className="h-5 w-5" />
           )}

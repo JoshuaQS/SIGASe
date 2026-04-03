@@ -7,8 +7,7 @@ interface GoogleLoginPlaceholderProps {
 }
 
 /** Misma altura, ancho y radio que el botón Google (login estudiante). */
-export const studentAuthFieldClass =
-  "h-11 w-full rounded-[4px] border border-input";
+
 
 export default function GoogleLoginPlaceholder({
   label = "Botón Google aquí",
@@ -20,7 +19,6 @@ export default function GoogleLoginPlaceholder({
       <div
         className={cn(
           "relative flex items-center justify-center overflow-hidden bg-card",
-          studentAuthFieldClass,
         )}
       >
         <span className="text-sm text-muted-foreground">{label}</span>

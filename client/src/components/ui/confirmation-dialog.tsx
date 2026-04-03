@@ -1,8 +1,8 @@
 'use client';
 
 import * as DialogPrimitive from '@radix-ui/react-dialog';
-import { Button } from '@/components/ui/button';
-import { cn } from '@//lib/utils';
+import { button as Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import { AlertTriangle, HelpCircle, Info, ShieldAlert, X } from 'lucide-react';
 
 interface AppConfirmDialogProps {

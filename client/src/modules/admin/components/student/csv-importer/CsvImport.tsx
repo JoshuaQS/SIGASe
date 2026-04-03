@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 type DropState = "idle" | "over" | "preview" | "error";
 
 export type CsvImportParsed = {
+  file: File;
   fileName: string;
   fileSize: number;
   headers: string[];
@@ -19,7 +20,8 @@ type CsvImportProps = {
   /** Ancho completo del contenedor (p. ej. modal); si no, max-w-lg */
   fullWidth?: boolean;
   onParsed?: (data: CsvImportParsed) => void;
-  onImport?: (data: CsvImportParsed) => void;
+  onImport?: (data: CsvImportParsed) => void | Promise<void>;
+  importing?: boolean;
 };
 
 const shellW = (fullWidth: boolean) => cn(fullWidth ? "w-full max-w-none" : "w-full max-w-lg");
@@ -82,11 +84,15 @@ export function CsvImport({
   fullWidth = false,
   onParsed,
   onImport,
+  importing = false,
 }: CsvImportProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [state, setState] = useState<DropState>("idle");
   const [errorMessage, setErrorMessage] = useState("");
   const [parsed, setParsed] = useState<CsvImportParsed | null>(null);
+  const [isImportingLocal, setIsImportingLocal] = useState(false);
+
+  const isImporting = importing || isImportingLocal;
 
   const reset = useCallback(() => {
     setState("idle");
@@ -126,6 +132,7 @@ export function CsvImport({
         const headers = matrix[0].length ? matrix[0] : [];
         const rows = matrix.length > 1 ? matrix.slice(1) : [];
         const data: CsvImportParsed = {
+          file,
           fileName: file.name,
           fileSize: file.size,
           headers,
@@ -164,6 +171,17 @@ export function CsvImport({
   const onDragLeave = () => setState("idle");
 
   const openPicker = () => inputRef.current?.click();
+
+  const handleImport = useCallback(async () => {
+    if (!parsed || !onImport || isImporting) return;
+
+    setIsImportingLocal(true);
+    try {
+      await onImport(parsed);
+    } finally {
+      setIsImportingLocal(false);
+    }
+  }, [isImporting, onImport, parsed]);
 
   if (state === "preview" && parsed) {
     const preview = parsed.rows.slice(0, previewRowCount);
@@ -242,10 +260,15 @@ export function CsvImport({
             </button>
             <button
               type="button"
-              onClick={() => onImport?.(parsed)}
+              disabled={isImporting}
+              onClick={() => {
+                void handleImport();
+              }}
               className="h-8 px-4 text-xs font-medium bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
             >
-              Importar {parsed.rows.length} registros →
+              {isImporting
+                ? "Importando..."
+                : `Importar ${parsed.rows.length} registros →`}
             </button>
           </div>
         </div>
