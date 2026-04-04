@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { CheckCircle2, Settings, Cable, Save, Loader2, AlertTriangle, Trash2 } from 'lucide-react'
-import { button as Button } from '@/components/ui/button'
+import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/input'
+import { ProtectedField } from '@/components/ui/forms/protected-field'
 import { useAppToast } from '@/components/ui/app-toast-provider'
 import { AppConfirmDialog } from '@/components/ui/confirmation-dialog'
 import { ApiClientError } from '@/lib/api/api-client'
@@ -15,7 +16,6 @@ import {
 } from '@/lib/api/elibro-config-api'
 
 const DEFAULT_AUTH_ENDPOINT = 'https://auth.elibro.net/auth/sso/'
-const MASKED_SECRET = '••••••••••••••••'
 
 type EditMode = 'view' | 'choose' | 'create' | 'edit-current'
 
@@ -519,35 +519,35 @@ export function ElibroCredentialsStaticCard({
           </div>
           <div className="space-y-1.5 md:col-span-2">
             <p className="text-xs font-medium text-muted-foreground">Auth Token</p>
-            <Input
-              type={isFormEditable ? 'password' : 'text'}
-              value={isFormEditable ? form.authToken : (selectedConfig?.hasAuthToken ? MASKED_SECRET : '')}
-              readOnly={!isFormEditable}
-              onChange={(event) => updateField('authToken', event.target.value)}
+            <ProtectedField
+              mode={isFormEditable ? 'edit' : 'display'}
+              value={isFormEditable ? form.authToken : ''}
+              onChange={(value) => updateField('authToken', value)}
               placeholder={mode === 'edit-current' ? 'Dejar vacío para conservar el valor actual' : 'Token SSO'}
-              className="font-mono"
+              readOnly={!isFormEditable}
+              label={!isFormEditable && selectedConfig?.hasAuthToken ? 'Token configurado y protegido' : undefined}
             />
           </div>
           <div className="space-y-1.5">
             <p className="text-xs font-medium text-muted-foreground">Channel ID</p>
-            <Input
-              type={isFormEditable ? 'password' : 'text'}
-              value={isFormEditable ? form.channelId : (selectedConfig?.channelIdMasked ?? '')}
-              readOnly={!isFormEditable}
-              onChange={(event) => updateField('channelId', event.target.value)}
+            <ProtectedField
+              mode={isFormEditable ? 'edit' : 'display'}
+              value={isFormEditable ? form.channelId : ''}
+              onChange={(value) => updateField('channelId', value)}
               placeholder={mode === 'edit-current' ? 'Dejar vacío para conservar el valor actual' : 'Channel ID'}
-              className="font-mono"
+              readOnly={!isFormEditable}
+              label={!isFormEditable && selectedConfig?.channelIdMasked ? 'Channel ID configurado y protegido' : undefined}
             />
           </div>
           <div className="space-y-1.5">
             <p className="text-xs font-medium text-muted-foreground">Channel Secret</p>
-            <Input
-              type={isFormEditable ? 'password' : 'text'}
-              value={isFormEditable ? form.channelSecret : (selectedConfig?.hasChannelSecret ? MASKED_SECRET : '')}
-              readOnly={!isFormEditable}
-              onChange={(event) => updateField('channelSecret', event.target.value)}
+            <ProtectedField
+              mode={isFormEditable ? 'edit' : 'display'}
+              value={isFormEditable ? form.channelSecret : ''}
+              onChange={(value) => updateField('channelSecret', value)}
               placeholder={mode === 'edit-current' ? 'Dejar vacío para conservar el valor actual' : 'Channel Secret'}
-              className="font-mono"
+              readOnly={!isFormEditable}
+              label={!isFormEditable && selectedConfig?.hasChannelSecret ? 'Channel Secret configurado y protegido' : undefined}
             />
           </div>
         </div>
