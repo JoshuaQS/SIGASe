@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Check, ChevronDown } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { getFormControlSize } from "@/components/ui/forms/form-control-styles";
 
 interface TopNFieldProps {
   value?: number;
@@ -10,17 +11,20 @@ interface TopNFieldProps {
   onChange: (value: number) => void;
 }
 
+const FIELD_SIZE: "md" = "md";
+const cfg = getFormControlSize(FIELD_SIZE);
+
 export function TopNField({ value, options, label, onChange }: TopNFieldProps) {
   const [open, setOpen] = useState(false);
 
   return (
     <div className="flex flex-col gap-1">
-      {label ? <span className="text-xs font-medium text-muted-foreground">{label}</span> : null}
+      {label ? <span className={cn("text-muted-foreground", cfg.fieldLabel)}>{label}</span> : null}
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
-          <button className="flex h-10 w-full items-center gap-2 rounded-lg border border-input bg-background px-3 text-sm">
+          <button className={cn("flex w-full items-center gap-2 rounded-lg border border-input bg-background px-3", cfg.control, cfg.text)}>
             <span className="flex-1 text-left">{value ?? options[0]}</span>
-            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+            <ChevronDown className={cn(cfg.icon, "text-muted-foreground")} />
           </button>
         </PopoverTrigger>
         <PopoverContent className="w-[150px] p-1" align="start">

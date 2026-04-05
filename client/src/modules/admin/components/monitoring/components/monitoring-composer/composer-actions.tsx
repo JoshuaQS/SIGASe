@@ -1,4 +1,9 @@
 import { Download, Eraser, Play } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { getFormControlSize } from "@/components/ui/forms/form-control-styles";
+
+const FIELD_SIZE: "md" = "md";
+const cfg = getFormControlSize(FIELD_SIZE);
 
 interface ComposerActionsProps {
   onApply: () => void;
@@ -12,25 +17,25 @@ export function ComposerActions({ onApply, onClear, onDownload }: ComposerAction
       <button
         type="button"
         onClick={onApply}
-        className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground"
+        className={cn("inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-primary-foreground", cfg.fieldLabel)}
       >
-        <Play className="h-4 w-4" />
+        <Play className={cfg.icon} />
         Aplicar filtros
       </button>
       <button
         type="button"
         onClick={onClear}
-        className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-2 text-sm font-medium"
+        className={cn("inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-2", cfg.fieldLabel)}
       >
-        <Eraser className="h-4 w-4" />
+        <Eraser className={cfg.icon} />
         Limpiar filtros
       </button>
       <button
         type="button"
         onClick={onDownload}
-        className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-2 text-sm font-medium"
+        className={cn("inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-2", cfg.fieldLabel)}
       >
-        <Download className="h-4 w-4" />
+        <Download className={cfg.icon} />
         Descargar
       </button>
     </div>

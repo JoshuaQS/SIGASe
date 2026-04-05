@@ -52,7 +52,7 @@ export function DateRangeSelector({ label, value, onChange, minDate, maxDate }: 
         }}
       >
         <PopoverTrigger asChild>
-          <button className="flex h-10 w-full items-center gap-2 rounded-lg border border-input bg-background px-3 text-sm">
+          <button className="flex h-9 w-full items-center gap-2 rounded-lg border border-input bg-background px-3 text-sm">
             <CalendarDays className="h-4 w-4 text-muted-foreground" />
             <span className={cn("truncate text-left", !committedRange && "text-muted-foreground")}>{formatRange(committedRange)}</span>
           </button>

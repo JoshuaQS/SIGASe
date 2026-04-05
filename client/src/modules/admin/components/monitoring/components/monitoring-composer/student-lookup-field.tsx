@@ -2,6 +2,11 @@ import { useEffect, useMemo, useState } from "react";
 import { Loader2, Search, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { listStudents, type StudentResponseDto } from "@/lib/api/students-api";
+import { cn } from "@/lib/utils";
+import { getFormControlSize } from "@/components/ui/forms/form-control-styles";
+
+const FIELD_SIZE: "md" = "md";
+const cfg = getFormControlSize(FIELD_SIZE);
 
 interface StudentLookupFieldProps {
   query: string;
@@ -74,12 +79,12 @@ export function StudentLookupField({ query, selectedId, label, onChange }: Stude
 
   return (
     <div className="relative flex flex-col gap-1">
-      {label ? <span className="text-xs font-medium text-muted-foreground">{label}</span> : null}
+      {label ? <span className={cfg.fieldLabel}>{label}</span> : null}
       {selectedStudent ? (
         <div className="relative">
           <Input
             readOnly
-            size="lg"
+            size={FIELD_SIZE}
             variant="protected"
             value={selectedStudent ? fullName(selectedStudent) : query}
             className="pr-12"
@@ -89,16 +94,16 @@ export function StudentLookupField({ query, selectedId, label, onChange }: Stude
             onClick={() => onChange({ query: "" })}
             className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
           >
-            <X className="h-4 w-4" />
+            <X className={cfg.icon} />
           </button>
         </div>
       ) : (
         <Input
           type="text"
           value={query}
-          size="lg"
+          size={FIELD_SIZE}
           placeholder="Buscar (nombre o matrícula)"
-          startAdornment={<Search className="h-4 w-4 text-muted-foreground" />}
+          startAdornment={<Search className={cn("text-muted-foreground", cfg.icon)} />}
           onFocus={() => setFocused(true)}
           onBlur={() => setTimeout(() => setFocused(false), 100)}
           onChange={(event) => onChange({ query: event.target.value })}
@@ -109,7 +114,7 @@ export function StudentLookupField({ query, selectedId, label, onChange }: Stude
         <div className="absolute left-0 right-0 top-full z-20 mt-1 rounded-lg border border-border bg-popover p-1 shadow-md">
           {isLoading ? (
             <div className="flex items-center gap-2 px-2 py-2 text-xs text-muted-foreground">
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              <Loader2 className={cn("animate-spin", cfg.icon)} />
               Buscando estudiantes...
             </div>
           ) : loadError ? (

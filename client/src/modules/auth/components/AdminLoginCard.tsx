@@ -76,6 +76,19 @@ export default function AdminLoginCard({
     }
   };
 
+  const handleFormSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    // Bloquea submits programáticos (autofill del password manager de Chrome,
+    // Credential Management API, "Sign in with Google" del navegador, etc.).
+    // Solo aceptamos submits originados por el botón explícito del formulario.
+    const submitter = (event.nativeEvent as SubmitEvent).submitter;
+    if (!submitter || (submitter as HTMLButtonElement).type !== 'submit') {
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
+    void handleSubmit(onAdminLogin)(event);
+  };
+
   const fillSeedUser = useCallback((email: string, pass: string) => {
     setValue('email', email, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
     setValue('password', pass, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
@@ -88,7 +101,7 @@ export default function AdminLoginCard({
     <div className="flex flex-col gap-8 transition-all">
       <Card className="overflow-visible rounded-2xl bg-card shadow-lg">
         <CardContent className="p-8 sm:p-10">
-          <form className="flex flex-col gap-8" onSubmit={handleSubmit(onAdminLogin)}>
+          <form className="flex flex-col gap-8" onSubmit={handleFormSubmit}>
             <div className="flex flex-col items-center gap-6">
               <AuthBrand />
 

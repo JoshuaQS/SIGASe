@@ -6,6 +6,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { AccessStatus } from "./composer.types";
+import { getFormControlSize } from "@/components/ui/forms/form-control-styles";
+
+const FIELD_SIZE: "md" = "md";
+const cfg = getFormControlSize(FIELD_SIZE);
 
 interface AccessStatusFieldProps {
   value?: AccessStatus;
@@ -22,12 +26,12 @@ const STATUS_OPTIONS: Array<{ value: AccessStatus; label: string }> = [
 export function AccessStatusField({ value, label, onChange }: AccessStatusFieldProps) {
   return (
     <div className="flex flex-col gap-1">
-      {label ? <span className="text-xs font-medium text-muted-foreground">{label}</span> : null}
+      {label ? <span className={cfg.fieldLabel}>{label}</span> : null}
       <Select
         value={value ?? ""}
         onValueChange={(next) => onChange(next as AccessStatus)}
       >
-        <SelectTrigger className="w-full" size="lg">
+        <SelectTrigger className="w-full" size={FIELD_SIZE}>
           <SelectValue placeholder="Selecciona una opción" />
         </SelectTrigger>
         <SelectContent>

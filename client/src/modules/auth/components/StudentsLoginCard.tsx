@@ -40,6 +40,7 @@ type GoogleIdentity = {
         },
       ) => void;
       prompt: () => void;
+      cancel: () => void;
     };
   };
 };
@@ -137,6 +138,7 @@ export default function StudentsLoginCard({
   const [googleError, setGoogleError] = useState<string | null>(null);
   const [isGoogleIdentityReady, setIsGoogleIdentityReady] = useState(false);
   const [isGoogleInteractionBlocked, setIsGoogleInteractionBlocked] = useState(false);
+  const [isGoogleButtonRendered, setIsGoogleButtonRendered] = useState(false);
   const googleButtonRef = useRef<HTMLDivElement | null>(null);
   const googleCredentialHandlerRef = useRef<(idToken: string) => void>(() => undefined);
 
@@ -181,6 +183,20 @@ export default function StudentsLoginCard({
         description: message,
       });
     }
+  };
+
+  const handleFormSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    // Bloquea submits programáticos (autofill del password manager de Chrome,
+    // Credential Management API, "Sign in with Google" del navegador, eventos
+    // colaterales del botón hijo de Google Identity, etc.). Solo aceptamos
+    // submits originados por el botón de submit explícito.
+    const submitter = (event.nativeEvent as SubmitEvent).submitter;
+    if (!submitter || (submitter as HTMLButtonElement).type !== 'submit') {
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
+    void handleSubmit(onPasswordLogin)(event);
   };
 
   const handleGoogleCredential = useCallback(
@@ -262,6 +278,13 @@ export default function StudentsLoginCard({
     return () => {
       cancelled = true;
       setGoogleCredentialDispatcher(null);
+      // Cancela cualquier diálogo One Tap / overlay que Google haya dejado
+      // vivo para que no termine disparando submits colaterales en otra ruta.
+      try {
+        window.google?.accounts?.id?.cancel?.();
+      } catch {
+        // noop
+      }
     };
   }, [googleClientId]);
 
@@ -287,6 +310,13 @@ export default function StudentsLoginCard({
         shape: 'rectangular',
         width: targetWidth,
         logo_alignment: 'left',
+      });
+
+      // Marca el botón como renderizado en el siguiente frame para evitar clicks
+      // prematuros (antes de que el iframe/div[role=button] de Google exista).
+      window.requestAnimationFrame(() => {
+        if (cancelled) return;
+        setIsGoogleButtonRendered(true);
       });
     };
 
@@ -327,6 +357,7 @@ export default function StudentsLoginCard({
         window.cancelAnimationFrame(frameId);
       }
       resizeObserver?.disconnect();
+      setIsGoogleButtonRendered(false);
     };
   }, [googleClientId, isGoogleIdentityReady]);
 
@@ -339,42 +370,42 @@ export default function StudentsLoginCard({
     return false;
   }, []);
 
-  const handleGoogleSignInClick = useCallback(() => {
-    if (isBusy || !googleClientId || !isGoogleIdentityReady || isGoogleInteractionBlocked) return;
+  const handleGoogleSignInClick = useCallback(
+    (event: React.MouseEvent<HTMLButtonElement>) => {
+      // Garantiza que este click nunca pueda llegar al submit del <form> padre.
+      event.preventDefault();
+      event.stopPropagation();
 
-    setGoogleError(null);
-    if (triggerGoogleSignIn()) return;
-
-    let attempts = 0;
-    const maxAttempts = 20;
-    const retryDelayMs = 200;
-
-    const retryTrigger = () => {
-      attempts += 1;
-
-      if (triggerGoogleSignIn()) return;
-
-      if (attempts < maxAttempts) {
-        window.setTimeout(retryTrigger, retryDelayMs);
+      if (
+        isBusy ||
+        !googleClientId ||
+        !isGoogleIdentityReady ||
+        isGoogleInteractionBlocked ||
+        !isGoogleButtonRendered
+      ) {
         return;
       }
 
-      // Final fallback: try Google One Tap prompt if available.
-      if (window.google?.accounts?.id?.prompt) {
-        window.google.accounts.id.prompt();
+      setGoogleError(null);
+      if (!triggerGoogleSignIn()) {
+        setGoogleError('No se pudo inicializar el botón de Google. Intenta nuevamente.');
       }
-
-      setGoogleError('No se pudo inicializar el botón de Google. Intenta nuevamente.');
-    };
-
-    window.setTimeout(retryTrigger, retryDelayMs);
-  }, [googleClientId, isBusy, isGoogleIdentityReady, isGoogleInteractionBlocked, triggerGoogleSignIn]);
+    },
+    [
+      googleClientId,
+      isBusy,
+      isGoogleButtonRendered,
+      isGoogleIdentityReady,
+      isGoogleInteractionBlocked,
+      triggerGoogleSignIn,
+    ],
+  );
 
   return (
     <div className="flex flex-col gap-8 transition-all">
       <Card className="overflow-visible rounded-2xl bg-card shadow-2xl ">
         <CardContent className="p-8 sm:p-10">
-          <form className="flex flex-col gap-8" onSubmit={handleSubmit(onPasswordLogin)}>
+          <form className="flex flex-col gap-8" onSubmit={handleFormSubmit}>
             <div className="flex flex-col items-center gap-6">
               <AuthBrand />
 
@@ -448,7 +479,13 @@ export default function StudentsLoginCard({
                     type="button"
                     size="lg"
                     variant="outline"
-                    disabled={isBusy || !googleClientId || !isGoogleIdentityReady || isGoogleInteractionBlocked}
+                    disabled={
+                      isBusy ||
+                      !googleClientId ||
+                      !isGoogleIdentityReady ||
+                      isGoogleInteractionBlocked ||
+                      !isGoogleButtonRendered
+                    }
                     onClick={handleGoogleSignInClick}
                     className="w-full"
                     leftIcon={
@@ -483,7 +520,7 @@ export default function StudentsLoginCard({
                   >
                     {isGoogleSubmitting
                       ? 'Validando con Google...'
-                      : isGoogleInteractionBlocked
+                      : isGoogleInteractionBlocked || !isGoogleButtonRendered
                         ? 'Preparando Google...'
                         : 'Continuar con Google'}
                   </Button>

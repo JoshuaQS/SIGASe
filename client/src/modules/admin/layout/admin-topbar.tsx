@@ -29,7 +29,6 @@ const navItems: NavItem[] = [
   { id: 'monitoreo', label: 'Monitoreo', icon: BarChart2, path: '/admin/monitoreo-reportes' },
   { id: 'elibro', label: 'Configuración eLibro', icon: Activity, path: '/admin/elibro-status', roles: [ROLE_ADMIN_TI] },
   { id: 'estudiantes', label: 'Estudiantes', icon: GraduationCap, path: '/admin/estudiantes' },
-  { id: 'showcase-botones', label: 'Showcase Botones', icon: Paintbrush, path: '/admin/showcase-botones' },
   { id: 'administradores', label: 'Administradores', icon: Users, path: '/admin/administradores', roles: [ROLE_ADMIN_TI] },
   { id: 'logs-acceso', label: 'Logs de Acceso', icon: FileText, path: '/admin/logs-acceso' },
   { id: 'logs-auditoria', label: 'Logs de Auditoría', icon: Shield, path: '/admin/logs-auditoria' },

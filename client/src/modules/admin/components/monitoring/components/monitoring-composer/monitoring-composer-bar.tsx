@@ -16,6 +16,8 @@ import { DateRangeField } from "./date-range-field";
 import { TopNField } from "./top-n-field";
 import { TOP_N_OPTIONS } from "./composer.config";
 import { DEFAULT_COMPOSER_DRAFT_STATE, type ComposerDraftState } from "./composer.types";
+import { getFormControlSize } from "@/components/ui/forms/form-control-styles";
+import { cn } from "@/lib/utils";
 interface MonitoringComposerBarProps {
   value: ComposerDraftState;
   onChange: (next: ComposerDraftState) => void;
@@ -26,6 +28,10 @@ interface MonitoringComposerBarProps {
 const activeChipClass =
   "inline-flex items-center gap-1 rounded-full border border-border bg-secondary/50 px-2.5 py-1 text-xs font-medium";
 const quickFilterChipClass = `${activeChipClass} cursor-pointer text-foreground transition-colors hover:bg-secondary/70`;
+
+const FIELD_SIZE: "md" = "md";
+const FIELD_WIDTH = "w-[240px]";
+const cfg = getFormControlSize(FIELD_SIZE);
 
 export function MonitoringComposerBar({ value, onChange, minDate, topNOptions = TOP_N_OPTIONS }: MonitoringComposerBarProps) {
   const updateState = (patch: Partial<ComposerDraftState>) => {
@@ -47,10 +53,6 @@ export function MonitoringComposerBar({ value, onChange, minDate, topNOptions = 
     onChange({ ...DEFAULT_COMPOSER_DRAFT_STATE, student: { query: "" } });
   };
 
-  const removeType = () => {
-    resetAll();
-  };
-
   const removeMode = () => {
     onChange({
       ...value,
@@ -60,6 +62,8 @@ export function MonitoringComposerBar({ value, onChange, minDate, topNOptions = 
       status: undefined,
       dateRange: undefined,
       student: { query: "" },
+      topEnabled: false,
+      topN: undefined,
       didFilter: false,
     });
   };
@@ -150,9 +154,9 @@ export function MonitoringComposerBar({ value, onChange, minDate, topNOptions = 
     <div className="space-y-3">
       <div className="flex flex-wrap items-end gap-2">
         {!hasType ? (
-          <div className="w-[240px] space-y-1">
-          <span className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground">
-            <ListFilter className="h-3.5 w-3.5" />
+          <div className={cn(FIELD_WIDTH, "space-y-1")}>
+          <span className={cn("inline-flex items-center gap-1 text-muted-foreground", cfg.fieldLabel)}>
+            <ListFilter className={cfg.icon} />
             Tipo de filtrado:
           </span>
             <Select
@@ -165,6 +169,8 @@ export function MonitoringComposerBar({ value, onChange, minDate, topNOptions = 
                     studentMode: undefined,
                     careers: [],
                     status: undefined,
+                    topEnabled: false,
+                    topN: undefined,
                   });
                   return;
                 }
@@ -176,11 +182,13 @@ export function MonitoringComposerBar({ value, onChange, minDate, topNOptions = 
                     student: { query: "" },
                     careers: [],
                     status: undefined,
+                    topEnabled: false,
+                    topN: undefined,
                   });
                 }
               }}
             >
-              <SelectTrigger className="w-full" size="md">
+              <SelectTrigger className="w-full" size={FIELD_SIZE}>
                 <SelectValue placeholder="Selecciona una opción" />
               </SelectTrigger>
               <SelectContent>
@@ -193,9 +201,9 @@ export function MonitoringComposerBar({ value, onChange, minDate, topNOptions = 
             </Select>
           </div>
         ) : value.type === "students" && !hasMode ? (
-          <div className="w-[240px] space-y-1">
-            <span className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground">
-              <Users className="h-3.5 w-3.5" />
+          <div className={cn(FIELD_WIDTH, "space-y-1")}>
+            <span className={cn("inline-flex items-center gap-1 text-muted-foreground", cfg.fieldLabel)}>
+              <Users className={cfg.icon} />
               Modo:
             </span>
             <Select
@@ -210,7 +218,7 @@ export function MonitoringComposerBar({ value, onChange, minDate, topNOptions = 
                 }
               }}
             >
-              <SelectTrigger className="w-full" size="md">
+              <SelectTrigger className="w-full" size={FIELD_SIZE}>
                 <SelectValue placeholder="Selecciona una opción" />
               </SelectTrigger>
               <SelectContent>
@@ -225,8 +233,8 @@ export function MonitoringComposerBar({ value, onChange, minDate, topNOptions = 
         ) : (
           <>
             {value.type === "students" && value.studentMode === "individual" ? (
-              <div className="w-[240px] space-y-1">
-                <p className="text-xs font-medium text-muted-foreground">Buscar</p>
+              <div className={cn(FIELD_WIDTH, "space-y-1")}>
+                <p className={cn("text-muted-foreground", cfg.fieldLabel)}>Buscar</p>
                 <StudentLookupField
                   query={value.student?.query ?? ""}
                   selectedId={value.student?.selectedId}
@@ -238,28 +246,35 @@ export function MonitoringComposerBar({ value, onChange, minDate, topNOptions = 
             {value.type === "careers" ? (
               <CareerMultiComboboxField
                 values={value.careers ?? []}
-                onChange={(careers) => updateState({ careers })}
+                onChange={(careers) => {
+                  const nextShowRanking =
+                    value.type === "careers" && careers.length >= 2;
+                  updateState({
+                    careers,
+                    ...(!nextShowRanking && { topEnabled: false, topN: undefined }),
+                  });
+                }}
               />
             ) : null}
 
-            <div className="w-[180px] space-y-1">
-              <p className="text-xs font-medium text-muted-foreground">Accesos</p>
+            <div className={cn(FIELD_WIDTH, "space-y-1")}>
+              <p className={cn("text-muted-foreground", cfg.fieldLabel)}>Accesos</p>
               <AccessStatusField value={value.status} onChange={(status) => updateState({ status })} />
             </div>
 
-            <div className="w-[240px] space-y-1">
-              <p className="text-xs font-medium text-muted-foreground">Rango de busqueda</p>
+            <div className={cn(FIELD_WIDTH, "space-y-1")}>
+              <p className={cn("text-muted-foreground", cfg.fieldLabel)}>Rango de busqueda</p>
               <DateRangeField value={value.dateRange} minDate={minDate} onChange={(dateRange) => updateState({ dateRange })} />
             </div>
 
             {showRankingControls ? (
               <>
-                <div className="w-[210px] space-y-1">
-                  <p className="text-xs font-medium text-muted-foreground">Orden</p>
+                <div className={cn(FIELD_WIDTH, "space-y-1")}>
+                  <p className={cn("text-muted-foreground", cfg.fieldLabel)}>Orden</p>
                   <Button
                     type="button"
                     variant="outline"
-                    size="md"
+                    size={FIELD_SIZE}
                     className="w-full justify-between rounded-lg"
                     onClick={() =>
                       updateState({
@@ -268,12 +283,12 @@ export function MonitoringComposerBar({ value, onChange, minDate, topNOptions = 
                     }
                   >
                     {value.sortDirection === "desc" ? "Mayor a menor" : "Menor a mayor"}
-                    <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
+                    <ArrowUpDown className={cfg.icon} />
                   </Button>
                 </div>
                 <div className="flex items-end gap-2">
-                  <div className="w-[108px] space-y-1">
-                    <p className="text-xs font-medium text-muted-foreground">Ranking</p>
+                  <div className={cn(FIELD_WIDTH, "space-y-1")}>
+                    <p className={cn("text-muted-foreground", cfg.fieldLabel)}>Ranking</p>
                     <button
                       type="button"
                       role="switch"
@@ -285,7 +300,7 @@ export function MonitoringComposerBar({ value, onChange, minDate, topNOptions = 
                           topN: nextEnabled ? (value.topN ?? safeTopOptions[0]) : undefined,
                         });
                       }}
-                      className="relative inline-grid h-10 w-24 grid-cols-[1fr_1fr] items-center rounded-md border border-input bg-background px-0.5 text-xs transition-colors hover:bg-accent/40"
+                      className="relative inline-grid h-10 w-full grid-cols-[1fr_1fr] items-center rounded-md border border-input bg-background px-0.5 text-xs transition-colors hover:bg-accent/40"
                     >
                       <span
                         className={`relative z-10 flex items-center justify-center transition-colors ${
@@ -310,7 +325,7 @@ export function MonitoringComposerBar({ value, onChange, minDate, topNOptions = 
                     </button>
                   </div>
                   {value.topEnabled ? (
-                    <div className="w-[120px] space-y-1">
+                    <div className={cn(FIELD_WIDTH, "space-y-1")}>
                       <TopNField
                         label="Top"
                         value={value.topN}
@@ -326,7 +341,7 @@ export function MonitoringComposerBar({ value, onChange, minDate, topNOptions = 
         )}
 
       </div>
-      {(hasType || hasMode) ? (
+      {hasType ? (
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             <span className="text-xs font-medium text-muted-foreground">Filtros activos:</span>
@@ -346,7 +361,7 @@ export function MonitoringComposerBar({ value, onChange, minDate, topNOptions = 
             {hasType ? (
               <span className={activeChipClass}>
                 {value.type === "careers" ? "Carrera(s)" : "Estudiante(s)"}
-                <button type="button" onClick={removeType} className="text-muted-foreground hover:text-foreground">
+                <button type="button" onClick={resetAll} className="text-muted-foreground hover:text-foreground">
                   <X className="h-3.5 w-3.5" />
                 </button>
               </span>

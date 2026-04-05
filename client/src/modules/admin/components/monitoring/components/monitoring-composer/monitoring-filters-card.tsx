@@ -5,6 +5,11 @@ import { Button } from "@/components/ui/Button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { MonitoringComposerBar } from "./monitoring-composer-bar";
 import { DEFAULT_COMPOSER_DRAFT_STATE, type ComposerDraftState } from "./composer.types";
+import { cn } from "@/lib/utils";
+import { getFormControlSize } from "@/components/ui/forms/form-control-styles";
+
+const FIELD_SIZE: "md" = "md";
+const cfg = getFormControlSize(FIELD_SIZE);
 
 interface MonitoringFiltersCardProps {
   minDate?: Date;
@@ -96,10 +101,10 @@ export function MonitoringFiltersCard({
                   <Button
                     disabled={isFiltering || disableExport}
                     variant="outline"
-                    size="md"
-                    className="h-9 w-[140px] justify-center gap-2 rounded-lg"
+                    size={FIELD_SIZE}
+                    className={cn("h-9 w-[140px] justify-center gap-2 rounded-lg", cfg.control)}
                   >
-                    <Download className="h-4 w-4" />
+                    <Download className={cfg.icon} />
                     {exportLabel}
                   </Button>
                 </PopoverTrigger>
@@ -135,11 +140,11 @@ export function MonitoringFiltersCard({
             ) : null}
           <Button
             disabled={!canFilter || isFiltering}
-            size="md"
-            className="h-9 w-[120px] justify-center gap-2 rounded-lg"
+            size={FIELD_SIZE}
+            className={cn("h-9 w-[120px] justify-center gap-2 rounded-lg", cfg.control)}
             onClick={handleFilter}
           >
-            <Filter className="h-4 w-4" />
+            <Filter className={cfg.icon} />
             Filtrar
           </Button>
           </div>

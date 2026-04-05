@@ -44,7 +44,7 @@ export function ProtectedField({
     return (
       <div
         className={cn(
-          'relative flex items-center gap-3',
+          'relative flex items-center',
           cfg.control,
           cfg.text,
           cfg.px,
@@ -56,24 +56,30 @@ export function ProtectedField({
           className={cn(
             'absolute -top-2 left-2 px-1 py-0 leading-none',
             'bg-amber-50 dark:bg-amber-500/10 border border-amber-400 rounded-sm',
-            'text-amber-600 dark:text-amber-400 font-medium text-[8px]'
+            'text-amber-600 dark:text-amber-400 font-medium',
+            cfg.fieldLabel
           )}
         >
           Protegido
         </span>
 
-        <div className="flex items-center gap-4 flex-1">
-          <div className="flex gap-1.5 items-center">
-            {Array.from({ length: 16 }).map((_, i) => (
-              <div
-                key={i}
-                className="w-1.5 h-1.5 rounded-full bg-gray-900 dark:bg-gray-300"
-              />
-              
-            ))}
+        <div className={cn('flex items-center', cfg.addonGap)}>
+          <div className={cn('flex items-center flex-1', cfg.addonGap)}>
+            <div className={cn('flex items-center', cfg.addonGap)}>
+              {Array.from({ length: 16 }).map((_, i) => (
+                <div
+                  key={i}
+                  className={cn(
+                    'rounded-full bg-gray-900 dark:bg-gray-300',
+                    size === 'xs' ? 'w-1 h-1' : size === 'sm' ? 'w-1.5 h-1.5' : 'w-2 h-2'
+                  )}
+                />
+                
+              ))}
+            </div>
           </div>
+          <ShieldCheck className={cn(cfg.icon, 'text-amber-500/95 flex-shrink-0', cfg.adornmentInsetEnd)} />
         </div>
-        <ShieldCheck className={cn(cfg.icon, 'text-amber-500/95 flex-shrink-0 ml-[15px]')} />
       </div>
     )
   }

@@ -11,6 +11,11 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { listActiveCareers, type CareerDto } from "@/lib/api/careers-api";
+import { getFormControlSize } from "@/components/ui/forms/form-control-styles";
+import { cn } from "@/lib/utils";
+
+const FIELD_SIZE: "md" = "md";
+const cfg = getFormControlSize(FIELD_SIZE);
 
 interface CareerMultiComboboxFieldProps {
   values: string[];
@@ -90,18 +95,18 @@ export function CareerMultiComboboxField({ values, onChange }: CareerMultiCombob
   };
 
   return (
-    <div className="w-[300px] space-y-1">
-      <p className="text-xs font-medium text-muted-foreground">Carrera(s)</p>
+    <div className="w-[240px] space-y-1">
+      <p className={cfg.fieldLabel}>Carrera(s)</p>
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button
             type="button"
             variant="outline"
-            size="md"
-            className="w-full justify-between rounded-lg"
+            size={FIELD_SIZE}
+            className={cn("w-full justify-between rounded-lg", cfg.control)}
           >
-            <span className="truncate text-left">{summaryLabel}</span>
-            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+            <span className={cn("truncate text-left", cfg.fieldLabel)}>{summaryLabel}</span>
+            <ChevronDown className={cn("text-muted-foreground", cfg.icon)} />
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-[320px] p-0" align="start" sideOffset={8}>
@@ -126,12 +131,12 @@ export function CareerMultiComboboxField({ values, onChange }: CareerMultiCombob
                     selectAll();
                   }}
                 >
-                  <Sparkles className="h-4 w-4" />
+                  <Sparkles className={cfg.icon} />
                   {allSelected ? "Deseleccionar todo" : "Seleccionar todo"}
                 </CommandItem>
                 {isLoading ? (
                   <CommandItem disabled className="text-muted-foreground">
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <Loader2 className={cn("animate-spin", cfg.icon)} />
                     Cargando carreras...
                   </CommandItem>
                 ) : null}
@@ -154,7 +159,7 @@ export function CareerMultiComboboxField({ values, onChange }: CareerMultiCombob
                             {career.code}
                           </span>
                           <span className="truncate text-muted-foreground">{career.name}</span>
-                          {checked ? <Check className="ml-auto h-4 w-4 text-muted-foreground" /> : null}
+                          {checked ? <Check className={cn("ml-auto text-muted-foreground", cfg.icon)} /> : null}
                         </CommandItem>
                       );
                     })
