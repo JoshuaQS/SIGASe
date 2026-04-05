@@ -1,5 +1,7 @@
 package mx.edu.utez.server.modules.dashboard.dto;
 
+import java.time.Instant;
+
 public record DashboardSummaryResponse(
         long totalStudents,
         long activeStudents,
@@ -8,6 +10,9 @@ public record DashboardSummaryResponse(
         long failedAccessesInRange,
         double successRate,
         long uniqueStudentsWithSuccessfulAccess,
-        String currentElibroConfigStatus
+        String currentElibroConfigStatus,
+        Instant lastAccessAt,
+        Instant lastSuccessfulAccessAt,
+        Instant lastFailedAccessAt
 ) {
 }

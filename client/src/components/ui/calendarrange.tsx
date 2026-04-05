@@ -1,8 +1,8 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { type DateRange } from 'react-day-picker'
-import { Calendar } from '@/components/ui/calendar'
+import { Calendar, type CalendarProps } from '@/components/ui/calendar'
 import { cn } from '@/lib/utils'
 
 export interface CalendarRangeProps {
@@ -12,6 +12,7 @@ export interface CalendarRangeProps {
   maxDate?: Date
   numberOfMonths?: number
   className?: string
+  classNames?: CalendarProps['classNames']
 }
 
 const CalendarRange = ({
@@ -21,28 +22,25 @@ const CalendarRange = ({
   maxDate,
   numberOfMonths = 2,
   className,
+  classNames,
 }: CalendarRangeProps) => {
-  const [internalRange, setInternalRange] = useState<DateRange | undefined>(value)
-  const isControlled = value !== undefined
-  const selected = isControlled ? value : internalRange
-
   const defaultMonth = useMemo(
-    () => selected?.from ?? maxDate ?? new Date(),
-    [selected?.from, maxDate],
+    () => value?.from ?? maxDate ?? new Date(),
+    [value?.from, maxDate],
   )
 
   return (
     <Calendar
       mode='range'
       defaultMonth={defaultMonth}
-      selected={selected}
+      selected={value}
       onSelect={(next) => {
-        if (!isControlled) setInternalRange(next)
         onChange?.(next)
       }}
       numberOfMonths={numberOfMonths}
       disabled={minDate || maxDate ? { before: minDate, after: maxDate } : undefined}
       className={cn('rounded-lg border', className)}
+      classNames={classNames}
     />
   )
 }

@@ -1,15 +1,19 @@
-/*'use client';
+'use client';
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { ArrowRight, Loader2, ShieldCheck } from 'lucide-react';
 import { Card } from '@/components/ui/card';
-
+import { cn } from '@/lib/utils';
 import './elibro-cta-card.css';
 
-type EnergyElibroCtaButtonProps = {
+type ElibroCtaCardProps = {
   onTrigger: () => Promise<void> | void;
   busy?: boolean;
   disabled?: boolean;
+  statusMessage: string;
+  errorMessage?: string | null;
+  onRetry?: () => Promise<void> | void;
+  className?: string;
 };
 
 type ButtonPhase = 'idle' | 'exploding';
@@ -40,6 +44,12 @@ const SPARKS: SparkSpec[] = [
 
 const EXPLOSION_MS = 700;
 const REDUCED_MOTION_MS = 120;
+
+type EnergyElibroCtaButtonProps = {
+  onTrigger: () => Promise<void> | void;
+  busy?: boolean;
+  disabled?: boolean;
+};
 
 function EnergyElibroCtaButton({ onTrigger, busy = false, disabled = false }: EnergyElibroCtaButtonProps) {
   const [phase, setPhase] = useState<ButtonPhase>('idle');
@@ -213,26 +223,17 @@ function EnergyElibroCtaButton({ onTrigger, busy = false, disabled = false }: En
   );
 }
 
-export function ElibroCtaCard{
-  defaultUrl,
-  accessToken,
-  onAfterAttempt,
-
-}:  {
-  const { handleEnterElibro, ssoStatus } = useSsoAccess({
-    accessToken,
-    destinationUrl: defaultUrl,
-    onAfterAttempt,
-  });
-
-  const isOpeningElibro = ssoStatus === 'loading';
-  const isSummaryLoading = ssoStatus === 'loading';
-  const isAccountActive = accessState === 'ACTIVO';
-  const ctaDisabled = !isAccountActive || !accessToken || isOpeningElibro;
-  const summaryError = ssoStatus === 'error';
-
+export default function ElibroCtaCard({
+  onTrigger,
+  busy = false,
+  disabled = false,
+  statusMessage,
+  errorMessage,
+  onRetry,
+  className,
+}: ElibroCtaCardProps) {
   return (
-    <section id="section-elibro" className="elibro-cta-card mb-10">
+    <section id="section-elibro" className={cn('elibro-cta-card', className)}>
       <Card className="relative flex flex-col items-center overflow-hidden rounded-[calc(2rem-1px)] border-border/50 bg-card/40 px-6 py-5 text-center shadow-sm backdrop-blur-2xl lg:px-8 lg:py-6">
         <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/60 to-transparent" />
 
@@ -259,43 +260,24 @@ export function ElibroCtaCard{
         </p>
 
         <div className="mt-4 w-full sm:max-w-sm">
-          <EnergyElibroCtaButton
-            onTrigger={handleEnterElibro}
-            busy={isOpeningElibro}
-            disabled={ctaDisabled}
-          />
+          <EnergyElibroCtaButton onTrigger={onTrigger} busy={busy} disabled={disabled} />
         </div>
 
         <div className="mt-3 flex items-center text-sm font-medium text-muted-foreground">
           <ShieldCheck className="mr-2 h-4 w-4" />
-          {isSummaryLoading
-            ? 'Validando estado de cuenta...'
-            : isAccountActive
-            ? 'Autenticación segura vía SSO institucional'
-            : 'Acceso temporalmente restringido'}
+          {statusMessage}
         </div>
 
-        {summaryError && (
+        {errorMessage && onRetry ? (
           <button
             type="button"
-            onClick={() => void onAfterAttempt?.()}
+            onClick={() => void onRetry()}
             className="mt-4 rounded-xl border border-warning/40 bg-warning/10 px-3 py-1.5 text-xs font-medium text-warning transition hover:bg-warning/15"
           >
             Reintentar carga de resumen
           </button>
-        )}
+        ) : null}
       </Card>
     </section>
   );
 }
-*/
-const elibroctacard = () => {
-  return (
-    <div className="p-4 border rounded">
-      <h2 className="text-lg font-bold mb-2">eLibro CTA Card</h2>
-      <p>This is a placeholder for the eLibro CTA Card component.</p>
-    </div>
-  );
-};
-
-export default elibroctacard;

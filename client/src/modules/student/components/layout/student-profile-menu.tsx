@@ -18,7 +18,7 @@ type MenuItem = {
 };
 
 const PROFILE_ITEMS: MenuItem[] = [
-  { label: 'Mi perfil', icon: CircleUserRound, to: '/admin/monitoreo-reportes' },
+  { label: 'Mi perfil', icon: CircleUserRound, to: '/student/portal' },
 ];
 
 const itemClass =
@@ -28,8 +28,8 @@ const StudentProfileMenu = () => {
   const user = useAuthUser();
   const navigate = useNavigate();
   const { showToast } = useAppToast();
-  const displayName = user?.displayName || 'Administrador UTEZ';
-  const email = user?.email || 'admin@utez.edu.mx';
+  const displayName = user?.displayName || 'Estudiante UTEZ';
+  const email = user?.email || 'estudiante@utez.edu.mx';
   const initials = displayName
     .split(' ')
     .filter(Boolean)
@@ -43,7 +43,7 @@ const StudentProfileMenu = () => {
       showToast({
         severity: 'success',
         title: 'Sesión cerrada',
-        description: 'Tu sesión administrativa ha finalizado.',
+        description: 'Tu sesión de estudiante ha finalizado.',
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'No se pudo cerrar la sesión.';
@@ -53,7 +53,7 @@ const StudentProfileMenu = () => {
         description: message,
       });
     } finally {
-      navigate('/login?mode=admin', { replace: true, state: { mode: 'admin' } });
+      navigate('/login?mode=student', { replace: true, state: { mode: 'student' } });
     }
   };
 

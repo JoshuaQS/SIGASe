@@ -1,9 +1,9 @@
 import { useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 import { authSession } from '@/auth/auth-session-store';
 import { ApiClientError } from '@/lib/api/api-client';
-import { changeStudentPassword } from '@/lib/api/auth-api';
+import { changeStudentPassword, confirmStudentPasswordReset } from '@/lib/api/auth-api';
 import { useAppToast } from '@/components/ui/app-toast-provider';
 import { useAuthUser } from '@/hooks/use-auth-user';
 import { StudentForcePasswordChangeView } from '@/modules/student/components/ForcePasswordChangeForm';
@@ -22,16 +22,22 @@ function resolveErrorMessage(error: unknown): string {
 
 export default function ForcePasswordChangePage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const user = useAuthUser();
   const { showToast } = useAppToast();
+  const token = new URLSearchParams(location.search).get('token');
+  const isOnboardingFromEmail = Boolean(token && !user);
 
   const handleSubmit = useCallback(
     async ({ newPassword }: { newPassword: string }) => {
       try {
-        await changeStudentPassword(newPassword);
-
-        // The backend rotates tokenVersion after password changes, so current token becomes stale.
-        authSession.clearSession();
+        if (isOnboardingFromEmail && token) {
+          await confirmStudentPasswordReset(token, newPassword);
+        } else {
+          await changeStudentPassword(newPassword);
+          // The backend rotates tokenVersion after password changes, so current token becomes stale.
+          authSession.clearSession();
+        }
 
         showToast({
           severity: 'success',
@@ -53,7 +59,7 @@ export default function ForcePasswordChangePage() {
         return { success: false, message };
       }
     },
-    [showToast],
+    [isOnboardingFromEmail, showToast, token],
   );
 
   const handleCompleted = useCallback(() => {
@@ -61,9 +67,11 @@ export default function ForcePasswordChangePage() {
   }, [navigate]);
 
   const handleLogout = useCallback(async () => {
-    await authSession.logout();
+    if (!isOnboardingFromEmail) {
+      await authSession.logout();
+    }
     navigate('/login?mode=student', { replace: true, state: { mode: 'student' } });
-  }, [navigate]);
+  }, [isOnboardingFromEmail, navigate]);
 
   return (
     <StudentForcePasswordChangeView

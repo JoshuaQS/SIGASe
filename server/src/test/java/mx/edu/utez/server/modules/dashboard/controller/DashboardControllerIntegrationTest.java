@@ -270,9 +270,20 @@ class DashboardControllerIntegrationTest {
         log.setCorrelationId("corr-" + result.name() + "-" + occurredAt);
         log.setIpAddress("127.0.0.1");
         log.setUserAgent("JUnit");
-        log.setProviderName(result == AccessResult.SUCCESS ? "ELIBRO" : null);
+        log.setProviderName(isElibroAccessResult(result) ? "ELIBRO" : null);
         log.setOccurredAt(Instant.parse(occurredAt));
         accessLogRepository.save(log);
+    }
+
+    private boolean isElibroAccessResult(AccessResult result) {
+        return switch (result) {
+            case SUCCESS,
+                 FAILED_STUDENT_INACTIVE,
+                 FAILED_NEXT_URL_VALIDATION,
+                 FAILED_ELIBRO_CONFIG,
+                 FAILED_ELIBRO_API -> true;
+            default -> false;
+        };
     }
 
     private RequestPostProcessor auth(String principal, String role) {

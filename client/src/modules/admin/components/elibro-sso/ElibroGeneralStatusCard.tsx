@@ -63,7 +63,7 @@ export function ElibroGeneralStatusCard({
           <div className="h-full min-w-0">
             <div ref={chartContainerRef} className="relative h-[220px] min-h-[200px] w-full min-w-0">
               {isChartReady ? (
-                <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={200}>
+                <ResponsiveContainer width="100%" height={220} minWidth={1} minHeight={200} aspect={undefined}>
                   <RadialBarChart cx="50%" cy="50%" innerRadius="70%" outerRadius="92%" startAngle={90} endAngle={-270} data={uptimeChartData}>
                     <RadialBar dataKey="value" cornerRadius={8} />
                   </RadialBarChart>

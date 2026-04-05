@@ -40,12 +40,25 @@ public class ReportDataCollector {
             AccessResult resultFilter,
             UUID careerId, String careerCode, StudentStatus studentStatus
     ) {
-        String effectiveCareerCode = careerId != null ? null : careerCode;
-        long successful = dashboardMetrics.countSuccessfulAccesses(dateFrom, dateTo, careerId, effectiveCareerCode, studentStatus);
-        long failed = dashboardMetrics.countFailedAccesses(dateFrom, dateTo, careerId, effectiveCareerCode, studentStatus);
+        String accessStatus = resultFilter == null
+                ? "ALL"
+                : resultFilter == AccessResult.SUCCESS ? "SUCCESS" : "FAILED";
+        String normalizedCareerCode = careerCode == null ? null : careerCode.trim().toUpperCase();
+        List<String> careerCodes = (careerId == null && normalizedCareerCode != null && !normalizedCareerCode.isBlank())
+                ? List.of(normalizedCareerCode)
+                : List.of();
+        boolean careerCodesEmpty = careerCodes.isEmpty();
+
+        long successful = dashboardMetrics.countSuccessfulAccesses(
+                dateFrom, dateTo, null, careerCodes, careerCodesEmpty, studentStatus, accessStatus
+        );
+        long failed = dashboardMetrics.countFailedAccesses(
+                dateFrom, dateTo, null, careerCodes, careerCodesEmpty, studentStatus, accessStatus
+        );
         long totalAccesses = successful + failed;
-        long uniqueStudents = dashboardMetrics.countUniqueStudentsWithSuccessfulAccess(
-                dateFrom, dateTo, careerId, effectiveCareerCode, studentStatus);
+        long uniqueStudents = dashboardMetrics.countUniqueStudentsByAccessStatus(
+                dateFrom, dateTo, null, careerCodes, careerCodesEmpty, studentStatus, accessStatus
+        );
 
         double successRate = totalAccesses > 0
                 ? BigDecimal.valueOf(successful).multiply(BigDecimal.valueOf(100))
@@ -54,7 +67,9 @@ public class ReportDataCollector {
 
         // Trend points
         List<DashboardMetricsRepository.DailyResultCountProjection> dailyRows =
-                dashboardMetrics.findDailyAccessCounts(dateFrom, dateTo, careerId, effectiveCareerCode, studentStatus, resultFilter);
+                dashboardMetrics.findDailyAccessCounts(
+                        dateFrom, dateTo, null, careerCodes, careerCodesEmpty, studentStatus, accessStatus
+                );
 
         Map<LocalDate, long[]> byDay = new HashMap<>();
         LocalDate fromDay = dateFrom.atZone(ZoneOffset.UTC).toLocalDate();
@@ -84,21 +99,31 @@ public class ReportDataCollector {
         }
 
         // Top students
-        List<TopStudentItem> topStudents = dashboardMetrics.findTopStudentsDesc(
-                        dateFrom, dateTo, careerId, effectiveCareerCode, studentStatus, PageRequest.of(0, 10))
-                .map(p -> new TopStudentItem(p.getEnrollmentId(), p.getName(), p.getCareer(), p.getSuccessfulAccesses()))
-                .getContent();
+        List<DashboardMetricsRepository.TopStudentProjection> topStudentRows = switch (accessStatus) {
+            case "SUCCESS" -> dashboardMetrics.findTopStudentsSuccessDesc(
+                    dateFrom, dateTo, null, careerCodes, careerCodesEmpty, studentStatus, PageRequest.of(0, 10)
+            ).getContent();
+            case "FAILED" -> dashboardMetrics.findTopStudentsFailedDesc(
+                    dateFrom, dateTo, null, careerCodes, careerCodesEmpty, studentStatus, PageRequest.of(0, 10)
+            ).getContent();
+            default -> dashboardMetrics.findTopStudentsAllDesc(
+                    dateFrom, dateTo, null, careerCodes, careerCodesEmpty, studentStatus, PageRequest.of(0, 10)
+            ).getContent();
+        };
+        List<TopStudentItem> topStudents = topStudentRows.stream()
+                .map(p -> new TopStudentItem(p.getEnrollmentId(), p.getName(), p.getCareerCode(), p.getTotalAccesses()))
+                .toList();
 
         // Top careers
         List<CareerItem> topCareers = reportMetrics.findTopCareers(
-                        dateFrom, dateTo, resultFilter, careerId, effectiveCareerCode, studentStatus, PageRequest.of(0, 10))
+                        dateFrom, dateTo, resultFilter, careerId, careerCode, studentStatus, PageRequest.of(0, 10))
                 .stream()
                 .map(p -> new CareerItem(p.getCareer(), p.getTotal()))
                 .toList();
 
         // Error breakdown
         List<ErrorBreakdownItem> errorBreakdown = reportMetrics.findErrorBreakdown(
-                        dateFrom, dateTo, careerId, effectiveCareerCode, studentStatus)
+                        dateFrom, dateTo, careerId, careerCode, studentStatus)
                 .stream()
                 .map(p -> new ErrorBreakdownItem(p.getResult().name(), p.getTotal()))
                 .toList();

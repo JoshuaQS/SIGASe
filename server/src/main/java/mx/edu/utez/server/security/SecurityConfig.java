@@ -1,6 +1,5 @@
 package mx.edu.utez.server.security;
 
-import mx.edu.utez.server.shared.api.ApiRoutes;
 import org.springframework.http.HttpMethod;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -47,21 +46,10 @@ public class SecurityConfig {
                 )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers(
-                                "/v3/api-docs/**",
-                                "/swagger-ui/**",
-                                "/swagger-ui.html",
-                                "/actuator/health",
-                                ApiRoutes.httpPath(ApiRoutes.AUTH_ADMIN + "/login"),
-                                ApiRoutes.httpPath(ApiRoutes.AUTH_ADMIN + "/reset-password/request"),
-                                ApiRoutes.httpPath(ApiRoutes.AUTH_ADMIN + "/reset-password/confirm"),
-                                ApiRoutes.httpPath(ApiRoutes.AUTH_STUDENT + "/google")
-                        ).permitAll()
+                        .requestMatchers(SecurityPublicRoutes.publicAnyMethodPatterns()).permitAll()
                         .requestMatchers(
                                 HttpMethod.POST,
-                                ApiRoutes.httpPath(ApiRoutes.AUTH_STUDENT + "/login"),
-                                ApiRoutes.httpPath(ApiRoutes.AUTH_STUDENT + "/reset-password/request"),
-                                ApiRoutes.httpPath(ApiRoutes.AUTH_STUDENT + "/reset-password/confirm")
+                                SecurityPublicRoutes.publicPostOnlyPatterns()
                         ).permitAll()
                         .anyRequest().authenticated()
                 )

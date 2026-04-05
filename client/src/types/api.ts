@@ -132,6 +132,9 @@ export interface DashboardSummaryResponse {
     successRate: number;
     uniqueStudentsWithSuccessfulAccess: number;
     currentElibroConfigStatus: 'NO_ACTIVE_CONFIG' | 'ACTIVE_VALID' | 'ACTIVE_INVALID' | 'ACTIVE_UNKNOWN' | string;
+    lastAccessAt?: string | null;
+    lastSuccessfulAccessAt?: string | null;
+    lastFailedAccessAt?: string | null;
 }
 
 export interface DashboardTrendPointResponse {
@@ -148,10 +151,13 @@ export interface DashboardAccessTrendsResponse {
 
 export interface DashboardTopStudentItemResponse {
     studentId: string;
-    fullName: string;
-    matricula: string;
-    career: string;
+    name: string;
+    enrollmentId: string;
+    careerCode: string;
+    careerName: string;
     successfulAccesses: number;
+    failedAccesses: number;
+    totalAccesses: number;
 }
 
 export interface DashboardTopStudentsResponse {
@@ -160,6 +166,22 @@ export interface DashboardTopStudentsResponse {
     limit: number;
     sortDir: string;
     students: DashboardTopStudentItemResponse[];
+}
+
+export interface DashboardTopCareerItemResponse {
+    careerCode: string;
+    careerName: string;
+    successfulAccesses: number;
+    failedAccesses: number;
+    totalAccesses: number;
+}
+
+export interface DashboardTopCareersResponse {
+    dateFrom: string;
+    dateTo: string;
+    limit: number;
+    sortDir: string;
+    careers: DashboardTopCareerItemResponse[];
 }
 
 export interface AccessLog {

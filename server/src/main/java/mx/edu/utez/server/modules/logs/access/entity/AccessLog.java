@@ -17,6 +17,7 @@ import java.time.Instant;
 @Entity
 @Table(name = "access_logs", indexes = {
         @Index(name = "idx_access_logs_occurred_at", columnList = "occurred_at"),
+        @Index(name = "idx_access_logs_student_id", columnList = "student_id"),
         @Index(name = "idx_access_logs_result", columnList = "result"),
         @Index(name = "idx_access_logs_norm_email", columnList = "normalized_email"),
         @Index(name = "idx_access_logs_request_id", columnList = "request_id"),

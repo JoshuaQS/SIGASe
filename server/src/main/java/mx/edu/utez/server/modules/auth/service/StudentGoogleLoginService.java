@@ -61,15 +61,16 @@ public class StudentGoogleLoginService {
         try {
             identity = googleTokenVerifierService.verify(idToken);
         } catch (BusinessException ex) {
+            GoogleVerifierFailureLog failureLog = mapGoogleVerifierFailure(ex);
             studentAccessLoggingFacade.log(
                     request,
                     startMs,
                     null,
                     null,
                     null,
-                    AccessResult.FAILED_INVALID_GOOGLE_TOKEN,
-                    "INVALID_GOOGLE_TOKEN",
-                    "Google token verification failed before extracting email."
+                    failureLog.result(),
+                    failureLog.errorCode(),
+                    failureLog.errorDetail()
             );
             throw ex;
         }
@@ -185,5 +186,37 @@ public class StudentGoogleLoginService {
     private boolean isAllowedDomain(String normalizedEmail) {
         String suffix = "@" + appProperties.getGoogle().getAllowedDomain().trim().toLowerCase();
         return normalizedEmail.endsWith(suffix);
+    }
+
+    private GoogleVerifierFailureLog mapGoogleVerifierFailure(BusinessException ex) {
+        return switch (ex.getErrorCode()) {
+            case INVALID_TOKEN -> new GoogleVerifierFailureLog(
+                    AccessResult.FAILED_INVALID_GOOGLE_TOKEN,
+                    "INVALID_GOOGLE_TOKEN",
+                    "Google token is invalid or cannot be verified."
+            );
+            case SERVICE_UNAVAILABLE -> new GoogleVerifierFailureLog(
+                    AccessResult.FAILED_GOOGLE_PROVIDER_UNAVAILABLE,
+                    "GOOGLE_PROVIDER_UNAVAILABLE",
+                    "Google token verification is temporarily unavailable."
+            );
+            case PROVIDER_ERROR -> new GoogleVerifierFailureLog(
+                    AccessResult.FAILED_GOOGLE_PROVIDER_ERROR,
+                    "GOOGLE_PROVIDER_ERROR",
+                    "Google provider error during token verification."
+            );
+            default -> new GoogleVerifierFailureLog(
+                    AccessResult.FAILED_INTERNAL_ERROR,
+                    "GOOGLE_VERIFICATION_UNEXPECTED",
+                    "Unexpected failure before extracting Google identity."
+            );
+        };
+    }
+
+    private record GoogleVerifierFailureLog(
+            AccessResult result,
+            String errorCode,
+            String errorDetail
+    ) {
     }
 }

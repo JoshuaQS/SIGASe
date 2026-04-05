@@ -5,77 +5,68 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="89cdb70d-f2c7-40b0-a083-99f06d1bddaa" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/../.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/../.gitignore" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/components.json" beforeDir="false" afterPath="$PROJECT_DIR$/../client/components.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/../client/package-lock.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/../client/package.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/auth/auth-session-store.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/auth/auth-session-store.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/components/ui/badge.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/components/ui/badge.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/components/ui/CareerCombobox.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/components/ui/CareerCombobox.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../client/src/components/ui/button.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/components/ui/button.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/components/ui/calendarrange.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/components/ui/calendarrange.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../client/src/components/ui/combobox.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/components/ui/combobox.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../client/src/components/ui/confirmation-dialog.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/components/ui/confirmation-dialog.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/components/ui/energy-elibro-cta-button.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/components/ui/energy-elibro-cta-button.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/components/ui/forms/CrudModalForm.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/components/ui/forms/form-field.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/components/ui/forms/form-field.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/components/ui/forms/password-field.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/components/ui/forms/password-field.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/components/ui/forms/password-input.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/components/ui/forms/password-input.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/components/ui/forms/form-control-styles.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/components/ui/forms/form-control-styles.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../client/src/components/ui/forms/protected-field.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/components/ui/forms/protected-field.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../client/src/components/ui/input-group.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/components/ui/input-group.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/components/ui/input.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/components/ui/input.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/components/ui/select.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/components/ui/select.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/lib/api/api-client.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/lib/api/api-client.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/lib/api/auth-api.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/lib/api/auth-api.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/lib/api/elibro-api.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/lib/api/dashboard-api.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/lib/api/dashboard-api.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../client/src/lib/api/students-api.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/lib/api/students-api.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/lib/elibro-config-schemas.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/lib/elibro-sso-page-schemas.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/main.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/main.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/components/CrudModalForm.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/components/StatusChangeModal.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/modules/admin/components/StatusChangeModal.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/components/elibro-sso/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/components/elibro-sso/SsoConfigHeader.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/components/elibro-sso/SsoCredentialsCard.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/components/elibro-sso/SsoSecurityCard.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/components/elibro-sso/SsoStatusOverviewCard.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/components/elibro-sso/SsoValidationCard.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/components/elibro-sso/elibro-sso.types.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/components/monitoring/ElibroConfigModal.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/components/monitoring/ElibroStatusPanel.tsx" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/components/monitoring/components/date-range/date-range-calendar.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/modules/admin/components/monitoring/components/date-range/date-range-calendar.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/components/monitoring/components/monitoring-composer/access-status-field.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/modules/admin/components/monitoring/components/monitoring-composer/access-status-field.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/components/monitoring/components/date-range/date-range-selector.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/modules/admin/components/monitoring/components/date-range/date-range-selector.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/components/monitoring/components/monitoring-composer/career-multi-combobox-field.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/modules/admin/components/monitoring/components/monitoring-composer/career-multi-combobox-field.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/components/monitoring/components/monitoring-composer/composer.types.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/modules/admin/components/monitoring/components/monitoring-composer/composer.types.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/components/monitoring/components/monitoring-composer/monitoring-composer-bar.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/modules/admin/components/monitoring/components/monitoring-composer/monitoring-composer-bar.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/components/monitoring/components/monitoring-composer/monitoring-filters-card.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/modules/admin/components/monitoring/components/monitoring-composer/monitoring-filters-card.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/components/monitoring/components/monitoring-composer/student-lookup-field.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/modules/admin/components/monitoring/components/monitoring-composer/student-lookup-field.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/components/student/csv-importer/CsvImport.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/modules/admin/components/student/csv-importer/CsvImport.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/components/student/csv-importer/CsvImportModal.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/modules/admin/components/student/csv-importer/CsvImportModal.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/components/student/csv-importer/CsvImportTabLayout.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/modules/admin/components/student/csv-importer/CsvImportTabLayout.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/components/student/csv-importer/FileImportForm.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/modules/admin/components/student/csv-importer/FileImportForm.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/layout/admin-profile-menu.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/modules/admin/layout/admin-profile-menu.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/components/student/creation/StudentsCreateModal.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/modules/admin/components/student/creation/StudentsCreateModal.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/components/student/creation/schema.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/modules/admin/components/student/creation/schema.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/layout/admin-topbar.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/modules/admin/layout/admin-topbar.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/layout/profile-form.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/modules/admin/layout/profile-form.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/pages/AccessLogs.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/modules/admin/pages/AccessLogs.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/pages/AdminsManagement.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/modules/admin/pages/AdminsManagement.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/pages/AuditLogs.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/modules/admin/pages/AuditLogs.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/pages/ElibroSsoConfig.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/modules/admin/pages/ElibroSsoConfig.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/pages/MonitoringAndReports.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/modules/admin/pages/MonitoringAndReports.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/pages/StudentsManagment.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/modules/admin/pages/StudentsManagment.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../client/src/modules/auth/components/AdminLoginCard.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/modules/auth/components/AdminLoginCard.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/auth/components/GoogleLoginPlaceholder.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/modules/auth/components/GoogleLoginPlaceholder.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../client/src/modules/auth/components/RecoveryCard.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/modules/auth/components/RecoveryCard.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/modules/auth/components/StudentsAccessAlternate.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/modules/auth/components/StudentsAccessAlternate.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../client/src/modules/auth/components/StudentsLoginCard.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/modules/auth/components/StudentsLoginCard.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../client/src/modules/auth/pages/ResetPasswordPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/modules/auth/pages/ResetPasswordPage.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/student/components/ForcePasswordChangeForm.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/modules/student/components/ForcePasswordChangeForm.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/student/components/topbar.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/modules/student/components/cta-card/elibro-cta-card.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/modules/student/components/cta-card/elibro-cta-card.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/modules/student/components/layout/student-profile-menu.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/modules/student/components/layout/student-profile-menu.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../client/src/modules/student/pages/ForcePasswordChange.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/modules/student/pages/ForcePasswordChange.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../client/src/modules/student/pages/Portal.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/modules/student/pages/Portal.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../client/src/router/guards/SessionGuard.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/router/guards/SessionGuard.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/router/layouts/AdminLayout.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/router/layouts/AdminLayout.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/router/layouts/StudentLayout.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/router/layouts/StudentLayout.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/router/guards/StudentPasswordGuard.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/router/guards/StudentPasswordGuard.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../client/src/router/route-config.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/router/route-config.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/styles/energy-elibro-cta-button.module.css" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/styles/energy-elibro-cta-button.module.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/styles/global.css" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/styles/global.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/types/api.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/types/api.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/auth/repository/StudentPasswordResetTokenRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/auth/repository/StudentPasswordResetTokenRepository.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/auth/service/GoogleTokenVerifierService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/auth/service/GoogleTokenVerifierService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/auth/service/StudentGoogleLoginService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/auth/service/StudentGoogleLoginService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/auth/service/StudentPasswordResetNotifier.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/auth/service/StudentPasswordResetNotifier.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/dashboard/controller/DashboardController.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/dashboard/controller/DashboardController.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/dashboard/dto/DashboardSummaryResponse.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/dashboard/dto/DashboardSummaryResponse.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/dashboard/dto/DashboardTopStudentItemResponse.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/dashboard/dto/DashboardTopStudentItemResponse.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/dashboard/mapper/DashboardMapper.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/dashboard/mapper/DashboardMapper.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/dashboard/repository/DashboardMetricsRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/dashboard/repository/DashboardMetricsRepository.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/dashboard/service/DashboardService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/dashboard/service/DashboardService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/logs/access/entity/AccessLog.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/logs/access/entity/AccessLog.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/logs/access/repository/AccessLogRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/logs/access/repository/AccessLogRepository.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/logs/access/repository/StudentAccessAlertStateRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/logs/access/repository/StudentAccessAlertStateRepository.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/reports/service/ReportDataCollector.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/reports/service/ReportDataCollector.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/students/dto/StudentResponse.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/students/dto/StudentResponse.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/students/mapper/StudentMapper.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/students/mapper/StudentMapper.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/students/service/StudentService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/students/service/StudentService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/security/JwtAuthenticationFilter.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/security/JwtAuthenticationFilter.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/security/SecurityConfig.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/security/SecurityConfig.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/shared/api/ApiRoutes.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/shared/api/ApiRoutes.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/shared/enums/AccessResult.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/shared/enums/AccessResult.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/application.properties" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/application.properties" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/test/java/mx/edu/utez/server/modules/dashboard/controller/DashboardControllerIntegrationTest.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/test/java/mx/edu/utez/server/modules/dashboard/controller/DashboardControllerIntegrationTest.java" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -125,7 +116,7 @@
     "RunOnceActivity.git.unshallow": "true",
     "RunOnceActivity.typescript.service.memoryLimit.init": "true",
     "Spring Boot.ServerApplication.executor": "Run",
-    "git-widget-placeholder": "appmod/java-upgrade-20260403131237",
+    "git-widget-placeholder": "develop",
     "kotlin-language-version-configured": "true",
     "last_opened_file_path": "/Users/joshqs/Desktop/SIGASe/server",
     "node.js.detected.package.eslint": "true",
@@ -166,6 +157,7 @@
       <option name="presentableId" value="Default" />
       <updated>1775129648354</updated>
       <workItem from="1775129650520" duration="12814000" />
+      <workItem from="1775276153268" duration="9211000" />
     </task>
     <servers />
   </component>

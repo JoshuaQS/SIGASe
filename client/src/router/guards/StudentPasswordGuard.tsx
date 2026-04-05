@@ -1,4 +1,4 @@
-import { Navigate, Outlet } from 'react-router-dom';
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { ROLE_STUDENT } from '@//auth/auth-user';
 import { useAuthUser } from '@//hooks/use-auth-user';
 
@@ -20,10 +20,15 @@ export function StudentMustChangePasswordGuard() {
 
 /** Only students with mustChangePassword can access the forced password change page. */
 export function ForcePasswordChangeGuard() {
+  const location = useLocation();
   const user = useAuthUser();
+  const hasOnboardingToken = new URLSearchParams(location.search).has('token');
 
-  if (!user) {
+  if (!user && !hasOnboardingToken) {
     return <Navigate to="/login" replace />;
+  }
+  if (!user && hasOnboardingToken) {
+    return <Outlet />;
   }
   if (user.role !== ROLE_STUDENT) {
     return <Navigate to="/login" replace />;

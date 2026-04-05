@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Download, Filter } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import { button as Button } from "@/components/ui/button";
+import { Button } from "@/components/ui/Button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { MonitoringComposerBar } from "./monitoring-composer-bar";
 import { DEFAULT_COMPOSER_DRAFT_STATE, type ComposerDraftState } from "./composer.types";
 
@@ -9,12 +10,30 @@ interface MonitoringFiltersCardProps {
   minDate?: Date;
   value?: ComposerDraftState;
   onChange?: (value: ComposerDraftState) => void;
-  onExport?: () => void;
+  onApply?: (value: ComposerDraftState) => void;
+  onExport?: (format: "csv" | "xlsx") => void;
+  onFilteringChange?: (isFiltering: boolean) => void;
+  exportLabel?: string;
+  disableExport?: boolean;
+  showInlineExport?: boolean;
+  topNOptions?: readonly number[];
 }
 
-export function MonitoringFiltersCard({ minDate, value, onChange, onExport }: MonitoringFiltersCardProps) {
+export function MonitoringFiltersCard({
+  minDate,
+  value,
+  onChange,
+  onApply,
+  onExport,
+  onFilteringChange,
+  exportLabel = "Exportar",
+  disableExport = false,
+  showInlineExport = false,
+  topNOptions,
+}: MonitoringFiltersCardProps) {
   const [localValue, setLocalValue] = useState<ComposerDraftState>(DEFAULT_COMPOSER_DRAFT_STATE);
   const [isFiltering, setIsFiltering] = useState(false);
+  const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
 
   const composerValue = value ?? localValue;
   const setComposerValue = (next: ComposerDraftState) => {
@@ -37,10 +56,14 @@ export function MonitoringFiltersCard({ minDate, value, onChange, onExport }: Mo
   const handleFilter = () => {
     if (!canFilter || isFiltering) return;
     setIsFiltering(true);
+    onFilteringChange?.(true);
     setComposerValue({ ...composerValue, didFilter: false });
     window.setTimeout(() => {
-      setComposerValue({ ...composerValue, didFilter: true });
+      const next = { ...composerValue, didFilter: true };
+      setComposerValue(next);
+      onApply?.(next);
       setIsFiltering(false);
+      onFilteringChange?.(false);
     }, 600);
   };
 
@@ -61,21 +84,55 @@ export function MonitoringFiltersCard({ minDate, value, onChange, onExport }: Mo
               value={composerValue}
               onChange={setComposerValue}
               minDate={minDate ?? new Date("2024-01-01")}
+              topNOptions={topNOptions}
             />
           </div>
         </div>
         <div className="mt-2 flex justify-end">
           <div className="flex items-center gap-2">
-            <Button
-              disabled={isFiltering}
-              variant="outline"
-              size="md"
-              className="h-9 w-[120px] justify-center gap-2 rounded-lg"
-              onClick={onExport}
-            >
-              <Download className="h-4 w-4" />
-              Exportar
-            </Button>
+            {showInlineExport ? (
+              <Popover open={isExportMenuOpen} onOpenChange={setIsExportMenuOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    disabled={isFiltering || disableExport}
+                    variant="outline"
+                    size="md"
+                    className="h-9 w-[140px] justify-center gap-2 rounded-lg"
+                  >
+                    <Download className="h-4 w-4" />
+                    {exportLabel}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent align="end" className="w-[180px] p-2">
+                  <div className="space-y-1">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="w-full justify-start"
+                      onClick={() => {
+                        setIsExportMenuOpen(false);
+                        onExport?.("csv");
+                      }}
+                    >
+                      Descargar CSV
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="w-full justify-start"
+                      onClick={() => {
+                        setIsExportMenuOpen(false);
+                        onExport?.("xlsx");
+                      }}
+                    >
+                      Descargar XLSX
+                    </Button>
+                  </div>
+                </PopoverContent>
+              </Popover>
+            ) : null}
           <Button
             disabled={!canFilter || isFiltering}
             size="md"

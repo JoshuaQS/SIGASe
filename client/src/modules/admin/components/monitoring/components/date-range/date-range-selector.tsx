@@ -6,7 +6,6 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn } from "@/lib/utils";
 import { DATE_RANGE_PRESETS } from "./date-range-presets";
 import { DateRangeCalendar } from "./date-range-calendar";
-import { DateRangeSlider } from "./date-range-slider";
 import type { DateRangeSelectorProps, DateRangeValue } from "./date-range.types";
 import { clampRangeToBounds, normalizeDateRange } from "./date-range.utils";
 
@@ -83,13 +82,6 @@ export function DateRangeSelector({ label, value, onChange, minDate, maxDate }: 
             </aside>
 
             <div className="flex-1">
-              <div className="border-b border-border px-5 pb-3 pt-3">
-                <DateRangeSlider value={draftRange} onChange={(next) => {
-                  setDraftRange(clampRangeToBounds(normalizeDateRange(next), lowerBound, upperBound));
-                  setActivePreset(undefined);
-                }} minDate={lowerBound} maxDate={upperBound} />
-              </div>
-
               <div className="border-b border-border px-5 py-3">
                 <DateRangeCalendar
                   value={draftRange}

@@ -16,21 +16,84 @@ import org.springframework.data.repository.query.Param;
 public interface DashboardMetricsRepository extends JpaRepository<AccessLog, UUID> {
 
     @Query("""
-            select count(a.id)
+            select min(a.occurredAt)
             from AccessLog a
             left join a.student s
-            where a.occurredAt >= :dateFrom
+            where a.providerName = 'ELIBRO'
+              and (:studentId is null or (s is not null and s.id = :studentId))
+              and (:careerCodesEmpty = true or (s is not null and upper(s.career.code) in :careerCodes))
+              and (:studentStatus is null or (s is not null and s.status = :studentStatus))
+              and ((:accessStatus = 'ALL')
+                   or (:accessStatus = 'SUCCESS' and a.result = mx.edu.utez.server.shared.enums.AccessResult.SUCCESS)
+                   or (:accessStatus = 'FAILED' and a.result <> mx.edu.utez.server.shared.enums.AccessResult.SUCCESS))
+            """)
+    Instant findFirstAccessAtByFilters(
+            @Param("studentId") UUID studentId,
+            @Param("careerCodes") List<String> careerCodes,
+            @Param("careerCodesEmpty") boolean careerCodesEmpty,
+            @Param("studentStatus") StudentStatus studentStatus,
+            @Param("accessStatus") String accessStatus
+    );
+
+    @Query("""
+            select max(a.occurredAt)
+            from AccessLog a
+            left join a.student s
+            where a.providerName = 'ELIBRO'
+              and (:studentId is null or (s is not null and s.id = :studentId))
+              and (:careerCodesEmpty = true or (s is not null and upper(s.career.code) in :careerCodes))
+              and (:studentStatus is null or (s is not null and s.status = :studentStatus))
+              and ((:accessStatus = 'ALL')
+                   or (:accessStatus = 'SUCCESS' and a.result = mx.edu.utez.server.shared.enums.AccessResult.SUCCESS)
+                   or (:accessStatus = 'FAILED' and a.result <> mx.edu.utez.server.shared.enums.AccessResult.SUCCESS))
+            """)
+    Instant findLastAccessAtByFilters(
+            @Param("studentId") UUID studentId,
+            @Param("careerCodes") List<String> careerCodes,
+            @Param("careerCodesEmpty") boolean careerCodesEmpty,
+            @Param("studentStatus") StudentStatus studentStatus,
+            @Param("accessStatus") String accessStatus
+    );
+
+    @Query("""
+            select max(a.occurredAt)
+            from AccessLog a
+            left join a.student s
+            where a.providerName = 'ELIBRO'
+              and a.occurredAt >= :dateFrom
               and a.occurredAt <= :dateTo
               and a.result = mx.edu.utez.server.shared.enums.AccessResult.SUCCESS
-              and (:careerId is null or (s is not null and s.career.id = :careerId))
-              and (:careerCode is null or (s is not null and lower(s.career.code) = lower(:careerCode)))
+              and (:studentId is null or (s is not null and s.id = :studentId))
+              and (:careerCodesEmpty = true or (s is not null and upper(s.career.code) in :careerCodes))
               and (:studentStatus is null or (s is not null and s.status = :studentStatus))
             """)
-    long countSuccessfulAccesses(
+    Instant findLastSuccessfulAccessAt(
             @Param("dateFrom") Instant dateFrom,
             @Param("dateTo") Instant dateTo,
-            @Param("careerId") UUID careerId,
-            @Param("careerCode") String careerCode,
+            @Param("studentId") UUID studentId,
+            @Param("careerCodes") List<String> careerCodes,
+            @Param("careerCodesEmpty") boolean careerCodesEmpty,
+            @Param("studentStatus") StudentStatus studentStatus
+    );
+
+    @Query("""
+            select max(a.occurredAt)
+            from AccessLog a
+            left join a.student s
+            where a.providerName = 'ELIBRO'
+              and a.occurredAt >= :dateFrom
+              and a.occurredAt <= :dateTo
+              and a.result <> mx.edu.utez.server.shared.enums.AccessResult.SUCCESS
+              and (:studentId is null or (s is not null and s.id = :studentId))
+              and (:careerCodesEmpty = true or (s is not null and upper(s.career.code) in :careerCodes))
+              and (:studentStatus is null or (s is not null and s.status = :studentStatus))
+            """)
+    Instant findLastFailedAccessAt(
+            @Param("dateFrom") Instant dateFrom,
+            @Param("dateTo") Instant dateTo,
+            @Param("studentId") UUID studentId,
+            @Param("careerCodes") List<String> careerCodes,
+            @Param("careerCodesEmpty") boolean careerCodesEmpty,
             @Param("studentStatus") StudentStatus studentStatus
     );
 
@@ -40,17 +103,44 @@ public interface DashboardMetricsRepository extends JpaRepository<AccessLog, UUI
             left join a.student s
             where a.occurredAt >= :dateFrom
               and a.occurredAt <= :dateTo
-              and a.result <> mx.edu.utez.server.shared.enums.AccessResult.SUCCESS
-              and (:careerId is null or (s is not null and s.career.id = :careerId))
-              and (:careerCode is null or (s is not null and lower(s.career.code) = lower(:careerCode)))
+              and a.providerName = 'ELIBRO'
+              and a.result = mx.edu.utez.server.shared.enums.AccessResult.SUCCESS
+              and (:studentId is null or (s is not null and s.id = :studentId))
+              and (:careerCodesEmpty = true or (s is not null and upper(s.career.code) in :careerCodes))
               and (:studentStatus is null or (s is not null and s.status = :studentStatus))
+              and ((:accessStatus = 'ALL') or (:accessStatus = 'SUCCESS'))
+            """)
+    long countSuccessfulAccesses(
+            @Param("dateFrom") Instant dateFrom,
+            @Param("dateTo") Instant dateTo,
+            @Param("studentId") UUID studentId,
+            @Param("careerCodes") List<String> careerCodes,
+            @Param("careerCodesEmpty") boolean careerCodesEmpty,
+            @Param("studentStatus") StudentStatus studentStatus,
+            @Param("accessStatus") String accessStatus
+    );
+
+    @Query("""
+            select count(a.id)
+            from AccessLog a
+            left join a.student s
+            where a.occurredAt >= :dateFrom
+              and a.occurredAt <= :dateTo
+              and a.providerName = 'ELIBRO'
+              and a.result <> mx.edu.utez.server.shared.enums.AccessResult.SUCCESS
+              and (:studentId is null or (s is not null and s.id = :studentId))
+              and (:careerCodesEmpty = true or (s is not null and upper(s.career.code) in :careerCodes))
+              and (:studentStatus is null or (s is not null and s.status = :studentStatus))
+              and ((:accessStatus = 'ALL') or (:accessStatus = 'FAILED'))
             """)
     long countFailedAccesses(
             @Param("dateFrom") Instant dateFrom,
             @Param("dateTo") Instant dateTo,
-            @Param("careerId") UUID careerId,
-            @Param("careerCode") String careerCode,
-            @Param("studentStatus") StudentStatus studentStatus
+            @Param("studentId") UUID studentId,
+            @Param("careerCodes") List<String> careerCodes,
+            @Param("careerCodesEmpty") boolean careerCodesEmpty,
+            @Param("studentStatus") StudentStatus studentStatus,
+            @Param("accessStatus") String accessStatus
     );
 
     @Query("""
@@ -59,17 +149,22 @@ public interface DashboardMetricsRepository extends JpaRepository<AccessLog, UUI
             join a.student s
             where a.occurredAt >= :dateFrom
               and a.occurredAt <= :dateTo
-              and a.result = mx.edu.utez.server.shared.enums.AccessResult.SUCCESS
-              and (:careerId is null or s.career.id = :careerId)
-              and (:careerCode is null or lower(s.career.code) = lower(:careerCode))
+              and a.providerName = 'ELIBRO'
+              and (:studentId is null or s.id = :studentId)
+              and (:careerCodesEmpty = true or upper(s.career.code) in :careerCodes)
               and (:studentStatus is null or s.status = :studentStatus)
+              and ((:accessStatus = 'ALL')
+                   or (:accessStatus = 'SUCCESS' and a.result = mx.edu.utez.server.shared.enums.AccessResult.SUCCESS)
+                   or (:accessStatus = 'FAILED' and a.result <> mx.edu.utez.server.shared.enums.AccessResult.SUCCESS))
             """)
-    long countUniqueStudentsWithSuccessfulAccess(
+    long countUniqueStudentsByAccessStatus(
             @Param("dateFrom") Instant dateFrom,
             @Param("dateTo") Instant dateTo,
-            @Param("careerId") UUID careerId,
-            @Param("careerCode") String careerCode,
-            @Param("studentStatus") StudentStatus studentStatus
+            @Param("studentId") UUID studentId,
+            @Param("careerCodes") List<String> careerCodes,
+            @Param("careerCodesEmpty") boolean careerCodesEmpty,
+            @Param("studentStatus") StudentStatus studentStatus,
+            @Param("accessStatus") String accessStatus
     );
 
     @Query("""
@@ -80,44 +175,52 @@ public interface DashboardMetricsRepository extends JpaRepository<AccessLog, UUI
             left join a.student s
             where a.occurredAt >= :dateFrom
               and a.occurredAt <= :dateTo
-              and (:careerId is null or (s is not null and s.career.id = :careerId))
-              and (:careerCode is null or (s is not null and lower(s.career.code) = lower(:careerCode)))
+              and a.providerName = 'ELIBRO'
+              and (:studentId is null or (s is not null and s.id = :studentId))
+              and (:careerCodesEmpty = true or (s is not null and upper(s.career.code) in :careerCodes))
               and (:studentStatus is null or (s is not null and s.status = :studentStatus))
-              and (:result is null or a.result = :result)
+              and ((:accessStatus = 'ALL')
+                   or (:accessStatus = 'SUCCESS' and a.result = mx.edu.utez.server.shared.enums.AccessResult.SUCCESS)
+                   or (:accessStatus = 'FAILED' and a.result <> mx.edu.utez.server.shared.enums.AccessResult.SUCCESS))
             group by function('date', a.occurredAt), a.result
             order by function('date', a.occurredAt) asc
             """)
     List<DailyResultCountProjection> findDailyAccessCounts(
             @Param("dateFrom") Instant dateFrom,
             @Param("dateTo") Instant dateTo,
-            @Param("careerId") UUID careerId,
-            @Param("careerCode") String careerCode,
+            @Param("studentId") UUID studentId,
+            @Param("careerCodes") List<String> careerCodes,
+            @Param("careerCodesEmpty") boolean careerCodesEmpty,
             @Param("studentStatus") StudentStatus studentStatus,
-            @Param("result") AccessResult result
+            @Param("accessStatus") String accessStatus
     );
 
     @Query("""
             select s.id as studentId,
                    s.name as name,
                    s.enrollmentId as enrollmentId,
-                   s.career.name as career,
-                   count(a.id) as successfulAccesses
+                   s.career.code as careerCode,
+                   s.career.name as careerName,
+                   sum(case when a.result = mx.edu.utez.server.shared.enums.AccessResult.SUCCESS then 1 else 0 end) as successfulAccesses,
+                   sum(case when a.result <> mx.edu.utez.server.shared.enums.AccessResult.SUCCESS then 1 else 0 end) as failedAccesses,
+                   count(a.id) as totalAccesses
             from AccessLog a
             join a.student s
             where a.occurredAt >= :dateFrom
               and a.occurredAt <= :dateTo
-              and a.result = mx.edu.utez.server.shared.enums.AccessResult.SUCCESS
-              and (:careerId is null or s.career.id = :careerId)
-              and (:careerCode is null or lower(s.career.code) = lower(:careerCode))
+              and a.providerName = 'ELIBRO'
+              and (:studentId is null or s.id = :studentId)
+              and (:careerCodesEmpty = true or upper(s.career.code) in :careerCodes)
               and (:studentStatus is null or s.status = :studentStatus)
-            group by s.id, s.name, s.enrollmentId, s.career.name
+            group by s.id, s.name, s.enrollmentId, s.career.code, s.career.name
             order by count(a.id) desc, s.name asc
             """)
-    Page<TopStudentProjection> findTopStudentsDesc(
+    Page<TopStudentProjection> findTopStudentsAllDesc(
             @Param("dateFrom") Instant dateFrom,
             @Param("dateTo") Instant dateTo,
-            @Param("careerId") UUID careerId,
-            @Param("careerCode") String careerCode,
+            @Param("studentId") UUID studentId,
+            @Param("careerCodes") List<String> careerCodes,
+            @Param("careerCodesEmpty") boolean careerCodesEmpty,
             @Param("studentStatus") StudentStatus studentStatus,
             Pageable pageable
     );
@@ -126,24 +229,310 @@ public interface DashboardMetricsRepository extends JpaRepository<AccessLog, UUI
             select s.id as studentId,
                    s.name as name,
                    s.enrollmentId as enrollmentId,
-                   s.career.name as career,
-                   count(a.id) as successfulAccesses
+                   s.career.code as careerCode,
+                   s.career.name as careerName,
+                   sum(case when a.result = mx.edu.utez.server.shared.enums.AccessResult.SUCCESS then 1 else 0 end) as successfulAccesses,
+                   sum(case when a.result <> mx.edu.utez.server.shared.enums.AccessResult.SUCCESS then 1 else 0 end) as failedAccesses,
+                   count(a.id) as totalAccesses
             from AccessLog a
             join a.student s
             where a.occurredAt >= :dateFrom
               and a.occurredAt <= :dateTo
-              and a.result = mx.edu.utez.server.shared.enums.AccessResult.SUCCESS
-              and (:careerId is null or s.career.id = :careerId)
-              and (:careerCode is null or lower(s.career.code) = lower(:careerCode))
+              and a.providerName = 'ELIBRO'
+              and (:studentId is null or s.id = :studentId)
+              and (:careerCodesEmpty = true or upper(s.career.code) in :careerCodes)
               and (:studentStatus is null or s.status = :studentStatus)
-            group by s.id, s.name, s.enrollmentId, s.career.name
+            group by s.id, s.name, s.enrollmentId, s.career.code, s.career.name
             order by count(a.id) asc, s.name asc
             """)
-    Page<TopStudentProjection> findTopStudentsAsc(
+    Page<TopStudentProjection> findTopStudentsAllAsc(
             @Param("dateFrom") Instant dateFrom,
             @Param("dateTo") Instant dateTo,
-            @Param("careerId") UUID careerId,
-            @Param("careerCode") String careerCode,
+            @Param("studentId") UUID studentId,
+            @Param("careerCodes") List<String> careerCodes,
+            @Param("careerCodesEmpty") boolean careerCodesEmpty,
+            @Param("studentStatus") StudentStatus studentStatus,
+            Pageable pageable
+    );
+
+    @Query("""
+            select s.id as studentId,
+                   s.name as name,
+                   s.enrollmentId as enrollmentId,
+                   s.career.code as careerCode,
+                   s.career.name as careerName,
+                   sum(case when a.result = mx.edu.utez.server.shared.enums.AccessResult.SUCCESS then 1 else 0 end) as successfulAccesses,
+                   sum(case when a.result <> mx.edu.utez.server.shared.enums.AccessResult.SUCCESS then 1 else 0 end) as failedAccesses,
+                   count(a.id) as totalAccesses
+            from AccessLog a
+            join a.student s
+            where a.occurredAt >= :dateFrom
+              and a.occurredAt <= :dateTo
+              and a.providerName = 'ELIBRO'
+              and (:studentId is null or s.id = :studentId)
+              and (:careerCodesEmpty = true or upper(s.career.code) in :careerCodes)
+              and (:studentStatus is null or s.status = :studentStatus)
+            group by s.id, s.name, s.enrollmentId, s.career.code, s.career.name
+            order by sum(case when a.result = mx.edu.utez.server.shared.enums.AccessResult.SUCCESS then 1 else 0 end) desc, s.name asc
+            """)
+    Page<TopStudentProjection> findTopStudentsSuccessDesc(
+            @Param("dateFrom") Instant dateFrom,
+            @Param("dateTo") Instant dateTo,
+            @Param("studentId") UUID studentId,
+            @Param("careerCodes") List<String> careerCodes,
+            @Param("careerCodesEmpty") boolean careerCodesEmpty,
+            @Param("studentStatus") StudentStatus studentStatus,
+            Pageable pageable
+    );
+
+    @Query("""
+            select s.id as studentId,
+                   s.name as name,
+                   s.enrollmentId as enrollmentId,
+                   s.career.code as careerCode,
+                   s.career.name as careerName,
+                   sum(case when a.result = mx.edu.utez.server.shared.enums.AccessResult.SUCCESS then 1 else 0 end) as successfulAccesses,
+                   sum(case when a.result <> mx.edu.utez.server.shared.enums.AccessResult.SUCCESS then 1 else 0 end) as failedAccesses,
+                   count(a.id) as totalAccesses
+            from AccessLog a
+            join a.student s
+            where a.occurredAt >= :dateFrom
+              and a.occurredAt <= :dateTo
+              and a.providerName = 'ELIBRO'
+              and (:studentId is null or s.id = :studentId)
+              and (:careerCodesEmpty = true or upper(s.career.code) in :careerCodes)
+              and (:studentStatus is null or s.status = :studentStatus)
+            group by s.id, s.name, s.enrollmentId, s.career.code, s.career.name
+            order by sum(case when a.result = mx.edu.utez.server.shared.enums.AccessResult.SUCCESS then 1 else 0 end) asc, s.name asc
+            """)
+    Page<TopStudentProjection> findTopStudentsSuccessAsc(
+            @Param("dateFrom") Instant dateFrom,
+            @Param("dateTo") Instant dateTo,
+            @Param("studentId") UUID studentId,
+            @Param("careerCodes") List<String> careerCodes,
+            @Param("careerCodesEmpty") boolean careerCodesEmpty,
+            @Param("studentStatus") StudentStatus studentStatus,
+            Pageable pageable
+    );
+
+    @Query("""
+            select s.id as studentId,
+                   s.name as name,
+                   s.enrollmentId as enrollmentId,
+                   s.career.code as careerCode,
+                   s.career.name as careerName,
+                   sum(case when a.result = mx.edu.utez.server.shared.enums.AccessResult.SUCCESS then 1 else 0 end) as successfulAccesses,
+                   sum(case when a.result <> mx.edu.utez.server.shared.enums.AccessResult.SUCCESS then 1 else 0 end) as failedAccesses,
+                   count(a.id) as totalAccesses
+            from AccessLog a
+            join a.student s
+            where a.occurredAt >= :dateFrom
+              and a.occurredAt <= :dateTo
+              and a.providerName = 'ELIBRO'
+              and (:studentId is null or s.id = :studentId)
+              and (:careerCodesEmpty = true or upper(s.career.code) in :careerCodes)
+              and (:studentStatus is null or s.status = :studentStatus)
+            group by s.id, s.name, s.enrollmentId, s.career.code, s.career.name
+            order by sum(case when a.result <> mx.edu.utez.server.shared.enums.AccessResult.SUCCESS then 1 else 0 end) desc, s.name asc
+            """)
+    Page<TopStudentProjection> findTopStudentsFailedDesc(
+            @Param("dateFrom") Instant dateFrom,
+            @Param("dateTo") Instant dateTo,
+            @Param("studentId") UUID studentId,
+            @Param("careerCodes") List<String> careerCodes,
+            @Param("careerCodesEmpty") boolean careerCodesEmpty,
+            @Param("studentStatus") StudentStatus studentStatus,
+            Pageable pageable
+    );
+
+    @Query("""
+            select s.id as studentId,
+                   s.name as name,
+                   s.enrollmentId as enrollmentId,
+                   s.career.code as careerCode,
+                   s.career.name as careerName,
+                   sum(case when a.result = mx.edu.utez.server.shared.enums.AccessResult.SUCCESS then 1 else 0 end) as successfulAccesses,
+                   sum(case when a.result <> mx.edu.utez.server.shared.enums.AccessResult.SUCCESS then 1 else 0 end) as failedAccesses,
+                   count(a.id) as totalAccesses
+            from AccessLog a
+            join a.student s
+            where a.occurredAt >= :dateFrom
+              and a.occurredAt <= :dateTo
+              and a.providerName = 'ELIBRO'
+              and (:studentId is null or s.id = :studentId)
+              and (:careerCodesEmpty = true or upper(s.career.code) in :careerCodes)
+              and (:studentStatus is null or s.status = :studentStatus)
+            group by s.id, s.name, s.enrollmentId, s.career.code, s.career.name
+            order by sum(case when a.result <> mx.edu.utez.server.shared.enums.AccessResult.SUCCESS then 1 else 0 end) asc, s.name asc
+            """)
+    Page<TopStudentProjection> findTopStudentsFailedAsc(
+            @Param("dateFrom") Instant dateFrom,
+            @Param("dateTo") Instant dateTo,
+            @Param("studentId") UUID studentId,
+            @Param("careerCodes") List<String> careerCodes,
+            @Param("careerCodesEmpty") boolean careerCodesEmpty,
+            @Param("studentStatus") StudentStatus studentStatus,
+            Pageable pageable
+    );
+
+    @Query("""
+            select s.career.code as careerCode,
+                   s.career.name as careerName,
+                   sum(case when a.result = mx.edu.utez.server.shared.enums.AccessResult.SUCCESS then 1 else 0 end) as successfulAccesses,
+                   sum(case when a.result <> mx.edu.utez.server.shared.enums.AccessResult.SUCCESS then 1 else 0 end) as failedAccesses,
+                   count(a.id) as totalAccesses
+            from AccessLog a
+            join a.student s
+            where a.occurredAt >= :dateFrom
+              and a.occurredAt <= :dateTo
+              and a.providerName = 'ELIBRO'
+              and (:studentId is null or s.id = :studentId)
+              and (:careerCodesEmpty = true or upper(s.career.code) in :careerCodes)
+              and (:studentStatus is null or s.status = :studentStatus)
+            group by s.career.code, s.career.name
+            order by count(a.id) desc, s.career.code asc
+            """)
+    Page<TopCareerProjection> findTopCareersAllDesc(
+            @Param("dateFrom") Instant dateFrom,
+            @Param("dateTo") Instant dateTo,
+            @Param("studentId") UUID studentId,
+            @Param("careerCodes") List<String> careerCodes,
+            @Param("careerCodesEmpty") boolean careerCodesEmpty,
+            @Param("studentStatus") StudentStatus studentStatus,
+            Pageable pageable
+    );
+
+    @Query("""
+            select s.career.code as careerCode,
+                   s.career.name as careerName,
+                   sum(case when a.result = mx.edu.utez.server.shared.enums.AccessResult.SUCCESS then 1 else 0 end) as successfulAccesses,
+                   sum(case when a.result <> mx.edu.utez.server.shared.enums.AccessResult.SUCCESS then 1 else 0 end) as failedAccesses,
+                   count(a.id) as totalAccesses
+            from AccessLog a
+            join a.student s
+            where a.occurredAt >= :dateFrom
+              and a.occurredAt <= :dateTo
+              and a.providerName = 'ELIBRO'
+              and (:studentId is null or s.id = :studentId)
+              and (:careerCodesEmpty = true or upper(s.career.code) in :careerCodes)
+              and (:studentStatus is null or s.status = :studentStatus)
+            group by s.career.code, s.career.name
+            order by count(a.id) asc, s.career.code asc
+            """)
+    Page<TopCareerProjection> findTopCareersAllAsc(
+            @Param("dateFrom") Instant dateFrom,
+            @Param("dateTo") Instant dateTo,
+            @Param("studentId") UUID studentId,
+            @Param("careerCodes") List<String> careerCodes,
+            @Param("careerCodesEmpty") boolean careerCodesEmpty,
+            @Param("studentStatus") StudentStatus studentStatus,
+            Pageable pageable
+    );
+
+    @Query("""
+            select s.career.code as careerCode,
+                   s.career.name as careerName,
+                   sum(case when a.result = mx.edu.utez.server.shared.enums.AccessResult.SUCCESS then 1 else 0 end) as successfulAccesses,
+                   sum(case when a.result <> mx.edu.utez.server.shared.enums.AccessResult.SUCCESS then 1 else 0 end) as failedAccesses,
+                   count(a.id) as totalAccesses
+            from AccessLog a
+            join a.student s
+            where a.occurredAt >= :dateFrom
+              and a.occurredAt <= :dateTo
+              and a.providerName = 'ELIBRO'
+              and (:studentId is null or s.id = :studentId)
+              and (:careerCodesEmpty = true or upper(s.career.code) in :careerCodes)
+              and (:studentStatus is null or s.status = :studentStatus)
+            group by s.career.code, s.career.name
+            order by sum(case when a.result = mx.edu.utez.server.shared.enums.AccessResult.SUCCESS then 1 else 0 end) desc, s.career.code asc
+            """)
+    Page<TopCareerProjection> findTopCareersSuccessDesc(
+            @Param("dateFrom") Instant dateFrom,
+            @Param("dateTo") Instant dateTo,
+            @Param("studentId") UUID studentId,
+            @Param("careerCodes") List<String> careerCodes,
+            @Param("careerCodesEmpty") boolean careerCodesEmpty,
+            @Param("studentStatus") StudentStatus studentStatus,
+            Pageable pageable
+    );
+
+    @Query("""
+            select s.career.code as careerCode,
+                   s.career.name as careerName,
+                   sum(case when a.result = mx.edu.utez.server.shared.enums.AccessResult.SUCCESS then 1 else 0 end) as successfulAccesses,
+                   sum(case when a.result <> mx.edu.utez.server.shared.enums.AccessResult.SUCCESS then 1 else 0 end) as failedAccesses,
+                   count(a.id) as totalAccesses
+            from AccessLog a
+            join a.student s
+            where a.occurredAt >= :dateFrom
+              and a.occurredAt <= :dateTo
+              and a.providerName = 'ELIBRO'
+              and (:studentId is null or s.id = :studentId)
+              and (:careerCodesEmpty = true or upper(s.career.code) in :careerCodes)
+              and (:studentStatus is null or s.status = :studentStatus)
+            group by s.career.code, s.career.name
+            order by sum(case when a.result = mx.edu.utez.server.shared.enums.AccessResult.SUCCESS then 1 else 0 end) asc, s.career.code asc
+            """)
+    Page<TopCareerProjection> findTopCareersSuccessAsc(
+            @Param("dateFrom") Instant dateFrom,
+            @Param("dateTo") Instant dateTo,
+            @Param("studentId") UUID studentId,
+            @Param("careerCodes") List<String> careerCodes,
+            @Param("careerCodesEmpty") boolean careerCodesEmpty,
+            @Param("studentStatus") StudentStatus studentStatus,
+            Pageable pageable
+    );
+
+    @Query("""
+            select s.career.code as careerCode,
+                   s.career.name as careerName,
+                   sum(case when a.result = mx.edu.utez.server.shared.enums.AccessResult.SUCCESS then 1 else 0 end) as successfulAccesses,
+                   sum(case when a.result <> mx.edu.utez.server.shared.enums.AccessResult.SUCCESS then 1 else 0 end) as failedAccesses,
+                   count(a.id) as totalAccesses
+            from AccessLog a
+            join a.student s
+            where a.occurredAt >= :dateFrom
+              and a.occurredAt <= :dateTo
+              and a.providerName = 'ELIBRO'
+              and (:studentId is null or s.id = :studentId)
+              and (:careerCodesEmpty = true or upper(s.career.code) in :careerCodes)
+              and (:studentStatus is null or s.status = :studentStatus)
+            group by s.career.code, s.career.name
+            order by sum(case when a.result <> mx.edu.utez.server.shared.enums.AccessResult.SUCCESS then 1 else 0 end) desc, s.career.code asc
+            """)
+    Page<TopCareerProjection> findTopCareersFailedDesc(
+            @Param("dateFrom") Instant dateFrom,
+            @Param("dateTo") Instant dateTo,
+            @Param("studentId") UUID studentId,
+            @Param("careerCodes") List<String> careerCodes,
+            @Param("careerCodesEmpty") boolean careerCodesEmpty,
+            @Param("studentStatus") StudentStatus studentStatus,
+            Pageable pageable
+    );
+
+    @Query("""
+            select s.career.code as careerCode,
+                   s.career.name as careerName,
+                   sum(case when a.result = mx.edu.utez.server.shared.enums.AccessResult.SUCCESS then 1 else 0 end) as successfulAccesses,
+                   sum(case when a.result <> mx.edu.utez.server.shared.enums.AccessResult.SUCCESS then 1 else 0 end) as failedAccesses,
+                   count(a.id) as totalAccesses
+            from AccessLog a
+            join a.student s
+            where a.occurredAt >= :dateFrom
+              and a.occurredAt <= :dateTo
+              and a.providerName = 'ELIBRO'
+              and (:studentId is null or s.id = :studentId)
+              and (:careerCodesEmpty = true or upper(s.career.code) in :careerCodes)
+              and (:studentStatus is null or s.status = :studentStatus)
+            group by s.career.code, s.career.name
+            order by sum(case when a.result <> mx.edu.utez.server.shared.enums.AccessResult.SUCCESS then 1 else 0 end) asc, s.career.code asc
+            """)
+    Page<TopCareerProjection> findTopCareersFailedAsc(
+            @Param("dateFrom") Instant dateFrom,
+            @Param("dateTo") Instant dateTo,
+            @Param("studentId") UUID studentId,
+            @Param("careerCodes") List<String> careerCodes,
+            @Param("careerCodesEmpty") boolean careerCodesEmpty,
             @Param("studentStatus") StudentStatus studentStatus,
             Pageable pageable
     );
@@ -158,7 +547,96 @@ public interface DashboardMetricsRepository extends JpaRepository<AccessLog, UUI
         UUID getStudentId();
         String getName();
         String getEnrollmentId();
-        String getCareer();
+        String getCareerCode();
+        String getCareerName();
         long getSuccessfulAccesses();
+        long getFailedAccesses();
+        long getTotalAccesses();
+    }
+
+    interface TopCareerProjection {
+        String getCareerCode();
+        String getCareerName();
+        long getSuccessfulAccesses();
+        long getFailedAccesses();
+        long getTotalAccesses();
+    }
+
+    default long countSuccessfulAccesses(
+            Instant dateFrom,
+            Instant dateTo,
+            UUID careerId,
+            String careerCode,
+            StudentStatus studentStatus
+    ) {
+        List<String> codes = careerCode == null || careerCode.isBlank()
+                ? List.of()
+                : List.of(careerCode.trim().toUpperCase());
+        return countSuccessfulAccesses(
+                dateFrom, dateTo, null, codes, codes.isEmpty(), studentStatus, "ALL"
+        );
+    }
+
+    default long countFailedAccesses(
+            Instant dateFrom,
+            Instant dateTo,
+            UUID careerId,
+            String careerCode,
+            StudentStatus studentStatus
+    ) {
+        List<String> codes = careerCode == null || careerCode.isBlank()
+                ? List.of()
+                : List.of(careerCode.trim().toUpperCase());
+        return countFailedAccesses(
+                dateFrom, dateTo, null, codes, codes.isEmpty(), studentStatus, "ALL"
+        );
+    }
+
+    default long countUniqueStudentsWithSuccessfulAccess(
+            Instant dateFrom,
+            Instant dateTo,
+            UUID careerId,
+            String careerCode,
+            StudentStatus studentStatus
+    ) {
+        List<String> codes = careerCode == null || careerCode.isBlank()
+                ? List.of()
+                : List.of(careerCode.trim().toUpperCase());
+        return countUniqueStudentsByAccessStatus(
+                dateFrom, dateTo, null, codes, codes.isEmpty(), studentStatus, "SUCCESS"
+        );
+    }
+
+    default List<DailyResultCountProjection> findDailyAccessCounts(
+            Instant dateFrom,
+            Instant dateTo,
+            UUID careerId,
+            String careerCode,
+            StudentStatus studentStatus,
+            AccessResult result
+    ) {
+        List<String> codes = careerCode == null || careerCode.isBlank()
+                ? List.of()
+                : List.of(careerCode.trim().toUpperCase());
+        String accessStatus = result == null ? "ALL" : result == AccessResult.SUCCESS ? "SUCCESS" : "FAILED";
+        return findDailyAccessCounts(
+                dateFrom, dateTo, null, codes, codes.isEmpty(), studentStatus, accessStatus
+        );
+    }
+
+    default Page<TopStudentProjection> findTopStudentsDesc(
+            Instant dateFrom,
+            Instant dateTo,
+            UUID careerId,
+            String careerCode,
+            StudentStatus studentStatus,
+            Pageable pageable
+    ) {
+        List<String> codes = careerCode == null || careerCode.isBlank()
+                ? List.of()
+                : List.of(careerCode.trim().toUpperCase());
+        return findTopStudentsSuccessDesc(
+                dateFrom, dateTo, null, codes, codes.isEmpty(), studentStatus, pageable
+        );
     }
 }

@@ -1,6 +1,7 @@
+import { useEffect } from "react";
 import { ArrowUpDown, Check, ListFilter, Sparkles, Trash2, Users, X } from "lucide-react";
 import { subDays } from "date-fns";
-import { button as Button } from "@/components/ui/button";
+import { Button } from "@/components/ui/Button";
 import {
   Select,
   SelectContent,
@@ -19,16 +20,28 @@ interface MonitoringComposerBarProps {
   value: ComposerDraftState;
   onChange: (next: ComposerDraftState) => void;
   minDate: Date;
+  topNOptions?: readonly number[];
 }
 
 const activeChipClass =
   "inline-flex items-center gap-1 rounded-full border border-border bg-secondary/50 px-2.5 py-1 text-xs font-medium";
 const quickFilterChipClass = `${activeChipClass} cursor-pointer text-foreground transition-colors hover:bg-secondary/70`;
 
-export function MonitoringComposerBar({ value, onChange, minDate }: MonitoringComposerBarProps) {
+export function MonitoringComposerBar({ value, onChange, minDate, topNOptions = TOP_N_OPTIONS }: MonitoringComposerBarProps) {
   const updateState = (patch: Partial<ComposerDraftState>) => {
     onChange({ ...value, ...patch, didFilter: false });
   };
+  const safeTopOptions = topNOptions.length > 0 ? topNOptions : TOP_N_OPTIONS;
+
+  useEffect(() => {
+    if (!value.topEnabled) return;
+    const maxAllowed = safeTopOptions[safeTopOptions.length - 1];
+    const minAllowed = safeTopOptions[0];
+    const current = value.topN ?? minAllowed;
+    if (current > maxAllowed || !safeTopOptions.includes(current)) {
+      onChange({ ...value, topN: maxAllowed, didFilter: false });
+    }
+  }, [onChange, safeTopOptions, value]);
 
   const resetAll = () => {
     onChange({ ...DEFAULT_COMPOSER_DRAFT_STATE, student: { query: "" } });
@@ -57,30 +70,47 @@ export function MonitoringComposerBar({ value, onChange, minDate }: MonitoringCo
   const applyQuickFilter = (preset: "success-students" | "failed-careers" | "all-careers" | "last-30") => {
     const base: ComposerDraftState = {
       ...DEFAULT_COMPOSER_DRAFT_STATE,
-      type: "students",
-      studentMode: "individual",
-      mode: "single-student",
       student: { query: "" },
       didFilter: false,
     };
 
     if (preset === "success-students") {
-      onChange({ ...base, status: "SUCCESS" });
+      onChange({
+        ...base,
+        type: "students",
+        studentMode: "all",
+        mode: "all-students",
+        status: "SUCCESS",
+      });
       return;
     }
 
     if (preset === "failed-careers") {
-      onChange({ ...base, status: "FAILED" });
+      onChange({
+        ...base,
+        type: "careers",
+        mode: "all-careers",
+        status: "FAILED",
+      });
       return;
     }
 
     if (preset === "all-careers") {
-      onChange({ ...base, status: "ALL" });
+      onChange({
+        ...base,
+        type: "careers",
+        mode: "all-careers",
+        status: "ALL",
+      });
       return;
     }
 
     onChange({
       ...base,
+      type: "students",
+      studentMode: "all",
+      mode: "all-students",
+      status: "ALL",
       dateRange: {
         from: subDays(new Date(), 29),
         to: new Date(),
@@ -252,7 +282,7 @@ export function MonitoringComposerBar({ value, onChange, minDate }: MonitoringCo
                         const nextEnabled = !(value.topEnabled ?? false);
                         updateState({
                           topEnabled: nextEnabled,
-                          topN: nextEnabled ? (value.topN ?? TOP_N_OPTIONS[0]) : undefined,
+                          topN: nextEnabled ? (value.topN ?? safeTopOptions[0]) : undefined,
                         });
                       }}
                       className="relative inline-grid h-10 w-24 grid-cols-[1fr_1fr] items-center rounded-md border border-input bg-background px-0.5 text-xs transition-colors hover:bg-accent/40"
@@ -284,7 +314,7 @@ export function MonitoringComposerBar({ value, onChange, minDate }: MonitoringCo
                       <TopNField
                         label="Top"
                         value={value.topN}
-                        options={TOP_N_OPTIONS}
+                        options={safeTopOptions}
                         onChange={(topN) => updateState({ topN })}
                       />
                     </div>

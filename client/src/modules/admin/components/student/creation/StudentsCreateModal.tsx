@@ -8,7 +8,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { button as Button } from "@/components/ui/button";
+import { Button } from "@/components/ui/Button";
 import {
   Select,
   SelectContent,
@@ -85,7 +85,7 @@ export function StudentsCreateModal({ open, onClose, onCreated }: StudentsCreate
         enrollmentId: values.matricula.trim().toUpperCase(),
         name: values.nombres.trim(),
         lastNamePaternal: values.apellidoPaterno.trim(),
-        lastNameMaternal: values.apellidoMaterno.trim(),
+        lastNameMaternal: values.apellidoMaterno?.trim() ? values.apellidoMaterno.trim() : null,
         sex: values.sexo as StudentBackendSex,
         quarter: Number(values.cuatrimestre),
         institutionalEmail: values.correo.trim().toLowerCase(),
@@ -169,7 +169,7 @@ export function StudentsCreateModal({ open, onClose, onCreated }: StudentsCreate
               </div>
 
               <div>
-                <FieldLabel text="Apellido materno" required />
+                <FieldLabel text="Apellido materno" />
                 <Input placeholder="Ej. Torres" {...form.register("apellidoMaterno")} />
                 <FieldError message={form.formState.errors.apellidoMaterno?.message} />
               </div>

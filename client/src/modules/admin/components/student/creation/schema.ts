@@ -3,7 +3,11 @@ import { z } from "zod";
 export const formSchema = z.object({
   nombres: z.string().min(2, "Ingresa al menos 2 caracteres"),
   apellidoPaterno: z.string().min(2, "Ingresa al menos 2 caracteres"),
-  apellidoMaterno: z.string().min(2, "Ingresa al menos 2 caracteres"),
+  apellidoMaterno: z
+    .string()
+    .trim()
+    .max(100, "No puede exceder 100 caracteres")
+    .optional(),
   matricula: z
     .string()
     .min(6, "La matrícula debe tener al menos 6 caracteres")

@@ -16,6 +16,7 @@ import StudentLayout from './layouts/StudentLayout';
 import LoginPage from '@/modules/auth/pages/LoginPage';
 import ForgotPasswordPage from '@/modules/auth/pages/ForgotPasswordPage';
 import ResetPasswordPage from '@/modules/auth/pages/ResetPasswordPage';
+import StudentOnboardingPasswordPage from '@/modules/auth/pages/StudentOnboardingPasswordPage';
 
 
 import StudentsManagement from '@/modules/admin/pages/StudentsManagment';
@@ -24,6 +25,7 @@ import ReportsOverviewSection from '@/modules/admin/pages/MonitoringAndReports';
 import AccessLogs from '@/modules/admin/pages/AccessLogs';
 import AuditLogs from '@/modules/admin/pages/AuditLogs';
 import ElibroSsoConfig from '@/modules/admin/pages/ElibroSsoConfig';
+import CustomButtonsShowcase from '@/modules/admin/pages/CustomButtonsShowcase';
 
 import Portal from '@/modules/student/pages/Portal';
 import ForcePasswordChangePage from '@/modules/student/pages/ForcePasswordChange';
@@ -45,6 +47,7 @@ export const routes: RouteObject[] = [
           { path: '/login', element: <LoginPage /> },
           { path: '/forgot-password', element: <ForgotPasswordPage /> },
           { path: '/reset-password', element: <ResetPasswordPage /> },
+          { path: '/activate-student-account', element: <StudentOnboardingPasswordPage /> },
         ],
       },
     ],
@@ -64,6 +67,7 @@ export const routes: RouteObject[] = [
               { index: true, element: <Navigate to="monitoreo-reportes" replace /> },
               { path: 'monitoreo-reportes', element: <ReportsOverviewSection /> },
               { path: 'estudiantes', element: <StudentsManagement /> },
+              { path: 'showcase-botones', element: <CustomButtonsShowcase /> },
               { path: 'logs-acceso', element: <AccessLogs /> },
               { path: 'logs-auditoria', element: <AuditLogs/> },
               {

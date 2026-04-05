@@ -15,6 +15,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.AuthenticationEntryPoint;
+import org.springframework.security.web.util.matcher.RequestMatcher;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -24,12 +25,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private static final String BEARER_PREFIX = "Bearer ";
 
-    private static final String STUDENT_AUTH_BASE = ApiRoutes.httpPath("/v1/auth/student");
+    private static final RequestMatcher PUBLIC_ROUTES_MATCHER = SecurityPublicRoutes.publicRoutesMatcher();
 
     private static final Set<String> ALLOWED_WHEN_MUST_CHANGE = Set.of(
-            STUDENT_AUTH_BASE + "/me",
-            STUDENT_AUTH_BASE + "/change-password",
-            STUDENT_AUTH_BASE + "/logout"
+            ApiRoutes.httpPath(ApiRoutes.AUTH_STUDENT_ME),
+            ApiRoutes.httpPath(ApiRoutes.AUTH_STUDENT_CHANGE_PASSWORD),
+            ApiRoutes.httpPath(ApiRoutes.AUTH_STUDENT_LOGOUT)
     );
 
     private static final String PASSWORD_CHANGE_REQUIRED_JSON =
@@ -47,6 +48,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         this.jwtTokenProvider = jwtTokenProvider;
         this.sessionTokenValidationService = sessionTokenValidationService;
         this.authenticationEntryPoint = authenticationEntryPoint;
+    }
+
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        return HttpMethod.OPTIONS.matches(request.getMethod()) || PUBLIC_ROUTES_MATCHER.matches(request);
     }
 
     @Override
@@ -72,9 +78,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 boolean allowed = false;
                 if (ALLOWED_WHEN_MUST_CHANGE.contains(path)) {
                     allowed =
-                            (HttpMethod.GET.matches(method) && path.equals(STUDENT_AUTH_BASE + "/me"))
-                                    || (HttpMethod.POST.matches(method) && path.equals(STUDENT_AUTH_BASE + "/change-password"))
-                                    || (HttpMethod.POST.matches(method) && path.equals(STUDENT_AUTH_BASE + "/logout"));
+                            (HttpMethod.GET.matches(method) && path.equals(ApiRoutes.httpPath(ApiRoutes.AUTH_STUDENT_ME)))
+                                    || (HttpMethod.POST.matches(method) && path.equals(ApiRoutes.httpPath(ApiRoutes.AUTH_STUDENT_CHANGE_PASSWORD)))
+                                    || (HttpMethod.POST.matches(method) && path.equals(ApiRoutes.httpPath(ApiRoutes.AUTH_STUDENT_LOGOUT)));
                 }
 
                 if (!allowed) {
@@ -93,10 +99,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             );
             SecurityContextHolder.getContext().setAuthentication(authentication);
             filterChain.doFilter(request, response);
-        } catch (SessionExpiredAuthenticationException ex) {
-            SecurityContextHolder.clearContext();
-            authenticationEntryPoint.commence(request, response, ex);
-        } catch (InvalidJwtAuthenticationException ex) {
+        } catch (SessionExpiredAuthenticationException | InvalidJwtAuthenticationException ex) {
             SecurityContextHolder.clearContext();
             authenticationEntryPoint.commence(request, response, ex);
         }

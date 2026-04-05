@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ArrowRight, Clock3, ShieldCheck, User, Zap } from 'lucide-react';
-import { EnergyElibroCtaButton } from '@/components/ui/energy-elibro-cta-button';
 import { Card } from '@/components/ui/card';
 import { useAppToast } from '@/components/ui/app-toast-provider';
+import ElibroCtaCard from '@/modules/student/components/cta-card/elibro-cta-card';
 import { useAuthUser } from '@/hooks/use-auth-user';
 import { ApiClientError } from '@/lib/api/api-client';
 import {
@@ -280,6 +280,11 @@ const Portal = () => {
       ? 'Sin restricciones. Tienes acceso completo a las colecciones digitales.'
       : 'Tu cuenta no puede acceder al portal por ahora.');
   const ctaDisabled = isSummaryLoading || isOpeningElibro || Boolean(resolveDisabledReason(summary));
+  const ctaStatusMessage = isSummaryLoading
+    ? 'Validando estado de cuenta...'
+    : isAccountActive
+      ? 'Autenticación segura vía SSO institucional'
+      : 'Acceso temporalmente restringido';
   const cardHoverClass = 'transition-transform duration-300 will-change-transform hover:scale-[1.015]';
 
   return (
@@ -287,66 +292,15 @@ const Portal = () => {
       <div className="relative z-10 mx-auto flex h-full w-full max-w-[1600px] flex-1 px-4 pb-3 pt-1 lg:px-8">
         <div className="grid h-full w-full grid-cols-1 gap-3 xl:grid-cols-12 xl:items-start xl:gap-x-5 xl:gap-y-3">
           <section className="xl:col-span-12">
-            <div
-              className={cn(
-                'relative rounded-[2rem] bg-gradient-to-b from-primary/35 via-border to-transparent p-[1px] shadow-[0_0_70px_-18px_hsl(var(--primary)/0.45)]',
-                cardHoverClass,
-              )}
-            >
-              <div className="absolute inset-0 rounded-[2rem] bg-gradient-to-r from-primary/12 to-info/10 blur-xl" />
-
-              <Card className="relative flex flex-col items-center overflow-hidden rounded-[calc(2rem-1px)] border-border/50 bg-card/40 px-6 py-5 text-center shadow-sm backdrop-blur-2xl lg:px-8 lg:py-6">
-                <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/60 to-transparent" />
-
-                <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1.5 xl:mb-2">
-                  <span className="relative flex h-2 w-2">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
-                    <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
-                  </span>
-                  <span className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-                    Servicio eLibro en línea
-                  </span>
-                </div>
-
-                <h1 className="max-w-4xl text-balance text-3xl font-extrabold tracking-tight text-foreground lg:text-4xl 2xl:text-5xl">
-                  Accede a tu{' '}
-                  <span className="bg-gradient-to-r from-primary to-info bg-clip-text text-transparent">
-                    Biblioteca Digital
-                  </span>
-                </h1>
-                
-
-                <p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground lg:text-base">
-                  Acceso directo al acervo de eLibro mediante tu identidad institucional. Explora
-                  miles de recursos académicos sin fricciones.
-                </p>
-
-                <EnergyElibroCtaButton
-                  onTrigger={handleElibroAccess}
-                  busy={isOpeningElibro}
-                  disabled={ctaDisabled}
-                />
-
-                <div className="mt-3 flex items-center text-sm font-medium text-muted-foreground">
-                  <ShieldCheck className="mr-2 h-4 w-4" />
-                  {isSummaryLoading
-                    ? 'Validando estado de cuenta...'
-                    : isAccountActive
-                      ? 'Autenticación segura vía SSO institucional'
-                      : 'Acceso temporalmente restringido'}
-                </div>
-
-                {summaryError && (
-                  <button
-                    type="button"
-                    onClick={() => void loadSummary()}
-                    className="mt-4 rounded-xl border border-warning/40 bg-warning/10 px-3 py-1.5 text-xs font-medium text-warning transition hover:bg-warning/15"
-                  >
-                    Reintentar carga de resumen
-                  </button>
-                )}
-              </Card>
-            </div>
+            <ElibroCtaCard
+              className={cardHoverClass}
+              onTrigger={handleElibroAccess}
+              busy={isOpeningElibro}
+              disabled={ctaDisabled}
+              statusMessage={ctaStatusMessage}
+              errorMessage={summaryError}
+              onRetry={loadSummary}
+            />
           </section>
 
           <section className="grid gap-3 xl:col-span-12">

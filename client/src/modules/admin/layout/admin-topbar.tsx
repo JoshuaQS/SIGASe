@@ -9,7 +9,7 @@ import {
   Shield,
   Bell,
   BookOpen,
-  SlidersHorizontal,
+  Paintbrush,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
@@ -29,10 +29,10 @@ const navItems: NavItem[] = [
   { id: 'monitoreo', label: 'Monitoreo', icon: BarChart2, path: '/admin/monitoreo-reportes' },
   { id: 'elibro', label: 'Configuración eLibro', icon: Activity, path: '/admin/elibro-status', roles: [ROLE_ADMIN_TI] },
   { id: 'estudiantes', label: 'Estudiantes', icon: GraduationCap, path: '/admin/estudiantes' },
+  { id: 'showcase-botones', label: 'Showcase Botones', icon: Paintbrush, path: '/admin/showcase-botones' },
   { id: 'administradores', label: 'Administradores', icon: Users, path: '/admin/administradores', roles: [ROLE_ADMIN_TI] },
   { id: 'logs-acceso', label: 'Logs de Acceso', icon: FileText, path: '/admin/logs-acceso' },
   { id: 'logs-auditoria', label: 'Logs de Auditoría', icon: Shield, path: '/admin/logs-auditoria' },
-  { id: 'inputs-custom', label: 'Inputs Custom', icon: SlidersHorizontal, path: '/admin/inputs-custom' },
 ];
 
 export function AdminTopbar() {

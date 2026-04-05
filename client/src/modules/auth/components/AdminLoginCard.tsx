@@ -8,7 +8,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 
 import { authSession } from '@//auth/auth-session-store';
 import { useAppToast } from '@/components/ui/app-toast-provider';
-import { button as Button } from '@/components/ui/button';
+import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { FormField } from '@/components/ui/forms/form-field';

@@ -5,6 +5,9 @@ import { authSession } from '@//auth/auth-session-store';
 export function SessionGuard() {
   const { user, isInitializing, isSessionValidated, bootstrapError } = useAuthSession();
   const location = useLocation();
+  const isOnboardingForcePasswordPath =
+    location.pathname === '/student/force-password-change'
+    && new URLSearchParams(location.search).has('token');
 
   if (isInitializing) {
     return (
@@ -40,7 +43,7 @@ export function SessionGuard() {
     );
   }
 
-  if (!isSessionValidated || !user) {
+  if ((!isSessionValidated || !user) && !isOnboardingForcePasswordPath) {
     return <Navigate to="/login" replace state={{ from: location }} />;
   }
 

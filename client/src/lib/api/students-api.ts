@@ -41,6 +41,7 @@ export type StudentResponseDto = {
     name: string;
   } | null;
   status: StudentBackendStatus;
+  mustChangePassword: boolean;
   lastLoginAt: string | null;
   deactivatedAt: string | null;
   deactivationReason: string | null;

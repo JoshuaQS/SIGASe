@@ -12,6 +12,16 @@ public final class ApiRoutes {
 
     public static final String AUTH_ADMIN = V1 + "/auth/admin";
     public static final String AUTH_STUDENT = V1 + "/auth/student";
+    public static final String AUTH_ADMIN_LOGIN = AUTH_ADMIN + "/login";
+    public static final String AUTH_ADMIN_RESET_PASSWORD_REQUEST = AUTH_ADMIN + "/reset-password/request";
+    public static final String AUTH_ADMIN_RESET_PASSWORD_CONFIRM = AUTH_ADMIN + "/reset-password/confirm";
+    public static final String AUTH_STUDENT_GOOGLE = AUTH_STUDENT + "/google";
+    public static final String AUTH_STUDENT_LOGIN = AUTH_STUDENT + "/login";
+    public static final String AUTH_STUDENT_RESET_PASSWORD_REQUEST = AUTH_STUDENT + "/reset-password/request";
+    public static final String AUTH_STUDENT_RESET_PASSWORD_CONFIRM = AUTH_STUDENT + "/reset-password/confirm";
+    public static final String AUTH_STUDENT_ME = AUTH_STUDENT + "/me";
+    public static final String AUTH_STUDENT_CHANGE_PASSWORD = AUTH_STUDENT + "/change-password";
+    public static final String AUTH_STUDENT_LOGOUT = AUTH_STUDENT + "/logout";
     public static final String STUDENT_PORTAL = V1 + "/student/portal";
     public static final String STUDENTS = V1 + "/students";
     public static final String ADMINS = V1 + "/admins";

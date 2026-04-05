@@ -1,0 +1,19 @@
+.calendarRoot :global(.rdp-month:last-child .rdp-caption) {
+  align-items: flex-start;
+  justify-content: flex-start;
+  min-height: 2.5rem;
+  padding-bottom: 1.25rem;
+}
+
+.calendarRoot :global(.rdp-month:last-child .rdp-nav) {
+  position: absolute;
+  right: 0.25rem;
+  bottom: -0.125rem;
+  display: flex;
+  gap: 0.25rem;
+}
+
+.calendarRoot :global(.rdp-month:last-child .rdp-nav_button_previous),
+.calendarRoot :global(.rdp-month:last-child .rdp-nav_button_next) {
+  position: static;
+}

@@ -14,8 +14,11 @@ public class DashboardMapper {
                 projection.getStudentId(),
                 projection.getName(),
                 projection.getEnrollmentId(),
-                projection.getCareer(),
-                projection.getSuccessfulAccesses()
+                projection.getCareerCode(),
+                projection.getCareerName(),
+                projection.getSuccessfulAccesses(),
+                projection.getFailedAccesses(),
+                projection.getTotalAccesses()
         );
     }
 }

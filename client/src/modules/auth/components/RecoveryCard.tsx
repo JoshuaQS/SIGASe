@@ -9,7 +9,7 @@ import {
   requestAdminPasswordReset,
   requestStudentPasswordReset,
 } from '@//lib/api/auth-api';
-import { button as Button } from '@/components/ui/button';
+import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { FormField } from '@/components/ui/forms/form-field';

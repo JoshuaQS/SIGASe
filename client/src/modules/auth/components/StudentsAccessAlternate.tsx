@@ -1,5 +1,5 @@
 import { ArrowRight, Shield } from 'lucide-react';
-import { button as Button } from '@/components/ui/button';
+import { Button } from '@/components/ui/Button';
 
 interface StudentAccessAlternateProps {
   onSwitchToAdmin?: () => void;

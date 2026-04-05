@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { Slot } from '@radix-ui/react-slot';
-import { button as Button } from '@/components/ui/button';
+import { Button } from '@/components/ui/Button';
 import {
   FORM_CONTROL_DEFAULT_SIZE,
   FORM_CONTROL_DEFAULT_VARIANT,

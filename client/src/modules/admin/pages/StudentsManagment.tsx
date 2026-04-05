@@ -30,7 +30,7 @@ import {
   Legend,
 } from 'recharts'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { button as Button } from '@/components/ui/button'
+import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -59,7 +59,7 @@ import {
 } from '@/lib/api/students-api'
 import { listActiveCareers, type CareerDto } from '@/lib/api/careers-api'
 
-type UiStatus = 'activo' | 'inactivo'
+type UiStatus = 'activo' | 'inactivo' | 'pendiente'
 type PendingActionType = 'deactivate' | 'reactivate' | 'delete'
 
 type PendingAction = {
@@ -77,6 +77,7 @@ const tooltipStyle = {
 const statusStyles: Record<UiStatus, string> = {
   activo: 'text-emerald-600 border-emerald-200 bg-emerald-50',
   inactivo: 'text-muted-foreground border-border',
+  pendiente: 'text-amber-700 border-amber-200 bg-amber-50',
 }
 
 const PIE_COLORS = ['#6366f1', '#8b5cf6', '#06b6d4', '#10b981', '#f59e0b', '#f97316']
@@ -276,7 +277,12 @@ const StudentsManagement = () => {
     students.map((student) => ({
       ...student,
       fullName: buildFullName(student),
-      uiStatus: student.status === 'ACTIVE' ? 'activo' as const : 'inactivo' as const,
+      uiStatus:
+        student.status === 'INACTIVE'
+          ? 'inactivo' as const
+          : student.mustChangePassword
+            ? 'pendiente' as const
+            : 'activo' as const,
       lastAccessLabel: formatRelativeAccess(student.lastLoginAt),
     }))
   ), [students])

@@ -1,9 +1,9 @@
 import * as React from "react";
 import { Slot } from "@radix-ui/react-slot";
-import { cn } from "@/lib/utils";
 import { Loader2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
-export type buttonVariant =
+export type ButtonVariant =
   | "primary"
   | "secondary"
   | "outline"
@@ -14,7 +14,7 @@ export type buttonVariant =
   | "info"
   | "link";
 
-export type buttonSize =
+export type ButtonSize =
   | "xs"
   | "sm"
   | "md"
@@ -23,13 +23,13 @@ export type buttonSize =
   | "icon-sm"
   | "icon-xs";
 
-export type buttonShape = "rounded" | "pill";
+export type ButtonShape = "rounded" | "pill";
 
-export interface buttonProps
+export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: buttonVariant;
-  size?: buttonSize;
-  shape?: buttonShape;
+  variant?: ButtonVariant;
+  size?: ButtonSize;
+  shape?: ButtonShape;
   fullWidth?: boolean;
   isLoading?: boolean;
   leftIcon?: React.ReactNode | React.ElementType;
@@ -37,36 +37,56 @@ export interface buttonProps
   asChild?: boolean;
 }
 
-const variantClass: Record<buttonVariant, string> = {
+const variantClass: Record<ButtonVariant, string> = {
   primary:
-    "bg-primary text-primary-foreground hover:bg-primary/90 shadow-md active:scale-[0.98]",
+    "bg-primary text-primary-foreground shadow-md hover:bg-primary/90 active:scale-[0.98]",
   secondary:
-    "bg-secondary text-secondary-foreground border border-border hover:bg-muted active:bg-secondary/80 active:scale-[0.98]",
+    "border border-border bg-secondary text-secondary-foreground hover:bg-muted active:scale-[0.98]",
   outline:
-    "border border-border text-foreground hover:bg-accent active:bg-accent/80 active:scale-[0.98]",
+    "border border-border bg-transparent text-foreground hover:bg-accent active:scale-[0.98]",
   ghost:
-    "text-foreground hover:bg-accent active:bg-accent/80 active:scale-[0.98]",
+    "bg-transparent text-foreground hover:bg-accent active:scale-[0.98]",
   destructive:
-    "bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-md active:scale-[0.98]",
+    "bg-destructive text-destructive-foreground shadow-md hover:bg-destructive/90 active:scale-[0.98]",
   success:
-    "bg-success text-success-foreground hover:bg-success/90 shadow-md active:scale-[0.98]",
+    "bg-success text-success-foreground shadow-md hover:bg-success/90 active:scale-[0.98]",
   warning:
-    "bg-warning text-warning-foreground hover:bg-warning/90 shadow-md active:scale-[0.98]",
-  info: "bg-info text-info-foreground hover:bg-info/90 shadow-md active:scale-[0.98]",
-  link: "text-primary underline-offset-4 hover:underline p-0 h-auto active:scale-100",
+    "bg-warning text-warning-foreground shadow-md hover:bg-warning/90 active:scale-[0.98]",
+  info: "bg-info text-info-foreground shadow-md hover:bg-info/90 active:scale-[0.98]",
+  link: "h-auto p-0 text-primary underline-offset-4 hover:underline active:scale-100",
 };
 
-const sizeClass: Record<buttonSize, string> = {
+const sizeClass: Record<ButtonSize, string> = {
   xs: "h-7 px-2 text-[10px] gap-1",
   sm: "h-8 px-3 text-xs gap-1.5",
-  md: "h-9 px-4 py-2 text-sm gap-2",
+  md: "h-9 px-4 text-sm gap-2",
   lg: "h-11 px-6 text-base gap-2.5",
-  icon: "h-9 w-9 p-0 justify-center",
-  "icon-sm": "h-8 w-8 p-0 justify-center",
-  "icon-xs": "h-7 w-7 p-0 justify-center",
+  icon: "h-9 w-9 p-0",
+  "icon-sm": "h-8 w-8 p-0",
+  "icon-xs": "h-7 w-7 p-0",
 };
 
-const button = React.forwardRef<HTMLButtonElement, buttonProps>(
+const iconSizeClass: Record<ButtonSize, string> = {
+  xs: "h-3 w-3",
+  sm: "h-3.5 w-3.5",
+  md: "h-4 w-4",
+  lg: "h-5 w-5",
+  icon: "h-4 w-4",
+  "icon-sm": "h-3.5 w-3.5",
+  "icon-xs": "h-3 w-3",
+};
+
+function renderIcon(
+  icon: React.ReactNode | React.ElementType | undefined,
+  iconSize: string
+) {
+  if (!icon) return null;
+  if (React.isValidElement(icon)) return icon;
+  const IconComponent = icon as React.ElementType;
+  return <IconComponent className={cn("shrink-0", iconSize)} />;
+}
+
+export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   (
     {
       className,
@@ -80,49 +100,67 @@ const button = React.forwardRef<HTMLButtonElement, buttonProps>(
       disabled,
       children,
       asChild = false,
+      onClick,
+      tabIndex,
+      type,
       ...props
     },
     ref
   ) => {
     const isDisabled = disabled || isLoading;
     const Comp = asChild ? Slot : "button";
+    const iconSize = iconSizeClass[size];
+    const isLinkVariant = variant === "link";
+    const isIconOnly = size === "icon" || size === "icon-sm" || size === "icon-xs";
 
-    const renderIcon = (
-      icon: React.ReactNode | React.ElementType,
-      iconSize: string
-    ) => {
-      if (!icon) return null;
-      if (React.isValidElement(icon)) return icon;
-      const IconComp = icon as React.ElementType;
-      return <IconComp className={cn("shrink-0", iconSize)} />;
+    const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+      if (isDisabled) {
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+      onClick?.(e);
     };
-
-    const iconSize =
-      size === "sm" || size === "xs" ? "h-3.5 w-3.5" : "h-4 w-4";
 
     return (
       <Comp
         ref={ref}
+        type={asChild ? undefined : (type ?? "button")}
         disabled={asChild ? undefined : isDisabled}
+        aria-disabled={isDisabled || undefined}
+        data-disabled={isDisabled ? "" : undefined}
+        tabIndex={isDisabled && asChild ? -1 : tabIndex}
+        onClick={handleClick}
         className={cn(
-          "inline-flex items-center justify-center font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:border-transparent disabled:opacity-50 disabled:pointer-events-none cursor-pointer",
+          "inline-flex items-center justify-center whitespace-nowrap font-medium transition-all duration-200",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+          "disabled:pointer-events-none disabled:opacity-50",
+          !asChild && "cursor-pointer",
+          isDisabled && asChild && "pointer-events-none opacity-50",
+          !isLinkVariant && sizeClass[size],
           variantClass[variant],
-          sizeClass[size],
           shape === "pill" ? "rounded-full" : "rounded-sm",
           fullWidth && "w-full",
+          isIconOnly && "shrink-0",
           className
         )}
         {...props}
       >
-        {isLoading && <Loader2 className="h-4 w-4 animate-spin shrink-0" />}
-        {!isLoading && renderIcon(leftIcon, iconSize)}
-        {children}
-        {!isLoading && renderIcon(rightIcon, iconSize)}
+        {isLoading ? (
+          <>
+            <Loader2 className={cn("animate-spin shrink-0", iconSize)} />
+            {!isIconOnly && children ? <span>{children}</span> : null}
+          </>
+        ) : (
+          <>
+            {renderIcon(leftIcon, iconSize)}
+            {children}
+            {renderIcon(rightIcon, iconSize)}
+          </>
+        )}
       </Comp>
     );
   }
 );
 
-button.displayName = "button";
-
-export { button };
+Button.displayName = "Button";

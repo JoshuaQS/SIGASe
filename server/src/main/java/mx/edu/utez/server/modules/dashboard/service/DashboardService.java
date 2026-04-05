@@ -1,7 +1,24 @@
 package mx.edu.utez.server.modules.dashboard.service;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
+import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.UUID;
+import java.util.stream.Collectors;
+import mx.edu.utez.server.modules.dashboard.dto.DashboardAccessStatus;
 import mx.edu.utez.server.modules.dashboard.dto.DashboardAccessTrendsResponse;
+import mx.edu.utez.server.modules.dashboard.dto.DashboardAnalysisType;
 import mx.edu.utez.server.modules.dashboard.dto.DashboardSummaryResponse;
+import mx.edu.utez.server.modules.dashboard.dto.DashboardTopCareerItemResponse;
+import mx.edu.utez.server.modules.dashboard.dto.DashboardTopCareersResponse;
 import mx.edu.utez.server.modules.dashboard.dto.DashboardTopStudentItemResponse;
 import mx.edu.utez.server.modules.dashboard.dto.DashboardTopStudentsResponse;
 import mx.edu.utez.server.modules.dashboard.dto.DashboardTrendPointResponse;
@@ -16,18 +33,6 @@ import mx.edu.utez.server.shared.enums.ElibroValidationStatus;
 import mx.edu.utez.server.shared.enums.StudentStatus;
 import mx.edu.utez.server.shared.exception.BusinessException;
 import mx.edu.utez.server.shared.exception.ErrorCode;
-import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.ZoneOffset;
-import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.UUID;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
@@ -63,38 +68,82 @@ public class DashboardService {
     public DashboardSummaryResponse getSummary(
             Instant dateFrom,
             Instant dateTo,
-            UUID careerId,
-            String careerCode,
-            StudentStatus studentStatus
+            String analysisType,
+            UUID studentId,
+            List<String> careerCodes,
+            String status,
+            StudentStatus studentStatus,
+            String sortDir,
+            Boolean topEnabled,
+            Integer topN
     ) {
-        Range range = resolveRange(dateFrom, dateTo);
-        String normalizedCareerCode = normalizeCareerCode(careerCode);
-        String effectiveCareerCode = careerId != null ? null : normalizedCareerCode;
+        ResolvedFilters filters = resolveFilters(
+                dateFrom,
+                dateTo,
+                analysisType,
+                studentId,
+                careerCodes,
+                status,
+                studentStatus,
+                sortDir,
+                topEnabled,
+                topN
+        );
 
-        long totalStudents = studentRepository.count(studentSpecification(careerId, effectiveCareerCode, studentStatus));
-        long activeStudents = studentRepository.count(studentSpecification(careerId, effectiveCareerCode, StudentStatus.ACTIVE, studentStatus));
-        long inactiveStudents = studentRepository.count(studentSpecification(careerId, effectiveCareerCode, StudentStatus.INACTIVE, studentStatus));
+        long totalStudents = studentRepository.count(studentSpecification(filters, null));
+        long activeStudents = studentRepository.count(studentSpecification(filters, StudentStatus.ACTIVE));
+        long inactiveStudents = studentRepository.count(studentSpecification(filters, StudentStatus.INACTIVE));
 
         long successful = dashboardMetricsRepository.countSuccessfulAccesses(
-                range.dateFrom(),
-                range.dateTo(),
-                careerId,
-                effectiveCareerCode,
-                studentStatus
+                filters.range().dateFrom(),
+                filters.range().dateTo(),
+                filters.studentId(),
+                filters.careerCodes(),
+                filters.careerCodesEmpty(),
+                filters.studentStatus(),
+                filters.accessStatus().name()
         );
         long failed = dashboardMetricsRepository.countFailedAccesses(
-                range.dateFrom(),
-                range.dateTo(),
-                careerId,
-                effectiveCareerCode,
-                studentStatus
+                filters.range().dateFrom(),
+                filters.range().dateTo(),
+                filters.studentId(),
+                filters.careerCodes(),
+                filters.careerCodesEmpty(),
+                filters.studentStatus(),
+                filters.accessStatus().name()
         );
-        long uniqueSuccessfulStudents = dashboardMetricsRepository.countUniqueStudentsWithSuccessfulAccess(
-                range.dateFrom(),
-                range.dateTo(),
-                careerId,
-                effectiveCareerCode,
-                studentStatus
+        long uniqueStudents = dashboardMetricsRepository.countUniqueStudentsByAccessStatus(
+                filters.range().dateFrom(),
+                filters.range().dateTo(),
+                filters.studentId(),
+                filters.careerCodes(),
+                filters.careerCodesEmpty(),
+                filters.studentStatus(),
+                filters.accessStatus().name()
+        );
+
+        Instant lastAccessAt = dashboardMetricsRepository.findLastAccessAtByFilters(
+                filters.studentId(),
+                filters.careerCodes(),
+                filters.careerCodesEmpty(),
+                filters.studentStatus(),
+                filters.accessStatus().name()
+        );
+        Instant lastSuccessfulAccessAt = dashboardMetricsRepository.findLastSuccessfulAccessAt(
+                filters.range().dateFrom(),
+                filters.range().dateTo(),
+                filters.studentId(),
+                filters.careerCodes(),
+                filters.careerCodesEmpty(),
+                filters.studentStatus()
+        );
+        Instant lastFailedAccessAt = dashboardMetricsRepository.findLastFailedAccessAt(
+                filters.range().dateFrom(),
+                filters.range().dateTo(),
+                filters.studentId(),
+                filters.careerCodes(),
+                filters.careerCodesEmpty(),
+                filters.studentStatus()
         );
 
         return new DashboardSummaryResponse(
@@ -104,8 +153,11 @@ public class DashboardService {
                 successful,
                 failed,
                 calculateSuccessRate(successful, failed),
-                uniqueSuccessfulStudents,
-                resolveElibroStatus()
+                uniqueStudents,
+                resolveElibroStatus(),
+                lastAccessAt,
+                lastSuccessfulAccessAt,
+                lastFailedAccessAt
         );
     }
 
@@ -113,26 +165,41 @@ public class DashboardService {
     public DashboardAccessTrendsResponse getAccessTrends(
             Instant dateFrom,
             Instant dateTo,
-            UUID careerId,
-            String careerCode,
+            String analysisType,
+            UUID studentId,
+            List<String> careerCodes,
+            String status,
             StudentStatus studentStatus,
-            AccessResult result
+            String sortDir,
+            Boolean topEnabled,
+            Integer topN
     ) {
-        Range range = resolveRange(dateFrom, dateTo);
-        String normalizedCareerCode = normalizeCareerCode(careerCode);
-        String effectiveCareerCode = careerId != null ? null : normalizedCareerCode;
-        List<DashboardMetricsRepository.DailyResultCountProjection> rows = dashboardMetricsRepository.findDailyAccessCounts(
-                range.dateFrom(),
-                range.dateTo(),
-                careerId,
-                effectiveCareerCode,
+        ResolvedFilters filters = resolveFilters(
+                dateFrom,
+                dateTo,
+                analysisType,
+                studentId,
+                careerCodes,
+                status,
                 studentStatus,
-                result
+                sortDir,
+                topEnabled,
+                topN
+        );
+
+        List<DashboardMetricsRepository.DailyResultCountProjection> rows = dashboardMetricsRepository.findDailyAccessCounts(
+                filters.range().dateFrom(),
+                filters.range().dateTo(),
+                filters.studentId(),
+                filters.careerCodes(),
+                filters.careerCodesEmpty(),
+                filters.studentStatus(),
+                filters.accessStatus().name()
         );
 
         Map<LocalDate, DashboardTrendAccumulator> byDay = new HashMap<>();
-        LocalDate fromDay = range.dateFrom().atZone(ZoneOffset.UTC).toLocalDate();
-        LocalDate toDay = range.dateTo().atZone(ZoneOffset.UTC).toLocalDate();
+        LocalDate fromDay = filters.range().dateFrom().atZone(ZoneOffset.UTC).toLocalDate();
+        LocalDate toDay = filters.range().dateTo().atZone(ZoneOffset.UTC).toLocalDate();
         LocalDate cursor = fromDay;
         while (!cursor.isAfter(toDay)) {
             byDay.put(cursor, new DashboardTrendAccumulator());
@@ -165,8 +232,8 @@ public class DashboardService {
         }
 
         return new DashboardAccessTrendsResponse(
-                range.dateFrom().toString(),
-                range.dateTo().toString(),
+                filters.range().dateFrom().toString(),
+                filters.range().dateTo().toString(),
                 points
         );
     }
@@ -175,76 +242,273 @@ public class DashboardService {
     public DashboardTopStudentsResponse getTopStudents(
             Instant dateFrom,
             Instant dateTo,
-            UUID careerId,
-            String careerCode,
+            String analysisType,
+            UUID studentId,
+            List<String> careerCodes,
+            String status,
             StudentStatus studentStatus,
-            AccessResult result,
-            Integer limit,
-            String sortDir
+            String sortDir,
+            Boolean topEnabled,
+            Integer topN
     ) {
-        Range range = resolveRange(dateFrom, dateTo);
-        String normalizedCareerCode = normalizeCareerCode(careerCode);
-        String effectiveCareerCode = careerId != null ? null : normalizedCareerCode;
-        int safeLimit = resolveLimit(limit);
-        String safeSortDir = resolveSortDirection(sortDir);
+        ResolvedFilters filters = resolveFilters(
+                dateFrom,
+                dateTo,
+                analysisType,
+                studentId,
+                careerCodes,
+                status,
+                studentStatus,
+                sortDir,
+                topEnabled,
+                topN
+        );
 
-        if (result != null && result != AccessResult.SUCCESS) {
-            throw new BusinessException(
-                    ErrorCode.VALIDATION_ERROR,
-                    "El endpoint top-students solo soporta result=SUCCESS."
-            );
-        }
-
-        PageRequest pageRequest = PageRequest.of(0, safeLimit);
-        List<DashboardTopStudentItemResponse> items = ("asc".equals(safeSortDir)
-                ? dashboardMetricsRepository.findTopStudentsAsc(
-                        range.dateFrom(), range.dateTo(), careerId, effectiveCareerCode, studentStatus, pageRequest
-                )
-                : dashboardMetricsRepository.findTopStudentsDesc(
-                        range.dateFrom(), range.dateTo(), careerId, effectiveCareerCode, studentStatus, pageRequest
-                )).stream().map(dashboardMapper::toTopStudentItem).toList();
+        int limit = filters.effectiveTopLimit();
+        PageRequest pageRequest = PageRequest.of(0, limit);
+        List<DashboardTopStudentItemResponse> items = resolveTopStudentsQuery(filters, pageRequest)
+                .stream()
+                .map(dashboardMapper::toTopStudentItem)
+                .toList();
 
         return new DashboardTopStudentsResponse(
-                range.dateFrom().toString(),
-                range.dateTo().toString(),
-                safeLimit,
-                safeSortDir,
+                filters.range().dateFrom().toString(),
+                filters.range().dateTo().toString(),
+                limit,
+                filters.sortDir(),
                 items
         );
     }
 
-    private Specification<Student> studentSpecification(UUID careerId, String careerCode, StudentStatus exactStatus) {
-        return studentSpecification(careerId, careerCode, exactStatus, null);
+    @Transactional(readOnly = true)
+    public DashboardTopCareersResponse getTopCareers(
+            Instant dateFrom,
+            Instant dateTo,
+            String analysisType,
+            UUID studentId,
+            List<String> careerCodes,
+            String status,
+            StudentStatus studentStatus,
+            String sortDir,
+            Boolean topEnabled,
+            Integer topN
+    ) {
+        ResolvedFilters filters = resolveFilters(
+                dateFrom,
+                dateTo,
+                analysisType,
+                studentId,
+                careerCodes,
+                status,
+                studentStatus,
+                sortDir,
+                topEnabled,
+                topN
+        );
+
+        int limit = filters.effectiveTopLimit();
+        PageRequest pageRequest = PageRequest.of(0, limit);
+        List<DashboardTopCareerItemResponse> items = resolveTopCareersQuery(filters, pageRequest)
+                .stream()
+                .map(row -> new DashboardTopCareerItemResponse(
+                        row.getCareerCode(),
+                        row.getCareerName(),
+                        row.getSuccessfulAccesses(),
+                        row.getFailedAccesses(),
+                        row.getTotalAccesses()
+                ))
+                .toList();
+
+        return new DashboardTopCareersResponse(
+                filters.range().dateFrom().toString(),
+                filters.range().dateTo().toString(),
+                limit,
+                filters.sortDir(),
+                items
+        );
     }
 
-    private Specification<Student> studentSpecification(
-            UUID careerId,
-            String careerCode,
-            StudentStatus exactStatus,
-            StudentStatus statusFilter
+    @Transactional(readOnly = true)
+    public DashboardExportSnapshot buildExportSnapshot(
+            Instant dateFrom,
+            Instant dateTo,
+            String analysisType,
+            UUID studentId,
+            List<String> careerCodes,
+            String status,
+            StudentStatus studentStatus,
+            String sortDir,
+            Boolean topEnabled,
+            Integer topN
     ) {
+        DashboardSummaryResponse summary = getSummary(
+                dateFrom, dateTo, analysisType, studentId, careerCodes, status, studentStatus, sortDir, topEnabled, topN
+        );
+        DashboardAccessTrendsResponse trends = getAccessTrends(
+                dateFrom, dateTo, analysisType, studentId, careerCodes, status, studentStatus, sortDir, topEnabled, topN
+        );
+        DashboardTopStudentsResponse topStudents = getTopStudents(
+                dateFrom, dateTo, analysisType, studentId, careerCodes, status, studentStatus, sortDir, topEnabled, topN
+        );
+        DashboardTopCareersResponse topCareers = getTopCareers(
+                dateFrom, dateTo, analysisType, studentId, careerCodes, status, studentStatus, sortDir, topEnabled, topN
+        );
+        return new DashboardExportSnapshot(summary, trends, topStudents, topCareers);
+    }
+
+    private List<DashboardMetricsRepository.TopStudentProjection> resolveTopStudentsQuery(
+            ResolvedFilters filters,
+            PageRequest pageRequest
+    ) {
+        return switch (filters.accessStatus()) {
+            case SUCCESS -> "asc".equals(filters.sortDir())
+                    ? dashboardMetricsRepository.findTopStudentsSuccessAsc(
+                            filters.range().dateFrom(),
+                            filters.range().dateTo(),
+                            filters.studentId(),
+                            filters.careerCodes(),
+                            filters.careerCodesEmpty(),
+                            filters.studentStatus(),
+                            pageRequest
+                    ).getContent()
+                    : dashboardMetricsRepository.findTopStudentsSuccessDesc(
+                            filters.range().dateFrom(),
+                            filters.range().dateTo(),
+                            filters.studentId(),
+                            filters.careerCodes(),
+                            filters.careerCodesEmpty(),
+                            filters.studentStatus(),
+                            pageRequest
+                    ).getContent();
+            case FAILED -> "asc".equals(filters.sortDir())
+                    ? dashboardMetricsRepository.findTopStudentsFailedAsc(
+                            filters.range().dateFrom(),
+                            filters.range().dateTo(),
+                            filters.studentId(),
+                            filters.careerCodes(),
+                            filters.careerCodesEmpty(),
+                            filters.studentStatus(),
+                            pageRequest
+                    ).getContent()
+                    : dashboardMetricsRepository.findTopStudentsFailedDesc(
+                            filters.range().dateFrom(),
+                            filters.range().dateTo(),
+                            filters.studentId(),
+                            filters.careerCodes(),
+                            filters.careerCodesEmpty(),
+                            filters.studentStatus(),
+                            pageRequest
+                    ).getContent();
+            case ALL -> "asc".equals(filters.sortDir())
+                    ? dashboardMetricsRepository.findTopStudentsAllAsc(
+                            filters.range().dateFrom(),
+                            filters.range().dateTo(),
+                            filters.studentId(),
+                            filters.careerCodes(),
+                            filters.careerCodesEmpty(),
+                            filters.studentStatus(),
+                            pageRequest
+                    ).getContent()
+                    : dashboardMetricsRepository.findTopStudentsAllDesc(
+                            filters.range().dateFrom(),
+                            filters.range().dateTo(),
+                            filters.studentId(),
+                            filters.careerCodes(),
+                            filters.careerCodesEmpty(),
+                            filters.studentStatus(),
+                            pageRequest
+                    ).getContent();
+        };
+    }
+
+    private List<DashboardMetricsRepository.TopCareerProjection> resolveTopCareersQuery(
+            ResolvedFilters filters,
+            PageRequest pageRequest
+    ) {
+        return switch (filters.accessStatus()) {
+            case SUCCESS -> "asc".equals(filters.sortDir())
+                    ? dashboardMetricsRepository.findTopCareersSuccessAsc(
+                            filters.range().dateFrom(),
+                            filters.range().dateTo(),
+                            filters.studentId(),
+                            filters.careerCodes(),
+                            filters.careerCodesEmpty(),
+                            filters.studentStatus(),
+                            pageRequest
+                    ).getContent()
+                    : dashboardMetricsRepository.findTopCareersSuccessDesc(
+                            filters.range().dateFrom(),
+                            filters.range().dateTo(),
+                            filters.studentId(),
+                            filters.careerCodes(),
+                            filters.careerCodesEmpty(),
+                            filters.studentStatus(),
+                            pageRequest
+                    ).getContent();
+            case FAILED -> "asc".equals(filters.sortDir())
+                    ? dashboardMetricsRepository.findTopCareersFailedAsc(
+                            filters.range().dateFrom(),
+                            filters.range().dateTo(),
+                            filters.studentId(),
+                            filters.careerCodes(),
+                            filters.careerCodesEmpty(),
+                            filters.studentStatus(),
+                            pageRequest
+                    ).getContent()
+                    : dashboardMetricsRepository.findTopCareersFailedDesc(
+                            filters.range().dateFrom(),
+                            filters.range().dateTo(),
+                            filters.studentId(),
+                            filters.careerCodes(),
+                            filters.careerCodesEmpty(),
+                            filters.studentStatus(),
+                            pageRequest
+                    ).getContent();
+            case ALL -> "asc".equals(filters.sortDir())
+                    ? dashboardMetricsRepository.findTopCareersAllAsc(
+                            filters.range().dateFrom(),
+                            filters.range().dateTo(),
+                            filters.studentId(),
+                            filters.careerCodes(),
+                            filters.careerCodesEmpty(),
+                            filters.studentStatus(),
+                            pageRequest
+                    ).getContent()
+                    : dashboardMetricsRepository.findTopCareersAllDesc(
+                            filters.range().dateFrom(),
+                            filters.range().dateTo(),
+                            filters.studentId(),
+                            filters.careerCodes(),
+                            filters.careerCodesEmpty(),
+                            filters.studentStatus(),
+                            pageRequest
+                    ).getContent();
+        };
+    }
+
+    private Specification<Student> studentSpecification(ResolvedFilters filters, StudentStatus exactStatus) {
         return (root, query, cb) -> {
             var predicate = cb.conjunction();
 
-            if (careerId != null) {
-                predicate = cb.and(predicate, cb.equal(root.get("career").get("id"), careerId));
-            } else if (StringUtils.hasText(careerCode)) {
+            if (filters.studentId() != null) {
+                predicate = cb.and(predicate, cb.equal(root.get("id"), filters.studentId()));
+            }
+
+            if (!filters.careerCodesEmpty()) {
                 predicate = cb.and(
                         predicate,
-                        cb.equal(
-                                cb.lower(root.get("career").get("code")),
-                                careerCode.toLowerCase(Locale.ROOT)
-                        )
+                        cb.upper(root.get("career").get("code")).in(filters.careerCodes())
                 );
             }
 
-            if (statusFilter != null) {
-                predicate = cb.and(predicate, cb.equal(root.get("status"), statusFilter));
+            if (filters.studentStatus() != null) {
+                predicate = cb.and(predicate, cb.equal(root.get("status"), filters.studentStatus()));
             }
 
             if (exactStatus != null) {
                 predicate = cb.and(predicate, cb.equal(root.get("status"), exactStatus));
             }
+
             return predicate;
         };
     }
@@ -274,10 +538,118 @@ public class DashboardService {
         return "ACTIVE_UNKNOWN";
     }
 
-    private Range resolveRange(Instant dateFrom, Instant dateTo) {
+    private ResolvedFilters resolveFilters(
+            Instant dateFrom,
+            Instant dateTo,
+            String analysisTypeRaw,
+            UUID studentId,
+            List<String> careerCodesRaw,
+            String accessStatusRaw,
+            StudentStatus studentStatus,
+            String sortDir,
+            Boolean topEnabledRaw,
+            Integer topN
+    ) {
+        DashboardAnalysisType analysisType = DashboardAnalysisType.fromNullable(analysisTypeRaw);
+        DashboardAccessStatus accessStatus = DashboardAccessStatus.fromNullable(accessStatusRaw);
+        String safeSortDir = resolveSortDirection(sortDir);
+
+        List<String> normalizedCareerCodes = normalizeCareerCodes(careerCodesRaw);
+        boolean careerCodesEmpty = normalizedCareerCodes.isEmpty();
+
+        boolean topEnabled = Boolean.TRUE.equals(topEnabledRaw);
+        if (!topEnabled && topN != null) {
+            throw new BusinessException(
+                    ErrorCode.VALIDATION_ERROR,
+                    "topN es inválido cuando topEnabled=false."
+            );
+        }
+        if (topEnabled && topN == null) {
+            throw new BusinessException(
+                    ErrorCode.VALIDATION_ERROR,
+                    "topN es obligatorio cuando topEnabled=true."
+            );
+        }
+
+        if (analysisType == DashboardAnalysisType.STUDENTS_INDIVIDUAL && studentId == null) {
+            throw new BusinessException(
+                    ErrorCode.VALIDATION_ERROR,
+                    "students_individual requiere studentId."
+            );
+        }
+
+        if (analysisType != DashboardAnalysisType.STUDENTS_INDIVIDUAL && studentId != null) {
+            throw new BusinessException(
+                    ErrorCode.VALIDATION_ERROR,
+                    "studentId solo se permite con analysisType=students_individual."
+            );
+        }
+
+        if (analysisType == DashboardAnalysisType.STUDENTS_INDIVIDUAL && topEnabled) {
+            throw new BusinessException(
+                    ErrorCode.VALIDATION_ERROR,
+                    "topEnabled no se permite con analysisType=students_individual."
+            );
+        }
+
+        Range range = resolveRange(
+                dateFrom,
+                dateTo,
+                studentId,
+                normalizedCareerCodes,
+                careerCodesEmpty,
+                studentStatus,
+                accessStatus
+        );
+
+        int effectiveTopLimit = topEnabled ? resolveLimit(topN) : DEFAULT_TOP_LIMIT;
+
+        return new ResolvedFilters(
+                range,
+                analysisType,
+                studentId,
+                normalizedCareerCodes,
+                careerCodesEmpty,
+                accessStatus,
+                studentStatus,
+                safeSortDir,
+                topEnabled,
+                topN,
+                effectiveTopLimit
+        );
+    }
+
+    private Range resolveRange(
+            Instant dateFrom,
+            Instant dateTo,
+            UUID studentId,
+            List<String> careerCodes,
+            boolean careerCodesEmpty,
+            StudentStatus studentStatus,
+            DashboardAccessStatus accessStatus
+    ) {
         if (dateFrom == null && dateTo == null) {
-            Instant to = Instant.now();
-            Instant from = to.minus(DEFAULT_RANGE_DAYS, ChronoUnit.DAYS);
+            Instant historicalFrom = dashboardMetricsRepository.findFirstAccessAtByFilters(
+                    studentId,
+                    careerCodes,
+                    careerCodesEmpty,
+                    studentStatus,
+                    accessStatus.name()
+            );
+            Instant historicalTo = dashboardMetricsRepository.findLastAccessAtByFilters(
+                    studentId,
+                    careerCodes,
+                    careerCodesEmpty,
+                    studentStatus,
+                    accessStatus.name()
+            );
+            if (historicalFrom == null || historicalTo == null) {
+                Instant to = Instant.now();
+                Instant from = to.minus(DEFAULT_RANGE_DAYS, ChronoUnit.DAYS);
+                return new Range(from, to);
+            }
+            Instant from = historicalFrom.truncatedTo(ChronoUnit.SECONDS);
+            Instant to = historicalTo.truncatedTo(ChronoUnit.SECONDS);
             return new Range(from, to);
         }
         if (dateFrom == null || dateTo == null) {
@@ -301,7 +673,7 @@ public class DashboardService {
             return DEFAULT_TOP_LIMIT;
         }
         if (limit < 1 || limit > MAX_TOP_LIMIT) {
-            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "limit fuera de rango permitido.");
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "topN fuera de rango permitido.");
         }
         return limit;
     }
@@ -317,11 +689,15 @@ public class DashboardService {
         return normalized;
     }
 
-    private String normalizeCareerCode(String careerCode) {
-        if (!StringUtils.hasText(careerCode)) {
-            return null;
+    private List<String> normalizeCareerCodes(List<String> rawCodes) {
+        if (rawCodes == null || rawCodes.isEmpty()) {
+            return List.of();
         }
-        return careerCode.trim();
+        return rawCodes.stream()
+                .filter(StringUtils::hasText)
+                .map(value -> value.trim().toUpperCase(Locale.ROOT))
+                .distinct()
+                .collect(Collectors.toList());
     }
 
     private static class DashboardTrendAccumulator {
@@ -330,5 +706,28 @@ public class DashboardService {
     }
 
     private record Range(Instant dateFrom, Instant dateTo) {
+    }
+
+    private record ResolvedFilters(
+            Range range,
+            DashboardAnalysisType analysisType,
+            UUID studentId,
+            List<String> careerCodes,
+            boolean careerCodesEmpty,
+            DashboardAccessStatus accessStatus,
+            StudentStatus studentStatus,
+            String sortDir,
+            boolean topEnabled,
+            Integer topN,
+            int effectiveTopLimit
+    ) {
+    }
+
+    public record DashboardExportSnapshot(
+            DashboardSummaryResponse summary,
+            DashboardAccessTrendsResponse trends,
+            DashboardTopStudentsResponse topStudents,
+            DashboardTopCareersResponse topCareers
+    ) {
     }
 }
