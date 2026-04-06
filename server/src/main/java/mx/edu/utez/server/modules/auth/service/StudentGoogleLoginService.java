@@ -5,11 +5,11 @@ import java.time.Instant;
 import java.util.Map;
 import mx.edu.utez.server.config.AppProperties;
 import mx.edu.utez.server.modules.auth.dto.StudentAuthResponse;
-import mx.edu.utez.server.modules.logs.access.service.StudentAccessAlertService;
 import mx.edu.utez.server.modules.students.entity.Student;
 import mx.edu.utez.server.modules.students.repository.StudentRepository;
-import mx.edu.utez.server.shared.enums.AccessResult;
 import mx.edu.utez.server.shared.enums.AuditOutcome;
+import mx.edu.utez.server.shared.enums.StudentAuthMethod;
+import mx.edu.utez.server.shared.enums.StudentAuthResult;
 import mx.edu.utez.server.shared.enums.AuditSeverity;
 import mx.edu.utez.server.shared.enums.StudentStatus;
 import mx.edu.utez.server.shared.exception.BusinessException;
@@ -25,7 +25,6 @@ public class StudentGoogleLoginService {
     private final StudentRepository studentRepository;
     private final AppProperties appProperties;
     private final EmailNormalizer emailNormalizer;
-    private final StudentAccessAlertService studentAccessAlertService;
     private final StudentAccessLoggingFacade studentAccessLoggingFacade;
     private final StudentAuthAuditFacade studentAuthAuditFacade;
     private final AuthLockoutPolicy authLockoutPolicy;
@@ -37,7 +36,6 @@ public class StudentGoogleLoginService {
             StudentRepository studentRepository,
             AppProperties appProperties,
             EmailNormalizer emailNormalizer,
-            StudentAccessAlertService studentAccessAlertService,
             StudentAccessLoggingFacade studentAccessLoggingFacade,
             StudentAuthAuditFacade studentAuthAuditFacade,
             AuthLockoutPolicy authLockoutPolicy,
@@ -48,7 +46,6 @@ public class StudentGoogleLoginService {
         this.studentRepository = studentRepository;
         this.appProperties = appProperties;
         this.emailNormalizer = emailNormalizer;
-        this.studentAccessAlertService = studentAccessAlertService;
         this.studentAccessLoggingFacade = studentAccessLoggingFacade;
         this.studentAuthAuditFacade = studentAuthAuditFacade;
         this.authLockoutPolicy = authLockoutPolicy;
@@ -64,10 +61,11 @@ public class StudentGoogleLoginService {
             GoogleVerifierFailureLog failureLog = mapGoogleVerifierFailure(ex);
             studentAccessLoggingFacade.log(
                     request,
-                    startMs,
                     null,
                     null,
                     null,
+                    null,
+                    StudentAuthMethod.GOOGLE,
                     failureLog.result(),
                     failureLog.errorCode(),
                     failureLog.errorDetail()
@@ -77,14 +75,14 @@ public class StudentGoogleLoginService {
 
         String normalizedEmail = emailNormalizer.normalize(identity.email());
         if (!isAllowedDomain(normalizedEmail)) {
-            studentAccessAlertService.registerFailedAttempt(normalizedEmail, null);
             studentAccessLoggingFacade.log(
                     request,
-                    startMs,
                     null,
                     identity.email(),
                     normalizedEmail,
-                    AccessResult.FAILED_INSTITUTIONAL_DOMAIN,
+                    identity.subject(),
+                    StudentAuthMethod.GOOGLE,
+                    StudentAuthResult.FAILED_INSTITUTIONAL_DOMAIN,
                     "EMAIL_DOMAIN_DENIED",
                     "Dominio institucional inválido."
             );
@@ -93,14 +91,14 @@ public class StudentGoogleLoginService {
 
         Student student = studentRepository.findByInstitutionalEmailNormalized(normalizedEmail).orElse(null);
         if (student == null) {
-            studentAccessAlertService.registerFailedAttempt(normalizedEmail, null);
             studentAccessLoggingFacade.log(
                     request,
-                    startMs,
                     null,
                     identity.email(),
                     normalizedEmail,
-                    AccessResult.FAILED_STUDENT_NOT_FOUND,
+                    identity.subject(),
+                    StudentAuthMethod.GOOGLE,
+                    StudentAuthResult.FAILED_STUDENT_NOT_FOUND,
                     "STUDENT_NOT_FOUND",
                     "El correo no está registrado."
             );
@@ -108,14 +106,14 @@ public class StudentGoogleLoginService {
         }
 
         if (student.getStatus() != StudentStatus.ACTIVE) {
-            studentAccessAlertService.registerFailedAttempt(normalizedEmail, student);
             studentAccessLoggingFacade.log(
                     request,
-                    startMs,
                     student,
                     identity.email(),
                     normalizedEmail,
-                    AccessResult.FAILED_STUDENT_INACTIVE,
+                    identity.subject(),
+                    StudentAuthMethod.GOOGLE,
+                    StudentAuthResult.FAILED_STUDENT_INACTIVE,
                     "STUDENT_INACTIVE",
                     "Estudiante inactivo."
             );
@@ -123,14 +121,14 @@ public class StudentGoogleLoginService {
         }
 
         if (authLockoutPolicy.isLocked(student.getLockedUntil())) {
-            studentAccessAlertService.registerFailedAttempt(normalizedEmail, student);
             studentAccessLoggingFacade.log(
                     request,
-                    startMs,
                     student,
                     identity.email(),
                     normalizedEmail,
-                    AccessResult.FAILED_ACCOUNT_LOCKED,
+                    identity.subject(),
+                    StudentAuthMethod.GOOGLE,
+                    StudentAuthResult.FAILED_ACCOUNT_LOCKED,
                     "ACCOUNT_LOCKED",
                     "Cuenta bloqueada temporalmente."
             );
@@ -141,14 +139,14 @@ public class StudentGoogleLoginService {
         try {
             googleSubjectPolicyService.enforceAndBind(student, identity.subject());
         } catch (BusinessException ex) {
-            boolean alertTriggered = studentAccessAlertService.registerFailedAttempt(normalizedEmail, student);
             studentAccessLoggingFacade.log(
                     request,
-                    startMs,
                     student,
                     identity.email(),
                     normalizedEmail,
-                    AccessResult.FAILED_GOOGLE_SUBJECT_MISMATCH,
+                    identity.subject(),
+                    StudentAuthMethod.GOOGLE,
+                    StudentAuthResult.FAILED_GOOGLE_SUBJECT_MISMATCH,
                     "GOOGLE_SUBJECT_MISMATCH",
                     "Subject de Google no coincide."
             );
@@ -158,7 +156,7 @@ public class StudentGoogleLoginService {
                     identity.subject(),
                     student.getId(),
                     AuditSeverity.CRITICAL,
-                    Map.of("reason", "google_subject_mismatch", "alertTriggered", alertTriggered)
+                    Map.of("reason", "google_subject_mismatch")
             );
             throw new BusinessException(ErrorCode.FORBIDDEN, "No autorizado.");
         }
@@ -168,14 +166,14 @@ public class StudentGoogleLoginService {
             student.setMustChangePassword(true);
         }
         studentRepository.save(student);
-        studentAccessAlertService.registerSuccess(normalizedEmail);
         studentAccessLoggingFacade.log(
                 request,
-                startMs,
                 student,
                 identity.email(),
                 normalizedEmail,
-                AccessResult.SUCCESS,
+                identity.subject(),
+                StudentAuthMethod.GOOGLE,
+                StudentAuthResult.SUCCESS,
                 null,
                 null
         );
@@ -191,22 +189,22 @@ public class StudentGoogleLoginService {
     private GoogleVerifierFailureLog mapGoogleVerifierFailure(BusinessException ex) {
         return switch (ex.getErrorCode()) {
             case INVALID_TOKEN -> new GoogleVerifierFailureLog(
-                    AccessResult.FAILED_INVALID_GOOGLE_TOKEN,
+                    StudentAuthResult.FAILED_INVALID_GOOGLE_TOKEN,
                     "INVALID_GOOGLE_TOKEN",
                     "Google token is invalid or cannot be verified."
             );
             case SERVICE_UNAVAILABLE -> new GoogleVerifierFailureLog(
-                    AccessResult.FAILED_GOOGLE_PROVIDER_UNAVAILABLE,
+                    StudentAuthResult.FAILED_GOOGLE_PROVIDER_UNAVAILABLE,
                     "GOOGLE_PROVIDER_UNAVAILABLE",
                     "Google token verification is temporarily unavailable."
             );
             case PROVIDER_ERROR -> new GoogleVerifierFailureLog(
-                    AccessResult.FAILED_GOOGLE_PROVIDER_ERROR,
+                    StudentAuthResult.FAILED_GOOGLE_PROVIDER_ERROR,
                     "GOOGLE_PROVIDER_ERROR",
                     "Google provider error during token verification."
             );
             default -> new GoogleVerifierFailureLog(
-                    AccessResult.FAILED_INTERNAL_ERROR,
+                    StudentAuthResult.FAILED_INTERNAL_ERROR,
                     "GOOGLE_VERIFICATION_UNEXPECTED",
                     "Unexpected failure before extracting Google identity."
             );
@@ -214,7 +212,7 @@ public class StudentGoogleLoginService {
     }
 
     private record GoogleVerifierFailureLog(
-            AccessResult result,
+            StudentAuthResult result,
             String errorCode,
             String errorDetail
     ) {

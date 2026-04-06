@@ -20,7 +20,9 @@ public record AuditLogResponse(
         String metadataJson,
         String requestId,
         String correlationId,
-        String ipAddress,
+        String ipAddressMasked,
+        String ipAddressHash,
+        String userAgentSanitized,
         Instant occurredAt
 ) {
 }

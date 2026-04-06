@@ -1,8 +1,11 @@
 package mx.edu.utez.server.modules.careers.entity;
 
 import mx.edu.utez.server.shared.entity.BaseAuditableEntity;
+import mx.edu.utez.server.shared.enums.CareerStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 
@@ -12,7 +15,7 @@ import jakarta.persistence.Table;
         indexes = {
                 @Index(name = "idx_careers_code", columnList = "code", unique = true),
                 @Index(name = "idx_careers_name", columnList = "name", unique = true),
-                @Index(name = "idx_careers_active", columnList = "is_active")
+                @Index(name = "idx_careers_status", columnList = "status")
         }
 )
 public class Career extends BaseAuditableEntity {
@@ -23,8 +26,9 @@ public class Career extends BaseAuditableEntity {
     @Column(name = "name", nullable = false, length = 160, unique = true)
     private String name;
 
-    @Column(name = "is_active", nullable = false)
-    private boolean isActive = true;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 16)
+    private CareerStatus status = CareerStatus.ACTIVE;
 
     public String getCode() {
         return code;
@@ -42,11 +46,21 @@ public class Career extends BaseAuditableEntity {
         this.name = name;
     }
 
-    public boolean isActive() {
-        return isActive;
+    public CareerStatus getStatus() {
+        return status;
     }
 
+    public void setStatus(CareerStatus status) {
+        this.status = status;
+    }
+
+    /** Bridge para compatibilidad con llamadores existentes. */
+    public boolean isActive() {
+        return status == CareerStatus.ACTIVE;
+    }
+
+    /** Bridge para compatibilidad con llamadores existentes. */
     public void setActive(boolean active) {
-        isActive = active;
+        this.status = active ? CareerStatus.ACTIVE : CareerStatus.INACTIVE;
     }
 }

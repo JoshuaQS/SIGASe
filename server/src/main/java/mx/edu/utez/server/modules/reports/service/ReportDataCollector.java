@@ -2,7 +2,7 @@ package mx.edu.utez.server.modules.reports.service;
 
 import mx.edu.utez.server.modules.dashboard.repository.DashboardMetricsRepository;
 import mx.edu.utez.server.modules.reports.repository.ReportMetricsRepository;
-import mx.edu.utez.server.shared.enums.AccessResult;
+import mx.edu.utez.server.shared.enums.ElibroAccessResult;
 import mx.edu.utez.server.shared.enums.StudentStatus;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -37,12 +37,12 @@ public class ReportDataCollector {
     @Transactional(readOnly = true)
     public ReportData collect(
             Instant dateFrom, Instant dateTo,
-            AccessResult resultFilter,
+            ElibroAccessResult resultFilter,
             UUID careerId, String careerCode, StudentStatus studentStatus
     ) {
         String accessStatus = resultFilter == null
                 ? "ALL"
-                : resultFilter == AccessResult.SUCCESS ? "SUCCESS" : "FAILED";
+                : resultFilter == ElibroAccessResult.SUCCESS ? "SUCCESS" : "FAILED";
         String normalizedCareerCode = careerCode == null ? null : careerCode.trim().toUpperCase();
         List<String> careerCodes = (careerId == null && normalizedCareerCode != null && !normalizedCareerCode.isBlank())
                 ? List.of(normalizedCareerCode)
@@ -83,7 +83,7 @@ public class ReportDataCollector {
             LocalDate day = row.getDay().toLocalDate();
             long[] counts = byDay.get(day);
             if (counts != null) {
-                if (row.getResult() == AccessResult.SUCCESS) {
+                if (row.getResult() == ElibroAccessResult.SUCCESS) {
                     counts[0] += row.getTotal();
                 } else {
                     counts[1] += row.getTotal();
@@ -135,7 +135,7 @@ public class ReportDataCollector {
         boolean showTopStudents = topStudents.size() > 1;
         boolean showTopCareers = topCareers.size() > 1;
         boolean showErrorBreakdown = failed > 0 && !errorBreakdown.isEmpty()
-                && (resultFilter == null || resultFilter != AccessResult.SUCCESS);
+                && (resultFilter == null || resultFilter != ElibroAccessResult.SUCCESS);
 
         Map<String, String> appliedFilters = new LinkedHashMap<>();
         appliedFilters.put("dateFrom", dateFrom.toString());

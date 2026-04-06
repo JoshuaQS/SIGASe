@@ -1,7 +1,7 @@
 package mx.edu.utez.server.modules.reports.repository;
 
-import mx.edu.utez.server.modules.logs.access.entity.AccessLog;
-import mx.edu.utez.server.shared.enums.AccessResult;
+import mx.edu.utez.server.modules.elibro.entity.ElibroAccessLog;
+import mx.edu.utez.server.shared.enums.ElibroAccessResult;
 import mx.edu.utez.server.shared.enums.StudentStatus;
 import java.time.Instant;
 import java.util.List;
@@ -11,11 +11,11 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-public interface ReportMetricsRepository extends JpaRepository<AccessLog, UUID> {
+public interface ReportMetricsRepository extends JpaRepository<ElibroAccessLog, UUID> {
 
     @Query("""
             select s.career.name as career, count(a.id) as total
-            from AccessLog a
+            from ElibroAccessLog a
             join a.student s
             where a.occurredAt >= :dateFrom
               and a.occurredAt <= :dateTo
@@ -29,7 +29,7 @@ public interface ReportMetricsRepository extends JpaRepository<AccessLog, UUID> 
     List<CareerCountProjection> findTopCareers(
             @Param("dateFrom") Instant dateFrom,
             @Param("dateTo") Instant dateTo,
-            @Param("result") AccessResult result,
+            @Param("result") ElibroAccessResult result,
             @Param("careerId") UUID careerId,
             @Param("careerCode") String careerCode,
             @Param("studentStatus") StudentStatus studentStatus,
@@ -38,11 +38,11 @@ public interface ReportMetricsRepository extends JpaRepository<AccessLog, UUID> 
 
     @Query("""
             select a.result as result, count(a.id) as total
-            from AccessLog a
+            from ElibroAccessLog a
             left join a.student s
             where a.occurredAt >= :dateFrom
               and a.occurredAt <= :dateTo
-              and a.result <> mx.edu.utez.server.shared.enums.AccessResult.SUCCESS
+              and a.result <> mx.edu.utez.server.shared.enums.ElibroAccessResult.SUCCESS
               and (:careerId is null or (s is not null and s.career.id = :careerId))
               and (:careerCode is null or (s is not null and lower(s.career.code) = lower(:careerCode)))
               and (:studentStatus is null or (s is not null and s.status = :studentStatus))
@@ -63,7 +63,7 @@ public interface ReportMetricsRepository extends JpaRepository<AccessLog, UUID> 
     }
 
     interface ErrorBreakdownProjection {
-        AccessResult getResult();
+        ElibroAccessResult getResult();
         long getTotal();
     }
 }

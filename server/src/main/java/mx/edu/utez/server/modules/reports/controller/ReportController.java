@@ -6,10 +6,10 @@ import mx.edu.utez.server.modules.reports.service.ReportService;
 import mx.edu.utez.server.modules.reports.service.ReportXlsxExportService;
 import mx.edu.utez.server.modules.reports.service.StudentXlsxExportService;
 import mx.edu.utez.server.shared.api.ApiRoutes;
-import mx.edu.utez.server.shared.enums.AccessResult;
 import mx.edu.utez.server.shared.enums.AuditActorType;
 import mx.edu.utez.server.shared.enums.AuditOutcome;
 import mx.edu.utez.server.shared.enums.AuditSeverity;
+import mx.edu.utez.server.shared.enums.ElibroAccessResult;
 import mx.edu.utez.server.shared.enums.StudentStatus;
 import mx.edu.utez.server.shared.exception.BusinessException;
 import mx.edu.utez.server.shared.exception.ErrorCode;
@@ -87,12 +87,12 @@ public class ReportController {
     public void exportAccessLogs(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant dateFrom,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant dateTo,
-            @RequestParam(required = false) AccessResult result,
+            @RequestParam(required = false) ElibroAccessResult result,
             @RequestParam(required = false) String normalizedEmail,
             @RequestParam(required = false) String attemptedEmail,
             @RequestParam(required = false) UUID studentId,
             @RequestParam(required = false) String ipAddress,
-            @RequestParam(required = false) String providerName,
+            @RequestParam(required = false) String channelName,
             @RequestParam(defaultValue = "csv") String format,
             Authentication authentication,
             HttpServletRequest request,
@@ -108,7 +108,7 @@ public class ReportController {
             response.setHeader("Content-Disposition", "attachment; filename=\"" + filename + "\"");
             reportXlsxExportService.exportAccessLogs(
                     response.getOutputStream(), dateFrom, dateTo, result, normalizedEmail,
-                    attemptedEmail, studentId, ipAddress, providerName, actor, request
+                    attemptedEmail, studentId, ipAddress, channelName, actor, request
             );
         } else {
             String filename = ReportService.generateFilename("access-logs", "csv");
@@ -116,7 +116,7 @@ public class ReportController {
             response.setHeader("Content-Disposition", "attachment; filename=\"" + filename + "\"");
             reportService.exportAccessLogs(
                     response.getOutputStream(), dateFrom, dateTo, result, normalizedEmail,
-                    attemptedEmail, studentId, ipAddress, providerName, actor, request
+                    attemptedEmail, studentId, ipAddress, channelName, actor, request
             );
         }
     }

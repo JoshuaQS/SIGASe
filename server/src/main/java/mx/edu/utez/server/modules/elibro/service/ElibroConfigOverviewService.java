@@ -25,14 +25,15 @@ import mx.edu.utez.server.modules.elibro.dto.ElibroOverviewStatus;
 import mx.edu.utez.server.modules.elibro.dto.ElibroOverviewUptimeWeekly;
 import mx.edu.utez.server.modules.elibro.dto.ElibroOverviewValidationPoint;
 import mx.edu.utez.server.modules.elibro.entity.ElibroConfig;
+import mx.edu.utez.server.modules.elibro.entity.ElibroAccessLog;
 import mx.edu.utez.server.modules.elibro.entity.ElibroValidationRun;
 import mx.edu.utez.server.modules.elibro.mapper.ElibroConfigMapper;
+import mx.edu.utez.server.modules.elibro.repository.ElibroAccessLogRepository;
 import mx.edu.utez.server.modules.elibro.repository.ElibroValidationRunRepository;
-import mx.edu.utez.server.modules.logs.access.entity.AccessLog;
-import mx.edu.utez.server.modules.logs.access.repository.AccessLogRepository;
 import mx.edu.utez.server.modules.logs.audit.entity.AuditLog;
 import mx.edu.utez.server.modules.logs.audit.repository.AuditLogRepository;
 import mx.edu.utez.server.shared.enums.AuditOutcome;
+import mx.edu.utez.server.shared.enums.ElibroConfigStatus;
 import mx.edu.utez.server.shared.enums.ElibroValidationRunStatus;
 import mx.edu.utez.server.shared.enums.ElibroValidationStatus;
 import mx.edu.utez.server.shared.enums.ElibroValidationType;
@@ -43,7 +44,6 @@ import org.springframework.util.StringUtils;
 @Service
 public class ElibroConfigOverviewService {
 
-    private static final String ACCESS_PROVIDER_NAME = "ELIBRO";
     private static final String PROVIDER_LABEL = "eLibro";
 
     private static final List<String> RECENT_ACTIVITY_ACTIONS = List.of(
@@ -56,20 +56,20 @@ public class ElibroConfigOverviewService {
 
     private final ElibroConfigService elibroConfigService;
     private final ElibroConfigMapper mapper;
-    private final AccessLogRepository accessLogRepository;
+    private final ElibroAccessLogRepository elibroAccessLogRepository;
     private final ElibroValidationRunRepository validationRunRepository;
     private final AuditLogRepository auditLogRepository;
 
     public ElibroConfigOverviewService(
             ElibroConfigService elibroConfigService,
             ElibroConfigMapper mapper,
-            AccessLogRepository accessLogRepository,
+            ElibroAccessLogRepository elibroAccessLogRepository,
             ElibroValidationRunRepository validationRunRepository,
             AuditLogRepository auditLogRepository
     ) {
         this.elibroConfigService = elibroConfigService;
         this.mapper = mapper;
-        this.accessLogRepository = accessLogRepository;
+        this.elibroAccessLogRepository = elibroAccessLogRepository;
         this.validationRunRepository = validationRunRepository;
         this.auditLogRepository = auditLogRepository;
     }
@@ -83,7 +83,7 @@ public class ElibroConfigOverviewService {
                 configDto.hasAuthToken(),
                 configDto.hasChannelId(),
                 configDto.hasChannelSecret(),
-                hasValidEndpoint(config.getAuthEndpoint()),
+                hasValidEndpoint(config.getNextUrl()),
                 configDto.hasChannelId() && StringUtils.hasText(config.getChannelName())
         );
 
@@ -102,8 +102,8 @@ public class ElibroConfigOverviewService {
         Instant from24h = now.minusSeconds(24L * 60L * 60L);
         Instant from7d = now.minusSeconds(7L * 24L * 60L * 60L);
 
-        List<AccessLog> recentAccessLogs = accessLogRepository
-                .findByProviderNameAndOccurredAtGreaterThanEqualOrderByOccurredAtAsc(ACCESS_PROVIDER_NAME, from24h);
+        List<ElibroAccessLog> recentAccessLogs = elibroAccessLogRepository
+                .findByOccurredAtGreaterThanEqualOrderByOccurredAtAsc(from24h);
         Long avgLatency24hMs = averageLatencyMs(recentAccessLogs);
         List<ElibroOverviewLatencyPoint> latency24h = buildLatency24h(recentAccessLogs, now);
 
@@ -232,7 +232,7 @@ public class ElibroConfigOverviewService {
         return points;
     }
 
-    private List<ElibroOverviewLatencyPoint> buildLatency24h(List<AccessLog> logs, Instant now) {
+    private List<ElibroOverviewLatencyPoint> buildLatency24h(List<ElibroAccessLog> logs, Instant now) {
         Instant floorHour = now.truncatedTo(java.time.temporal.ChronoUnit.HOURS);
         List<Instant> hourSlots = new ArrayList<>(24);
         for (int i = 23; i >= 0; i--) {
@@ -244,7 +244,7 @@ public class ElibroConfigOverviewService {
             countersByHour.put(hour, new long[] {0L, 0L});
         }
 
-        for (AccessLog log : logs) {
+        for (ElibroAccessLog log : logs) {
             if (log.getOccurredAt() == null || log.getLatencyMs() == null) {
                 continue;
             }
@@ -274,7 +274,7 @@ public class ElibroConfigOverviewService {
         if (!checklist.validEndpoint() || !checklist.buildableChannel()) {
             return "incomplete";
         }
-        if (!config.isActive()) {
+        if (config.getStatus() != ElibroConfigStatus.ACTIVE) {
             return "pending";
         }
         if (config.getValidationStatus() == ElibroValidationStatus.INVALID) {
@@ -339,10 +339,10 @@ public class ElibroConfigOverviewService {
         }
     }
 
-    private Long averageLatencyMs(List<AccessLog> logs) {
+    private Long averageLatencyMs(List<ElibroAccessLog> logs) {
         long total = 0L;
         long count = 0L;
-        for (AccessLog log : logs) {
+        for (ElibroAccessLog log : logs) {
             if (log.getLatencyMs() == null) {
                 continue;
             }

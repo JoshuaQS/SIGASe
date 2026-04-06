@@ -15,8 +15,7 @@ public record StudentPortalSummaryResponse(
     }
 
     public record AccountStatus(
-            boolean active,
-            String state,
+            String status,
             String message
     ) {
     }

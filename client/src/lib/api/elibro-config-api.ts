@@ -7,7 +7,6 @@ export type ElibroRecentActivityType = 'success' | 'warning' | 'info' | 'error';
 export type ElibroOverviewConfig = {
   id: string;
   name: string;
-  endpoint: string;
   channelName: string;
   channelIdMasked: string | null;
   hasAuthToken: boolean;
@@ -17,7 +16,8 @@ export type ElibroOverviewConfig = {
   updatedByName: string | null;
   createdAt: string;
   updatedAt: string;
-  active: boolean;
+  nextUrl: string | null;
+  status: 'ACTIVE' | 'INACTIVE' | string;
 };
 
 export type ElibroOverviewStatus = {
@@ -67,12 +67,12 @@ export type ElibroConfigResponse = {
   id: string;
   name: string;
   channelName: string;
-  authEndpoint: string;
   channelIdMasked: string | null;
   hasAuthToken: boolean;
   hasChannelSecret: boolean;
   hasChannelId: boolean;
-  active: boolean;
+  nextUrl: string | null;
+  status: 'ACTIVE' | 'INACTIVE' | string;
   validationStatus: 'NOT_VALIDATED' | 'VALID' | 'INVALID' | string;
   validationMessage: string | null;
   lastValidatedAt: string | null;
@@ -90,8 +90,8 @@ export type UpsertElibroConfigRequest = {
   channelId: string;
   channelSecret: string;
   channelName: string;
-  authEndpoint: string;
-  active: boolean;
+  nextUrl?: string;
+  status?: 'ACTIVE' | 'INACTIVE';
 };
 
 export type PatchElibroConfigRequest = {
@@ -100,8 +100,8 @@ export type PatchElibroConfigRequest = {
   channelId?: string;
   channelSecret?: string;
   channelName?: string;
-  authEndpoint?: string;
-  active?: boolean;
+  nextUrl?: string;
+  status?: 'ACTIVE' | 'INACTIVE';
 };
 
 export type ElibroConfigOverviewResponse = {

@@ -38,7 +38,7 @@ public class StudentPortalElibroController {
     @PreAuthorize("hasAuthority('ROLE_STUDENT')")
     @Operation(
             summary = "Resumen del portal estudiante",
-            description = "Devuelve datos personales y métricas de acceso calculadas desde AccessLog."
+            description = "Devuelve datos personales y métricas de acceso calculadas desde ElibroAccessLog."
     )
     public ApiResponse<StudentPortalSummaryResponse> summary(Authentication authentication) {
         UUID studentId = UUID.fromString(authentication.getName());

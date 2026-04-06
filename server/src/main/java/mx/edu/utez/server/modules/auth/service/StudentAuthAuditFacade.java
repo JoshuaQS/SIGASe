@@ -11,6 +11,7 @@ import mx.edu.utez.server.shared.context.RequestContext;
 import mx.edu.utez.server.shared.enums.AuditActorType;
 import mx.edu.utez.server.shared.enums.AuditOutcome;
 import mx.edu.utez.server.shared.enums.AuditSeverity;
+import mx.edu.utez.server.shared.enums.AuditSourceModule;
 import mx.edu.utez.server.shared.util.ClientIpResolver;
 import org.springframework.stereotype.Service;
 
@@ -33,18 +34,24 @@ public class StudentAuthAuditFacade {
 
     public void auditStudent(HttpServletRequest request, String action, UUID studentId, AuditOutcome outcome) {
         auditLogService.log(new AuditLogCommand(
-                AuditActorType.STUDENT,
+                AuditActorType.SYSTEM,
                 null,
                 studentId.toString(),
                 action,
                 "STUDENT",
                 studentId.toString(),
                 outcome,
-                outcome == AuditOutcome.SUCCESS ? AuditSeverity.INFO : AuditSeverity.WARN,
+                outcome == AuditOutcome.SUCCESS ? AuditSeverity.INFO : AuditSeverity.WARNING,
+                AuditSourceModule.AUTH,
                 null,
                 requestId(request),
                 correlationId(request),
-                ipAddress(request)
+                ipAddress(request),
+                request != null ? request.getHeader("User-Agent") : null,
+                request != null ? request.getRequestedSessionId() : null,
+                request != null ? request.getHeader("Origin") : null,
+                request != null ? request.getMethod() : null,
+                request != null ? request.getRequestURI() : null
         ));
     }
 
@@ -65,10 +72,16 @@ public class StudentAuthAuditFacade {
                 studentId.toString(),
                 AuditOutcome.FAILURE,
                 severity,
+                AuditSourceModule.AUTH,
                 toJson(metadata),
                 requestId(request),
                 correlationId(request),
-                ipAddress(request)
+                ipAddress(request),
+                request != null ? request.getHeader("User-Agent") : null,
+                request != null ? request.getRequestedSessionId() : null,
+                request != null ? request.getHeader("Origin") : null,
+                request != null ? request.getMethod() : null,
+                request != null ? request.getRequestURI() : null
         ));
     }
 

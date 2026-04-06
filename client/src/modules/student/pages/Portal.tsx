@@ -61,8 +61,8 @@ function resolveDisabledReason(summary: StudentPortalSummaryResponse | null) {
 
 const CAREER_STOPWORDS = new Set(['de', 'del', 'la', 'las', 'los', 'y', 'en', 'para']);
 
-function splitStudentName(fullName: string) {
-  const cleaned = fullName.trim().replace(/\s+/g, ' ');
+function splitStudentName(name: string) {
+  const cleaned = name.trim().replace(/\s+/g, ' ');
   if (!cleaned) {
     return { firstNames: 'Sin nombre', lastNames: 'Sin apellidos' };
   }
@@ -272,7 +272,7 @@ const Portal = () => {
   );
   const careerAcronym = useMemo(() => buildCareerAcronym(career), [career]);
   const streakDays = summary?.accessMetrics.rachaDiasConAcceso ?? 0;
-  const isAccountActive = summary?.accountStatus.active ?? false;
+  const isAccountActive = summary?.accountStatus.status === 'ACTIVE';
   const accountStatusTitle = isAccountActive ? 'Activo' : 'Inactivo';
   const accountStatusMessage =
     summary?.accountStatus.message ||

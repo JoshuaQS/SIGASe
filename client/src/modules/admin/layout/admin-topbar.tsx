@@ -56,9 +56,12 @@ export function AdminTopbar() {
               <span className="font-bold text-foreground text-xl tracking-tight">{panelTitle}</span>
               <Badge
                 variant="filled"
-                className=""
+                className="auth-shine-chip"
               >
                 SIGASe
+                <span className="pointer-events-none absolute inset-0 overflow-hidden rounded-full">
+                  <span className="absolute top-[-100%] left-[-100%] h-[300%] w-[50%] rotate-45 animate-chip-shine-diagonal bg-gradient-to-r from-transparent via-primary-foreground/35 to-transparent" />
+                </span>
               </Badge>
             </div>
             <p className="text-sm text-muted-foreground leading-none mt-1">{panelSubtitle}</p>

@@ -15,7 +15,7 @@ public class AdminMapper {
                 admin.getLastNamePaternal(),
                 admin.getLastNameMaternal(),
                 admin.getRole(),
-                admin.isActive(),
+                admin.getStatus(),
                 admin.getFailedLoginAttempts(),
                 admin.getLockedUntil(),
                 admin.getLastLoginAt(),

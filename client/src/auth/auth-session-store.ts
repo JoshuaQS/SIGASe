@@ -20,6 +20,8 @@ export type AuthSessionSnapshot = {
   bootstrapError: boolean;
 };
 
+type SessionExpiredListener = (reason: string) => void;
+
 const SERVER_SNAPSHOT: AuthSessionSnapshot = {
   user: null,
   isInitializing: false,
@@ -54,6 +56,7 @@ let snapshot: AuthSessionSnapshot = hasBrowser
   }
   : SERVER_SNAPSHOT;
 const listeners = new Set<() => void>();
+const sessionExpiredListeners = new Set<SessionExpiredListener>();
 
 function buildPersonDisplayName(params: {
   name: string;
@@ -158,6 +161,13 @@ export const authSession = {
   subscribe(fn: () => void) {
     listeners.add(fn);
     return () => listeners.delete(fn);
+  },
+  onSessionExpired(fn: SessionExpiredListener) {
+    sessionExpiredListeners.add(fn);
+    return () => sessionExpiredListeners.delete(fn);
+  },
+  triggerSessionExpired(reason: string) {
+    sessionExpiredListeners.forEach((listener) => listener(reason));
   },
   getSnapshot(): AuthSessionSnapshot {
     return snapshot;

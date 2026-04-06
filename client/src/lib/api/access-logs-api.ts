@@ -9,7 +9,7 @@ type PageEnvelope<T> = {
   totalPages: number;
 };
 
-export type AccessResult =
+export type ElibroAccessResult =
   | 'SUCCESS'
   | 'FAILED_INVALID_GOOGLE_TOKEN'
   | 'FAILED_GOOGLE_SUBJECT_MISMATCH'
@@ -27,15 +27,25 @@ export type AccessLogDto = {
   studentId: string | null;
   attemptedEmail: string | null;
   normalizedEmail: string | null;
-  result: AccessResult;
+  result: ElibroAccessResult;
   errorCode: string | null;
   errorDetail: string | null;
   latencyMs: number | null;
   requestId: string | null;
   correlationId: string | null;
-  ipAddress: string | null;
-  userAgent: string | null;
-  providerName: string | null;
+  ipAddressMasked: string | null;
+  ipAddressHash: string | null;
+  userAgentSanitized: string | null;
+  sessionId: string | null;
+  origin: string | null;
+  referer: string | null;
+  httpMethod: string | null;
+  requestPath: string | null;
+  channelNameSnapshot: string | null;
+  providerStatusCode: number | null;
+  providerErrorCode: string | null;
+  providerErrorMessage: string | null;
+  metadataJson: string | null;
   nextUrl: string | null;
   redirectUrl: string | null;
   occurredAt: string;
@@ -44,14 +54,14 @@ export type AccessLogDto = {
 export type AccessLogParams = {
   dateFrom?: string;
   dateTo?: string;
-  result?: AccessResult;
+  result?: ElibroAccessResult;
   normalizedEmail?: string;
   attemptedEmail?: string;
   studentId?: string;
   ipAddress?: string;
   requestId?: string;
   correlationId?: string;
-  providerName?: string;
+  channelName?: string;
   page?: number;
   size?: number;
   sortBy?:
@@ -63,7 +73,7 @@ export type AccessLogParams = {
   | 'ipAddress'
   | 'requestId'
   | 'correlationId'
-  | 'providerName';
+  | 'channelName';
   sortDir?: 'asc' | 'desc';
 };
 
@@ -76,7 +86,7 @@ const ACCESS_ALLOWED_SORT_BY = new Set([
   'ipAddress',
   'requestId',
   'correlationId',
-  'providerName',
+  'channelName',
 ] as const);
 
 function clean(value?: string | null) {
@@ -95,7 +105,7 @@ function buildQuery(params: AccessLogParams) {
   if (clean(params.ipAddress)) qs.set('ipAddress', clean(params.ipAddress)!);
   if (clean(params.requestId)) qs.set('requestId', clean(params.requestId)!);
   if (clean(params.correlationId)) qs.set('correlationId', clean(params.correlationId)!);
-  if (clean(params.providerName)) qs.set('providerName', clean(params.providerName)!);
+  if (clean(params.channelName)) qs.set('channelName', clean(params.channelName)!);
   if (params.page !== undefined) qs.set('page', String(params.page));
   if (params.size !== undefined) qs.set('size', String(params.size));
   if (params.sortBy && ACCESS_ALLOWED_SORT_BY.has(params.sortBy)) qs.set('sortBy', params.sortBy);

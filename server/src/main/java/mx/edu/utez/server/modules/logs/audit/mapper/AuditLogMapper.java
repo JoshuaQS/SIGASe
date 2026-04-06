@@ -22,7 +22,9 @@ public class AuditLogMapper {
                 auditLog.getMetadataJson(),
                 auditLog.getRequestId(),
                 auditLog.getCorrelationId(),
-                auditLog.getIpAddress(),
+                auditLog.getIpAddressMasked(),
+                auditLog.getIpAddressHash(),
+                auditLog.getUserAgentSanitized(),
                 auditLog.getOccurredAt()
         );
     }

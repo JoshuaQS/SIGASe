@@ -15,13 +15,13 @@ import {
   type ElibroConfigResponse,
 } from '@/lib/api/elibro-config-api'
 
-const DEFAULT_AUTH_ENDPOINT = 'https://auth.elibro.net/auth/sso/'
+const DEFAULT_NEXT_URL = ''
 
 type EditMode = 'view' | 'choose' | 'create' | 'edit-current'
 
 type CredentialsFormState = {
   name: string
-  authEndpoint: string
+  nextUrl: string
   channelName: string
   authToken: string
   channelId: string
@@ -43,7 +43,7 @@ interface ElibroCredentialsStaticCardProps {
 function toInitialFormState(config: ElibroConfigResponse | null): CredentialsFormState {
   return {
     name: config?.name ?? '',
-    authEndpoint: config?.authEndpoint ?? DEFAULT_AUTH_ENDPOINT,
+    nextUrl: config?.nextUrl ?? DEFAULT_NEXT_URL,
     channelName: config?.channelName ?? '',
     authToken: '',
     channelId: '',
@@ -149,7 +149,7 @@ export function ElibroCredentialsStaticCard({
 
       const previousSelectedId = options?.preferredConfigId ?? selectedConfigId
       const hasPrevious = previousSelectedId ? list.some((item) => item.id === previousSelectedId) : false
-      const fallbackId = list.find((item) => item.active)?.id ?? list[0]?.id ?? null
+      const fallbackId = list.find((item) => item.status === 'ACTIVE')?.id ?? list[0]?.id ?? null
       const nextSelectedId = hasPrevious ? previousSelectedId : fallbackId
       const nextSelectedConfig = nextSelectedId ? list.find((item) => item.id === nextSelectedId) ?? null : null
 
@@ -225,17 +225,17 @@ export function ElibroCredentialsStaticCard({
 
   const handleSave = async () => {
     const name = form.name.trim()
-    const authEndpoint = form.authEndpoint.trim()
+    const nextUrl = form.nextUrl.trim()
     const channelName = form.channelName.trim()
     const authToken = form.authToken.trim()
     const channelId = form.channelId.trim()
     const channelSecret = form.channelSecret.trim()
 
-    if (!name || !authEndpoint || !channelName) {
+    if (!name || !channelName) {
       showToast({
         severity: 'warning',
         title: 'Campos incompletos',
-        description: 'Nombre, endpoint y channel name son obligatorios.',
+        description: 'Nombre y channel name son obligatorios.',
       })
       return
     }
@@ -259,12 +259,12 @@ export function ElibroCredentialsStaticCard({
       if (mode === 'create') {
         saved = await createElibroConfig({
           name,
-          authEndpoint,
+          ...(nextUrl ? { nextUrl } : {}),
           channelName,
           authToken,
           channelId,
           channelSecret,
-          active: true,
+          status: 'ACTIVE',
         })
       } else {
         if (!selectedConfig?.id) {
@@ -278,7 +278,7 @@ export function ElibroCredentialsStaticCard({
 
         saved = await updateElibroConfig(selectedConfig.id, {
           name,
-          authEndpoint,
+          nextUrl,
           channelName,
           ...(authToken ? { authToken } : {}),
           ...(channelId ? { channelId } : {}),
@@ -433,7 +433,7 @@ export function ElibroCredentialsStaticCard({
                   <p className="text-sm font-medium text-foreground truncate">{config.name}</p>
                   <div className="flex items-center gap-2 mt-1">
                     <span className="text-[10px] text-muted-foreground">{formatDateTime(config.updatedAt)}</span>
-                    {config.active ? (
+                    {config.status === 'ACTIVE' ? (
                       <span className="text-[9px] font-medium text-success bg-success/10 px-1.5 py-0.5 rounded-full">Activa</span>
                     ) : (
                       <span className="text-[9px] font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">Inactiva</span>
@@ -454,7 +454,7 @@ export function ElibroCredentialsStaticCard({
               <span className={`flex items-center gap-1 text-xs ${connectionBadge.className}`}>
                 <ConnectionIcon className="h-3 w-3" /> {connectionBadge.text}
               </span>
-              <span className="text-xs text-muted-foreground">{selectedConfig?.active ? 'Activa' : 'Sin activar'}</span>
+              <span className="text-xs text-muted-foreground">{selectedConfig?.status === 'ACTIVE' ? 'Activa' : 'Sin activar'}</span>
             </div>
           </div>
           <Button
@@ -500,12 +500,12 @@ export function ElibroCredentialsStaticCard({
             />
           </div>
           <div className="space-y-1.5">
-            <p className="text-xs font-medium text-muted-foreground">Endpoint base SSO</p>
+            <p className="text-xs font-medium text-muted-foreground">Next URL permitida</p>
             <Input
-              value={form.authEndpoint}
+              value={form.nextUrl}
               readOnly={!isFormEditable}
-              onChange={(event) => updateField('authEndpoint', event.target.value)}
-              placeholder={DEFAULT_AUTH_ENDPOINT}
+              onChange={(event) => updateField('nextUrl', event.target.value)}
+              placeholder="https://campus.utez.edu.mx/portal"
             />
           </div>
           <div className="space-y-1.5">

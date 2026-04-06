@@ -1,6 +1,7 @@
 package mx.edu.utez.server.modules.admins.dto;
 
 import mx.edu.utez.server.shared.enums.AdminRole;
+import mx.edu.utez.server.shared.enums.AdminStatus;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -11,7 +12,7 @@ public record AdminResponse(
         String lastNamePaternal,
         String lastNameMaternal,
         AdminRole role,
-        boolean active,
+        AdminStatus status,
         int failedLoginAttempts,
         Instant lockedUntil,
         Instant lastLoginAt,

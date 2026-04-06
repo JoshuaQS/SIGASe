@@ -20,7 +20,12 @@ export const PortalTopBar = ({ children }: PortalTopBarProps) => {
           <div>
             <div className="flex items-center gap-2">
               <span className="text-lg font-bold tracking-tight text-foreground">Portal estudiantil</span>
-              <Badge variant="filled">SIGASe</Badge>
+              <Badge variant="filled" className="auth-shine-chip">
+                SIGASe
+                <span className="pointer-events-none absolute inset-0 overflow-hidden rounded-full">ui
+                  <span className="absolute top-[-100%] left-[-100%] h-[300%] w-[50%] rotate-45 animate-chip-shine-diagonal bg-gradient-to-r from-transparent via-primary-foreground/35 to-transparent" />
+                </span>
+              </Badge>
             </div>
             <p className="mt-1 text-md leading-none text-muted-foreground">
               Sistema Integral de Gestión y Acceso SSO eLibro

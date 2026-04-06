@@ -54,13 +54,13 @@ export function ProtectedField({
       >
         <span
           className={cn(
-            'absolute -top-2 left-2 px-1 py-0 leading-none',
-            'bg-amber-50 dark:bg-amber-500/10 border border-amber-400 rounded-sm',
-            'text-amber-600 dark:text-amber-400 font-medium',
+            'absolute -top-2 left-2 px-1.5 py-0 leading-none',
+            'bg-amber-100 dark:bg-slate-950 border border-amber-400 rounded-sm',
+            '!text-[10px] text-amber-600 dark:text-amber-400 font-bold uppercase tracking-wider',
             cfg.fieldLabel
           )}
         >
-          Protegido
+          {'Protegido'}
         </span>
 
         <div className={cn('flex items-center', cfg.addonGap)}>
@@ -74,7 +74,7 @@ export function ProtectedField({
                     size === 'xs' ? 'w-1 h-1' : size === 'sm' ? 'w-1.5 h-1.5' : 'w-2 h-2'
                   )}
                 />
-                
+
               ))}
             </div>
           </div>

@@ -27,7 +27,9 @@ export type AuditLogDto = {
   metadataJson: string | null;
   requestId: string | null;
   correlationId: string | null;
-  ipAddress: string | null;
+  ipAddressMasked: string | null;
+  ipAddressHash: string | null;
+  userAgentSanitized: string | null;
   occurredAt: string;
 };
 

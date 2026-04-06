@@ -8,10 +8,10 @@ import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.UUID;
 import mx.edu.utez.server.modules.admins.entity.Admin;
-import mx.edu.utez.server.modules.logs.access.entity.AccessLog;
+import mx.edu.utez.server.modules.elibro.entity.ElibroAccessLog;
 import mx.edu.utez.server.modules.logs.audit.entity.AuditLog;
 import mx.edu.utez.server.modules.students.entity.Student;
-import mx.edu.utez.server.shared.enums.AccessResult;
+import mx.edu.utez.server.shared.enums.ElibroAccessResult;
 import mx.edu.utez.server.shared.enums.AuditActorType;
 import mx.edu.utez.server.shared.enums.AuditOutcome;
 import mx.edu.utez.server.shared.enums.AuditSeverity;
@@ -62,12 +62,12 @@ public class ReportService {
             OutputStream out,
             Instant dateFrom,
             Instant dateTo,
-            AccessResult result,
+            ElibroAccessResult result,
             String normalizedEmail,
             String attemptedEmail,
             UUID studentId,
             String ipAddress,
-            String providerName,
+            String channelName,
             Admin actor,
             HttpServletRequest request
     ) {
@@ -80,21 +80,21 @@ public class ReportService {
                 attemptedEmail,
                 studentId,
                 ipAddress,
-                providerName,
+                channelName,
                 actor,
                 request
         );
     }
 
-    Specification<AccessLog> buildAccessLogSpec(
+    Specification<ElibroAccessLog> buildAccessLogSpec(
             Instant dateFrom,
             Instant dateTo,
-            AccessResult result,
+            ElibroAccessResult result,
             String normalizedEmail,
             String attemptedEmail,
             UUID studentId,
             String ipAddress,
-            String providerName
+            String channelName
     ) {
         return accessLogReportService.buildSpec(
                 dateFrom,
@@ -104,7 +104,7 @@ public class ReportService {
                 attemptedEmail,
                 studentId,
                 ipAddress,
-                providerName
+                channelName
         );
     }
 

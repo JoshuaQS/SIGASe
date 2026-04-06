@@ -32,7 +32,7 @@ public class AuditLogReportService {
 
     static final String[] AUDIT_LOG_HEADERS = {
             "occurredAt", "actorType", "actorEmail", "action", "entityType",
-            "entityId", "outcome", "severity", "ipAddress", "requestId"
+            "entityId", "outcome", "severity", "ipAddressMasked", "ipAddressHash", "userAgentSanitized", "requestId"
     };
 
     private static final List<Function<AuditLog, String>> AUDIT_LOG_EXTRACTORS = List.of(
@@ -44,7 +44,9 @@ public class AuditLogReportService {
             a -> a.getEntityId() != null ? a.getEntityId() : "",
             a -> a.getOutcome() != null ? a.getOutcome().name() : "",
             a -> a.getSeverity() != null ? a.getSeverity().name() : "",
-            a -> a.getIpAddress() != null ? a.getIpAddress() : "",
+            a -> a.getIpAddressMasked() != null ? a.getIpAddressMasked() : "",
+            a -> a.getIpAddressHash() != null ? a.getIpAddressHash() : "",
+            a -> a.getUserAgentSanitized() != null ? a.getUserAgentSanitized() : "",
             a -> a.getRequestId() != null ? a.getRequestId() : ""
     );
 

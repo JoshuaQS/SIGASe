@@ -87,11 +87,11 @@ const AccessLogs = () => {
         subtitle="Registro detallado de todas las operaciones en eLibro"
         actions={
           <>
-            <Button variant="outline" size="sm" onClick={handleRefresh} disabled={loading} className="gap-2">
+            <Button variant="outline" size="md" onClick={handleRefresh} disabled={loading} className="gap-2">
               <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
               Actualizar
             </Button>
-            <Button variant="outline" size="sm" className="gap-2" onClick={() => toast.success('Exportando logs...')}>
+            <Button variant="outline" size="md" className="gap-2" onClick={() => toast.success('Exportando logs...')}>
               <Download className="w-3.5 h-3.5" /> Exportar
             </Button>
           </>

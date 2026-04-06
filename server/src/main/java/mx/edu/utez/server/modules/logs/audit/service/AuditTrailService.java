@@ -6,6 +6,7 @@ import mx.edu.utez.server.shared.context.RequestContext;
 import mx.edu.utez.server.shared.enums.AuditActorType;
 import mx.edu.utez.server.shared.enums.AuditOutcome;
 import mx.edu.utez.server.shared.enums.AuditSeverity;
+import mx.edu.utez.server.shared.enums.AuditSourceModule;
 import mx.edu.utez.server.shared.util.ClientIpResolver;
 import mx.edu.utez.server.shared.util.SecurityLogSanitizer;
 import jakarta.servlet.http.HttpServletRequest;
@@ -54,6 +55,11 @@ public class AuditTrailService {
             correlationId = "system";
         }
         String ipAddress = request != null ? clientIpResolver.resolve(request) : "0.0.0.0";
+        String userAgent = request != null ? request.getHeader("User-Agent") : null;
+        String sessionId = request != null ? request.getRequestedSessionId() : null;
+        String origin = request != null ? request.getHeader("Origin") : null;
+        String httpMethod = request != null ? request.getMethod() : null;
+        String requestPath = request != null ? request.getRequestURI() : null;
         String metadataJson = toJson(metadata);
 
         auditLogService.log(new AuditLogCommand(
@@ -65,15 +71,34 @@ public class AuditTrailService {
                 entityId,
                 outcome,
                 deriveSeverity(outcome),
+                resolveSourceModule(entityType),
                 metadataJson,
                 requestId,
                 correlationId,
-                ipAddress
+                ipAddress,
+                userAgent,
+                sessionId,
+                origin,
+                httpMethod,
+                requestPath
         ));
     }
 
+    private AuditSourceModule resolveSourceModule(String entityType) {
+        if (entityType == null) {
+            return AuditSourceModule.SYSTEM;
+        }
+        return switch (entityType) {
+            case "STUDENT" -> AuditSourceModule.STUDENTS;
+            case "CAREER" -> AuditSourceModule.CAREERS;
+            case "ELIBRO_CONFIG" -> AuditSourceModule.ELIBRO;
+            case "ADMIN" -> AuditSourceModule.ADMINS;
+            default -> AuditSourceModule.SYSTEM;
+        };
+    }
+
     private AuditSeverity deriveSeverity(AuditOutcome outcome) {
-        return outcome == AuditOutcome.SUCCESS ? AuditSeverity.INFO : AuditSeverity.WARN;
+        return outcome == AuditOutcome.SUCCESS ? AuditSeverity.INFO : AuditSeverity.WARNING;
     }
 
     private String toJson(Map<String, Object> metadata) {

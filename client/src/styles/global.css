@@ -726,6 +726,19 @@ tbody tr {
   }
 }
 
+@keyframes chip-shine-diagonal {
+  0% {
+    transform: translateX(-150%) translateY(-150%) rotate(45deg);
+  }
+  20%, 100% {
+    transform: translateX(150%) translateY(150%) rotate(45deg);
+  }
+}
+
+.animate-chip-shine-diagonal {
+  animation: chip-shine-diagonal 3.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .auth-shine-chip::before {
     animation: none;

@@ -4,6 +4,7 @@ import mx.edu.utez.server.modules.admins.entity.Admin;
 import mx.edu.utez.server.shared.enums.AuditActorType;
 import mx.edu.utez.server.shared.enums.AuditOutcome;
 import mx.edu.utez.server.shared.enums.AuditSeverity;
+import mx.edu.utez.server.shared.enums.AuditSourceModule;
 
 public record AuditLogCommand(
         AuditActorType actorType,
@@ -14,9 +15,15 @@ public record AuditLogCommand(
         String entityId,
         AuditOutcome outcome,
         AuditSeverity severity,
+        AuditSourceModule sourceModule,
         String metadataJson,
         String requestId,
         String correlationId,
-        String ipAddress
+        String ipAddress,
+        String userAgent,
+        String sessionId,
+        String origin,
+        String httpMethod,
+        String requestPath
 ) {
 }

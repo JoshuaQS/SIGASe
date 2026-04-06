@@ -10,9 +10,9 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.function.Function;
 import mx.edu.utez.server.modules.admins.entity.Admin;
-import mx.edu.utez.server.modules.logs.access.entity.AccessLog;
-import mx.edu.utez.server.modules.logs.access.repository.AccessLogRepository;
-import mx.edu.utez.server.shared.enums.AccessResult;
+import mx.edu.utez.server.modules.elibro.entity.ElibroAccessLog;
+import mx.edu.utez.server.modules.elibro.repository.ElibroAccessLogRepository;
+import mx.edu.utez.server.shared.enums.ElibroAccessResult;
 import mx.edu.utez.server.shared.enums.AuditOutcome;
 import mx.edu.utez.server.shared.exception.BusinessException;
 import mx.edu.utez.server.shared.exception.ErrorCode;
@@ -35,11 +35,11 @@ public class AccessLogReportService {
 
     static final String[] ACCESS_LOG_HEADERS = {
             "occurredAt", "attemptedEmail", "normalizedEmail", "result",
-            "errorCode", "errorDetail", "latencyMs", "ipAddress", "userAgent",
-            "providerName", "nextUrl", "redirectUrl", "requestId"
+            "errorCode", "errorDetail", "latencyMs", "ipAddressMasked", "ipAddressHash", "userAgentSanitized",
+            "channelNameSnapshot", "nextUrl", "redirectUrl", "requestId"
     };
 
-    private static final List<Function<AccessLog, String>> ACCESS_LOG_EXTRACTORS = List.of(
+    private static final List<Function<ElibroAccessLog, String>> ACCESS_LOG_EXTRACTORS = List.of(
             a -> CsvExportService.formatInstant(a.getOccurredAt()),
             a -> a.getAttemptedEmail() != null ? a.getAttemptedEmail() : "",
             a -> a.getNormalizedEmail() != null ? a.getNormalizedEmail() : "",
@@ -47,22 +47,23 @@ public class AccessLogReportService {
             a -> a.getErrorCode() != null ? a.getErrorCode() : "",
             a -> truncateErrorDetail(a.getErrorDetail()),
             a -> a.getLatencyMs() != null ? String.valueOf(a.getLatencyMs()) : "",
-            a -> a.getIpAddress() != null ? a.getIpAddress() : "",
-            a -> a.getUserAgent() != null ? a.getUserAgent() : "",
-            a -> a.getProviderName() != null ? a.getProviderName() : "",
+            a -> a.getIpAddressMasked() != null ? a.getIpAddressMasked() : "",
+            a -> a.getIpAddressHash() != null ? a.getIpAddressHash() : "",
+            a -> a.getUserAgentSanitized() != null ? a.getUserAgentSanitized() : "",
+            a -> a.getChannelNameSnapshot() != null ? a.getChannelNameSnapshot() : "",
             a -> a.getNextUrl() != null ? a.getNextUrl() : "",
             a -> a.getRedirectUrl() != null ? a.getRedirectUrl() : "",
             a -> a.getRequestId() != null ? a.getRequestId() : ""
     );
 
-    private final AccessLogRepository accessLogRepository;
+    private final ElibroAccessLogRepository accessLogRepository;
     private final CsvExportService csvExportService;
     private final ReportRangeValidator reportRangeValidator;
     private final ReportExportAuditService reportExportAuditService;
     private final SecurityLogSanitizer securityLogSanitizer;
 
     public AccessLogReportService(
-            AccessLogRepository accessLogRepository,
+            ElibroAccessLogRepository accessLogRepository,
             CsvExportService csvExportService,
             ReportRangeValidator reportRangeValidator,
             ReportExportAuditService reportExportAuditService,
@@ -80,12 +81,12 @@ public class AccessLogReportService {
             OutputStream out,
             Instant dateFrom,
             Instant dateTo,
-            AccessResult result,
+            ElibroAccessResult result,
             String normalizedEmail,
             String attemptedEmail,
             UUID studentId,
             String ipAddress,
-            String providerName,
+            String channelName,
             Admin actor,
             HttpServletRequest request
     ) {
@@ -94,8 +95,8 @@ public class AccessLogReportService {
         String sanitizedAttemptedEmail = securityLogSanitizer.sanitizeEmailForLookup(attemptedEmail);
         String sanitizedIpAddress = securityLogSanitizer.sanitizeIpForLookup(ipAddress);
 
-        Specification<AccessLog> spec = buildSpec(
-                dateFrom, dateTo, result, normalizedEmail, attemptedEmail, studentId, ipAddress, providerName
+        Specification<ElibroAccessLog> spec = buildSpec(
+                dateFrom, dateTo, result, normalizedEmail, attemptedEmail, studentId, ipAddress, channelName
         );
         long total = accessLogRepository.count(spec);
         if (total > MAX_LOGS_EXPORT) {
@@ -107,13 +108,13 @@ public class AccessLogReportService {
         }
 
         Map<String, Object> filterMeta = buildFilterMeta(
-                dateFrom, dateTo, result, sanitizedNormalizedEmail, sanitizedAttemptedEmail, studentId, sanitizedIpAddress, providerName
+                dateFrom, dateTo, result, sanitizedNormalizedEmail, sanitizedAttemptedEmail, studentId, sanitizedIpAddress, channelName
         );
 
         try {
             csvExportService.write(out, ACCESS_LOG_HEADERS, ACCESS_LOG_EXTRACTORS, page -> {
                 PageRequest pageRequest = PageRequest.of(page, CHUNK_SIZE, Sort.by(Sort.Direction.DESC, "occurredAt"));
-                Page<AccessLog> resultPage = accessLogRepository.findAll(spec, pageRequest);
+                Page<ElibroAccessLog> resultPage = accessLogRepository.findAll(spec, pageRequest);
                 return resultPage.getContent();
             });
         } catch (Exception ex) {
@@ -124,15 +125,15 @@ public class AccessLogReportService {
         reportExportAuditService.auditCsvExport(actor, "ACCESS_LOGS", filterMeta, total, AuditOutcome.SUCCESS, request);
     }
 
-    public Specification<AccessLog> buildSpec(
+    public Specification<ElibroAccessLog> buildSpec(
             Instant dateFrom,
             Instant dateTo,
-            AccessResult result,
+            ElibroAccessResult result,
             String normalizedEmail,
             String attemptedEmail,
             UUID studentId,
             String ipAddress,
-            String providerName
+            String channelName
     ) {
         final String rawNormalizedEmail = StringUtils.hasText(normalizedEmail)
                 ? normalizedEmail.trim().toLowerCase(Locale.ROOT)
@@ -171,14 +172,16 @@ public class AccessLogReportService {
             }
             if (StringUtils.hasText(rawIpAddress)) {
                 predicate = cb.and(predicate, cb.or(
-                        cb.equal(cb.lower(root.get("ipAddress")), rawIpAddress),
-                        cb.equal(cb.lower(root.get("ipAddress")), sanitizedIpAddress)
+                        cb.equal(cb.lower(root.get("ipAddressMasked")), rawIpAddress),
+                        cb.equal(cb.lower(root.get("ipAddressMasked")), sanitizedIpAddress),
+                        cb.equal(cb.lower(root.get("ipAddressHash")), rawIpAddress),
+                        cb.equal(cb.lower(root.get("ipAddressHash")), sanitizedIpAddress)
                 ));
             }
-            if (StringUtils.hasText(providerName)) {
+            if (StringUtils.hasText(channelName)) {
                 predicate = cb.and(predicate, cb.equal(
-                        cb.lower(root.get("providerName")),
-                        providerName.trim().toLowerCase(Locale.ROOT)
+                        cb.lower(root.get("channelNameSnapshot")),
+                        channelName.trim().toLowerCase(Locale.ROOT)
                 ));
             }
             return predicate;
@@ -203,12 +206,12 @@ public class AccessLogReportService {
     private Map<String, Object> buildFilterMeta(
             Instant dateFrom,
             Instant dateTo,
-            AccessResult result,
+            ElibroAccessResult result,
             String normalizedEmail,
             String attemptedEmail,
             UUID studentId,
             String ipAddress,
-            String providerName
+            String channelName
     ) {
         Map<String, Object> filters = new LinkedHashMap<>();
         filters.put("dateFrom", dateFrom.toString());
@@ -228,8 +231,8 @@ public class AccessLogReportService {
         if (StringUtils.hasText(ipAddress)) {
             filters.put("ipAddress", ipAddress);
         }
-        if (StringUtils.hasText(providerName)) {
-            filters.put("providerName", providerName);
+        if (StringUtils.hasText(channelName)) {
+            filters.put("channelName", channelName);
         }
         return filters;
     }

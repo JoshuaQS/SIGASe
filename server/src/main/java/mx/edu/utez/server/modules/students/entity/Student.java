@@ -30,7 +30,7 @@ public class Student extends BaseAuditableEntity {
     @Column(name = "enrollment_id", nullable = false, length = 10, unique = true)
     private String enrollmentId;
 
-    @Column(name = "full_name", nullable = false, length = 100)
+    @Column(name = "name", nullable = false, length = 100)
     private String name;
 
     @Column(name = "last_name_paternal", nullable = false, length = 100)
@@ -65,18 +65,6 @@ public class Student extends BaseAuditableEntity {
 
     @Column(name = "last_login_at")
     private Instant lastLoginAt;
-
-    @Column(name = "deactivated_at")
-    private Instant deactivatedAt;
-
-    @Column(name = "deactivation_reason", length = 500)
-    private String deactivationReason;
-
-    @Column(name = "reactivated_at")
-    private Instant reactivatedAt;
-
-    @Column(name = "reactivation_reason", length = 500)
-    private String reactivationReason;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "created_by_admin_id", nullable = false)
@@ -198,38 +186,6 @@ public class Student extends BaseAuditableEntity {
 
     public void setLastLoginAt(Instant lastLoginAt) {
         this.lastLoginAt = lastLoginAt;
-    }
-
-    public Instant getDeactivatedAt() {
-        return deactivatedAt;
-    }
-
-    public void setDeactivatedAt(Instant deactivatedAt) {
-        this.deactivatedAt = deactivatedAt;
-    }
-
-    public String getDeactivationReason() {
-        return deactivationReason;
-    }
-
-    public void setDeactivationReason(String deactivationReason) {
-        this.deactivationReason = deactivationReason;
-    }
-
-    public Instant getReactivatedAt() {
-        return reactivatedAt;
-    }
-
-    public void setReactivatedAt(Instant reactivatedAt) {
-        this.reactivatedAt = reactivatedAt;
-    }
-
-    public String getReactivationReason() {
-        return reactivationReason;
-    }
-
-    public void setReactivationReason(String reactivationReason) {
-        this.reactivationReason = reactivationReason;
     }
 
     public Admin getCreatedByAdmin() {

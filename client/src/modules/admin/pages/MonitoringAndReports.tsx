@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
-import { BarChart2, CalendarClock, Download, RefreshCw, TrendingUp, Users, ShieldCheck, ShieldX, Trophy } from 'lucide-react'
+import { BarChart2, CalendarClock, Download, RefreshCw, TrendingUp, Users, ShieldCheck, ShieldX, Trophy, BarChart3, CheckCircle, XCircle, Calendar } from 'lucide-react'
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis,
   CartesianGrid, Tooltip, ResponsiveContainer, Cell, LineChart, Line,
@@ -14,6 +14,7 @@ import { SectionHeader } from '@/components/ui/section-header'
 import { useAppToast } from '@/components/ui/app-toast-provider'
 import { MonitoringFiltersCard } from '../components/monitoring/components/monitoring-composer/monitoring-filters-card'
 import { DEFAULT_COMPOSER_DRAFT_STATE, type ComposerDraftState } from '../components/monitoring/components/monitoring-composer/composer.types'
+import { cn } from '@/lib/utils'
 import {
   exportDashboardMonitoring,
   getDashboardAccessTrends,
@@ -25,6 +26,8 @@ import {
   type DashboardExportFormat,
   type DashboardQueryParams,
 } from '@/lib/api/dashboard-api'
+import { getStudentById, type StudentResponseDto } from '@/lib/api/students-api'
+import { StudentCard } from '@/components/student-card/StudentCard'
 
 const CHART_COLORS = ['#10b981', '#0DA2E7', '#34d399', '#14b8a6', '#f59e0b', '#ef4444']
 
@@ -196,6 +199,7 @@ const MonitoringAndReports = () => {
   const [draftFilters, setDraftFilters] = useState<ComposerDraftState>(DEFAULT_COMPOSER_DRAFT_STATE)
   const [appliedFilters, setAppliedFilters] = useState<ComposerDraftState | null>(null)
   const [topVisibleCount, setTopVisibleCount] = useState(5)
+  const [selectedStudentData, setSelectedStudentData] = useState<StudentResponseDto | null>(null)
 
   const monthlyTotalsKpi = useMemo(() => ({ accesosPeriodo: kpis.accesosPeriodo }), [kpis.accesosPeriodo])
 
@@ -474,6 +478,16 @@ const MonitoringAndReports = () => {
     setTopVisibleCount(5)
   }, [appliedStatus, filteredAnalysisType, appliedFilters?.careers?.join(','), appliedFilters?.student?.selectedId])
 
+  useEffect(() => {
+    if (appliedFilters?.student?.selectedId && isStudentsIndividual) {
+      void getStudentById(appliedFilters.student.selectedId)
+        .then((student) => setSelectedStudentData(student))
+        .catch(() => setSelectedStudentData(null))
+    } else {
+      setSelectedStudentData(null)
+    }
+  }, [appliedFilters?.student?.selectedId, isStudentsIndividual])
+
   const topStudentsRankingSuccessful = useMemo(() => {
     return topUsuarios.map((item) => ({
       label: item.nombre,
@@ -569,6 +583,8 @@ const MonitoringAndReports = () => {
       })
   }
 
+  const capitalizeWords = (str: string) => str.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ')
+
   return (
     <motion.div className="space-y-6" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}>
       <SectionHeader
@@ -651,21 +667,84 @@ const MonitoringAndReports = () => {
 
       {isFilteredView ? (
         <>
-          <Card>
-            <CardContent className="py-4">
-              <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-                <div>
-                  <p className="text-sm font-semibold">{contextScopeLabel}</p>
-                  <p className="text-xs text-muted-foreground">
-                    Estado: {appliedStatus === 'ALL' ? 'Ambos' : appliedStatus === 'SUCCESS' ? 'Exitosos' : 'Fallidos'}
-                  </p>
+          {isStudentsIndividual && selectedStudentData ? (
+            <StudentCard
+              student={selectedStudentData}
+              appliedStatus={appliedStatus as 'ALL' | 'SUCCESS' | 'FAILED'}
+              appliedRangeText={appliedRangeText}
+            />
+          ) : (
+            <Card className="w-full">
+              <CardContent className="p-4">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary mt-0.5">
+                    <BarChart3 className="h-5 w-5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm font-semibold text-foreground truncate">
+                        {contextScopeLabel}
+                      </p>
+                      <Badge
+                        variant="outlined"
+                        className="shrink-0 gap-1 text-xs text-muted-foreground"
+                      >
+                        <Calendar className="h-3 w-3" />
+                        {appliedRangeText}
+                      </Badge>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-2 mt-3">
+                      <div className="space-y-0.5">
+                        <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                          Filtro
+                        </p>
+                        <Badge
+                          variant="outlined"
+                          className={cn(
+                            "gap-1",
+                            appliedStatus === "ALL"
+                              ? "border-muted-foreground/30 text-muted-foreground bg-muted"
+                              : appliedStatus === "SUCCESS"
+                                ? "border-emerald-500/30 text-emerald-700 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-950/40"
+                                : "border-red-500/30 text-red-700 bg-red-50 dark:text-red-400 dark:bg-red-950/40"
+                          )}
+                        >
+                          {appliedStatus === "ALL" ? (
+                            <BarChart3 className="h-3 w-3" />
+                          ) : appliedStatus === "SUCCESS" ? (
+                            <CheckCircle className="h-3 w-3" />
+                          ) : (
+                            <XCircle className="h-3 w-3" />
+                          )}
+                          {appliedStatus === "ALL" ? "Ambos" : appliedStatus === "SUCCESS" ? "Exitosos" : "Fallidos"}
+                        </Badge>
+                      </div>
+
+                      <div className="space-y-0.5">
+                        <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                          Alcance
+                        </p>
+                        <Badge variant="outlined" className="gap-1 border-blue-500/30 text-blue-700 bg-blue-50 dark:text-blue-400 dark:bg-blue-950/40">
+                          <Users className="h-3 w-3" />
+                          {isCareerAll ? "Carreras" : isCareerSingle ? "Carrera" : "Alumnos"}
+                        </Badge>
+                      </div>
+
+                      <div className="space-y-0.5">
+                        <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                          Contexto
+                        </p>
+                        <div className="text-xs font-medium text-foreground truncate">
+                          {isFilteredView ? "Resultados filtrados" : "Vista histórica"}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div className="text-xs text-muted-foreground">
-                  Rango: <span className="font-medium text-foreground">{appliedRangeText}</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          )}
 
           <div
             className="grid gap-4"

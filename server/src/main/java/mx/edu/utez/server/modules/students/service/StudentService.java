@@ -6,15 +6,15 @@ import mx.edu.utez.server.modules.auth.service.StudentPasswordResetNotifier;
 import mx.edu.utez.server.modules.admins.entity.Admin;
 import mx.edu.utez.server.modules.careers.entity.Career;
 import mx.edu.utez.server.modules.careers.service.CareerService;
+import mx.edu.utez.server.modules.elibro.repository.ElibroAccessLogRepository;
 import mx.edu.utez.server.modules.logs.audit.service.AuditTrailService;
-import mx.edu.utez.server.modules.logs.access.repository.AccessLogRepository;
-import mx.edu.utez.server.modules.logs.access.repository.StudentAccessAlertStateRepository;
 import mx.edu.utez.server.modules.students.dto.CreateStudentRequest;
 import mx.edu.utez.server.modules.students.dto.StudentResponse;
 import mx.edu.utez.server.modules.students.dto.StudentStatusChangeRequest;
 import mx.edu.utez.server.modules.students.dto.UpdateStudentRequest;
 import mx.edu.utez.server.modules.students.entity.Student;
 import mx.edu.utez.server.modules.students.mapper.StudentMapper;
+import mx.edu.utez.server.modules.students.repository.StudentAuthEventRepository;
 import mx.edu.utez.server.modules.students.repository.StudentRepository;
 import mx.edu.utez.server.shared.api.PageResponse;
 import mx.edu.utez.server.shared.enums.AuditOutcome;
@@ -52,8 +52,8 @@ public class StudentService {
     private final StudentMapper studentMapper;
     private final EmailNormalizer emailNormalizer;
     private final AuditTrailService auditTrailService;
-    private final AccessLogRepository accessLogRepository;
-    private final StudentAccessAlertStateRepository studentAccessAlertStateRepository;
+    private final ElibroAccessLogRepository elibroAccessLogRepository;
+    private final StudentAuthEventRepository studentAuthEventRepository;
     private final StudentPasswordResetTokenRepository studentPasswordResetTokenRepository;
     private final StudentPasswordResetNotifier studentPasswordResetNotifier;
     private final CareerService careerService;
@@ -63,8 +63,8 @@ public class StudentService {
             StudentMapper studentMapper,
             EmailNormalizer emailNormalizer,
             AuditTrailService auditTrailService,
-            AccessLogRepository accessLogRepository,
-            StudentAccessAlertStateRepository studentAccessAlertStateRepository,
+            ElibroAccessLogRepository elibroAccessLogRepository,
+            StudentAuthEventRepository studentAuthEventRepository,
             StudentPasswordResetTokenRepository studentPasswordResetTokenRepository,
             StudentPasswordResetNotifier studentPasswordResetNotifier,
             CareerService careerService
@@ -73,8 +73,8 @@ public class StudentService {
         this.studentMapper = studentMapper;
         this.emailNormalizer = emailNormalizer;
         this.auditTrailService = auditTrailService;
-        this.accessLogRepository = accessLogRepository;
-        this.studentAccessAlertStateRepository = studentAccessAlertStateRepository;
+        this.elibroAccessLogRepository = elibroAccessLogRepository;
+        this.studentAuthEventRepository = studentAuthEventRepository;
         this.studentPasswordResetTokenRepository = studentPasswordResetTokenRepository;
         this.studentPasswordResetNotifier = studentPasswordResetNotifier;
         this.careerService = careerService;
@@ -202,8 +202,6 @@ public class StudentService {
         }
 
         student.setStatus(StudentStatus.INACTIVE);
-        student.setDeactivatedAt(Instant.now());
-        student.setDeactivationReason(request.reason().trim());
         student.setUpdatedByAdmin(actorAdmin);
 
         Student saved = studentRepository.save(student);
@@ -232,8 +230,6 @@ public class StudentService {
         }
 
         student.setStatus(StudentStatus.ACTIVE);
-        student.setReactivatedAt(Instant.now());
-        student.setReactivationReason(request.reason().trim());
         student.setUpdatedByAdmin(actorAdmin);
 
         Student saved = studentRepository.save(student);
@@ -254,8 +250,8 @@ public class StudentService {
         Student student = findByIdOrThrow(studentId);
         String studentEntityId = student.getId().toString();
 
-        accessLogRepository.detachStudentReferences(studentId);
-        studentAccessAlertStateRepository.detachStudentReferences(studentId);
+        elibroAccessLogRepository.detachStudentReferences(studentId);
+        studentAuthEventRepository.detachStudentReferences(studentId);
         studentPasswordResetTokenRepository.deleteByStudentId(studentId);
         studentPasswordResetTokenRepository.flush();
         studentRepository.delete(student);

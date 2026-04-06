@@ -2,6 +2,7 @@ package mx.edu.utez.server.modules.admins.entity;
 
 import mx.edu.utez.server.shared.entity.BaseAuditableEntity;
 import mx.edu.utez.server.shared.enums.AdminRole;
+import mx.edu.utez.server.shared.enums.AdminStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -13,14 +14,15 @@ import java.time.Instant;
 @Entity
 @Table(name = "admins", indexes = {
         @Index(name = "idx_admins_email", columnList = "email", unique = true),
-        @Index(name = "idx_admins_role", columnList = "role")
+        @Index(name = "idx_admins_role", columnList = "role"),
+        @Index(name = "idx_admins_status", columnList = "status")
 })
 public class Admin extends BaseAuditableEntity {
 
     @Column(name = "email", nullable = false, length = 254, unique = true)
     private String email;
 
-    @Column(name = "full_name", nullable = false, length = 100)
+    @Column(name = "name", nullable = false, length = 100)
     private String name;
 
     @Column(name = "last_name_paternal", nullable = false, length = 100)
@@ -36,8 +38,9 @@ public class Admin extends BaseAuditableEntity {
     @Column(name = "role", nullable = false, length = 32)
     private AdminRole role;
 
-    @Column(name = "active", nullable = false)
-    private boolean active = true;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 16)
+    private AdminStatus status = AdminStatus.ACTIVE;
 
     @Column(name = "failed_login_attempts", nullable = false)
     private int failedLoginAttempts = 0;
@@ -99,12 +102,22 @@ public class Admin extends BaseAuditableEntity {
         this.role = role;
     }
 
-    public boolean isActive() {
-        return active;
+    public AdminStatus getStatus() {
+        return status;
     }
 
+    public void setStatus(AdminStatus status) {
+        this.status = status;
+    }
+
+    /** Bridge para compatibilidad con llamadores existentes. */
+    public boolean isActive() {
+        return status == AdminStatus.ACTIVE;
+    }
+
+    /** Bridge para compatibilidad con llamadores existentes. */
     public void setActive(boolean active) {
-        this.active = active;
+        this.status = active ? AdminStatus.ACTIVE : AdminStatus.INACTIVE;
     }
 
     public int getFailedLoginAttempts() {

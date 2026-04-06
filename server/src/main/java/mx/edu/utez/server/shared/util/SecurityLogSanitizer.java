@@ -67,6 +67,20 @@ public class SecurityLogSanitizer {
         return normalized;
     }
 
+    public String maskIpAddress(String ipAddress) {
+        if (!StringUtils.hasText(ipAddress)) {
+            return null;
+        }
+        return maskIp(ipAddress.trim());
+    }
+
+    public String hashIpAddress(String ipAddress) {
+        if (!StringUtils.hasText(ipAddress)) {
+            return null;
+        }
+        return sha256Hex(ipAddress.trim().toLowerCase(Locale.ROOT));
+    }
+
     public String sanitizeIpForLookup(String ipAddress) {
         return sanitizeIp(ipAddress);
     }

@@ -5,334 +5,98 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="89cdb70d-f2c7-40b0-a083-99f06d1bddaa" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/../Copia de server/.env.example" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/README.md" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/docs/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/docs/access-log-result-codes.md" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/docs/architecture/package-base-migration-plan.md" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/docs/auth-session-contract.md" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/docs/db/elibro-config-overview-migration.md" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/docs/db/migrations/2026-04-02_add_elibro_config_name_and_validation_runs_mysql.sql" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/docs/db/migrations/2026-04-02_add_token_version_columns_mysql.sql" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/docs/db/migrations/2026-04-02_drop_students_legacy_career_column_mysql.sql" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/docs/db/token-version-migration.md" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/pom.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/ServerApplication.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/config/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/config/AdminSeedRunner.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/config/ApiWebConfiguration.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/config/AppProperties.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/config/CareerSeedRunner.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/config/CorsConfig.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/config/HttpClientConfig.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/config/OpenApiConfig.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/admins/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/admins/controller/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/admins/controller/AdminManagementController.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/admins/dto/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/admins/dto/AdminResetPasswordRequest.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/admins/dto/AdminResponse.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/admins/dto/AdminStatusChangeRequest.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/admins/dto/CreateAdminRequest.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/admins/dto/UpdateAdminRequest.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/admins/entity/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/admins/entity/Admin.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/admins/mapper/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/admins/mapper/AdminMapper.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/admins/repository/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/admins/repository/AdminRepository.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/admins/service/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/admins/service/AdminContextService.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/admins/service/AdminManagementService.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/auth/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/auth/controller/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/auth/controller/AdminAuthController.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/auth/controller/StudentAuthController.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/auth/dto/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/auth/dto/AdminLoginRequest.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/auth/dto/AdminMeResponse.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/auth/dto/AuthTokenResponse.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/auth/dto/ChangePasswordRequest.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/auth/dto/PasswordResetConfirmDto.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/auth/dto/PasswordResetRequestDto.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/auth/dto/ResetPasswordConfirm.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/auth/dto/ResetPasswordRequest.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/auth/dto/StudentAuthResponse.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/auth/dto/StudentGoogleLoginRequest.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/auth/dto/StudentLoginRequest.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/auth/entity/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/auth/entity/AdminPasswordResetToken.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/auth/entity/StudentPasswordResetToken.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/auth/repository/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/auth/repository/AdminPasswordResetTokenRepository.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/auth/repository/StudentPasswordResetTokenRepository.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/auth/service/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/auth/service/AdminAuthService.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/auth/service/AuthLockoutPolicy.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/auth/service/GoogleIdentity.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/auth/service/GoogleSubjectPolicyService.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/auth/service/GoogleTokenVerifierService.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/auth/service/PasswordResetService.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/auth/service/StudentAccessLoggingFacade.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/auth/service/StudentAuthAuditFacade.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/auth/service/StudentAuthService.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/auth/service/StudentAuthTokenFactory.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/auth/service/StudentGoogleLoginService.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/auth/service/StudentLocalLoginService.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/auth/service/StudentPasswordLifecycleService.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/auth/service/StudentPasswordResetNotifier.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/careers/controller/CareerController.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/careers/dto/CareerResponse.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/careers/entity/Career.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/careers/repository/CareerRepository.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/careers/service/CareerService.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/dashboard/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/dashboard/controller/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/dashboard/controller/DashboardController.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/dashboard/dto/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/dashboard/dto/DashboardAccessTrendsResponse.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/dashboard/dto/DashboardSummaryResponse.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/dashboard/dto/DashboardTopCareerItemResponse.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/dashboard/dto/DashboardTopCareersResponse.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/dashboard/dto/DashboardTopStudentItemResponse.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/dashboard/dto/DashboardTopStudentsResponse.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/dashboard/dto/DashboardTrendPointResponse.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/dashboard/mapper/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/dashboard/mapper/DashboardMapper.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/dashboard/repository/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/dashboard/repository/DashboardMetricsRepository.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/dashboard/service/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/dashboard/service/DashboardService.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/elibro/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/elibro/controller/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/elibro/controller/ElibroConfigController.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/elibro/controller/StudentPortalElibroController.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/elibro/dto/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/elibro/dto/ElibroConfigOverviewResponse.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/elibro/dto/ElibroConfigResponse.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/elibro/dto/ElibroConfigStatusChangeRequest.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/elibro/dto/ElibroConfigValidationResponse.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/elibro/dto/ElibroOverviewCharts.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/elibro/dto/ElibroOverviewChecklist.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/elibro/dto/ElibroOverviewConfig.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/elibro/dto/ElibroOverviewInsight.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/elibro/dto/ElibroOverviewKpis.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/elibro/dto/ElibroOverviewLatencyPoint.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/elibro/dto/ElibroOverviewRecentActivity.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/elibro/dto/ElibroOverviewStatus.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/elibro/dto/ElibroOverviewUptimeWeekly.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/elibro/dto/ElibroOverviewValidationPoint.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/elibro/dto/PatchElibroConfigRequest.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/elibro/dto/StudentElibroAccessRequest.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/elibro/dto/StudentElibroAccessResponse.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/elibro/dto/StudentPortalSummaryResponse.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/elibro/dto/UpsertElibroConfigRequest.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/elibro/entity/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/elibro/entity/ElibroConfig.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/elibro/entity/ElibroValidationRun.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/elibro/mapper/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/elibro/mapper/ElibroConfigMapper.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/elibro/repository/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/elibro/repository/ElibroConfigRepository.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/elibro/repository/ElibroValidationRunRepository.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/elibro/service/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/elibro/service/ElibroConfigOverviewService.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/elibro/service/ElibroConfigService.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/elibro/service/ElibroSsoService.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/elibro/service/NextUrlValidator.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/elibro/service/StudentPortalSummaryService.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/logs/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/logs/access/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/logs/access/controller/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/logs/access/controller/AccessLogQueryController.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/logs/access/dto/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/logs/access/dto/AccessLogResponse.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/logs/access/entity/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/logs/access/entity/AccessLog.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/logs/access/entity/StudentAccessAlertState.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/logs/access/mapper/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/logs/access/mapper/AccessLogMapper.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/logs/access/repository/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/logs/access/repository/AccessLogRepository.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/logs/access/repository/StudentAccessAlertStateRepository.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/logs/access/service/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/logs/access/service/AccessLogCommand.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/logs/access/service/AccessLogQueryService.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/logs/access/service/AccessLogService.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/logs/access/service/StudentAccessAlertService.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/logs/audit/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/logs/audit/controller/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/logs/audit/controller/AuditLogQueryController.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/logs/audit/dto/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/logs/audit/dto/AuditLogResponse.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/logs/audit/entity/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/logs/audit/entity/AuditLog.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/logs/audit/mapper/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/logs/audit/mapper/AuditLogMapper.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/logs/audit/repository/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/logs/audit/repository/AuditLogRepository.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/logs/audit/service/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/logs/audit/service/AuditLogCommand.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/logs/audit/service/AuditLogQueryService.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/logs/audit/service/AuditLogService.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/logs/audit/service/AuditTrailService.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/reports/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/reports/controller/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/reports/controller/ReportController.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/reports/repository/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/reports/repository/ReportMetricsRepository.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/reports/service/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/reports/service/AccessLogReportService.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/reports/service/AuditLogReportService.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/reports/service/CsvExportService.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/reports/service/ReportDataCollector.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/reports/service/ReportExportAuditService.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/reports/service/ReportRangeValidator.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/reports/service/ReportService.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/reports/service/ReportXlsxExportService.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/reports/service/StudentReportService.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/reports/service/StudentXlsxExportService.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/reports/service/XlsxExportService.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/students/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/students/controller/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/students/controller/StudentController.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/students/controller/StudentImportController.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/students/dto/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/students/dto/CreateStudentRequest.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/students/dto/StudentImportResultResponse.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/students/dto/StudentImportRowError.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/students/dto/StudentResponse.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/students/dto/StudentStatusChangeRequest.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/students/dto/UpdateStudentRequest.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/students/entity/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/students/entity/Student.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/students/mapper/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/students/mapper/StudentMapper.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/students/repository/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/students/repository/StudentRepository.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/students/service/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/students/service/StudentImportService.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/modules/students/service/StudentService.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/security/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/security/InvalidJwtAuthenticationException.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/security/JwtAccessDeniedHandler.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/security/JwtAuthenticationEntryPoint.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/security/JwtAuthenticationFilter.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/security/JwtTokenProvider.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/security/JwtTokenType.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/security/ParsedToken.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/security/PasswordConfig.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/security/RoleConstants.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/security/SecurityConfig.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/security/SessionExpiredAuthenticationException.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/security/SessionTokenValidationService.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/shared/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/shared/api/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/shared/api/ApiErrorResponse.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/shared/api/ApiResponse.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/shared/api/ApiRoutes.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/shared/api/PageResponse.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/shared/context/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/shared/context/RequestContext.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/shared/context/RequestCorrelationFilter.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/shared/crypto/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/shared/crypto/Aes256CryptoService.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/shared/entity/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/shared/entity/BaseAuditableEntity.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/shared/entity/BaseUuidEntity.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/shared/enums/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/shared/enums/AccessResult.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/shared/enums/AdminRole.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/shared/enums/AuditActorType.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/shared/enums/AuditOutcome.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/shared/enums/AuditSeverity.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/shared/enums/ElibroValidationRunStatus.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/shared/enums/ElibroValidationStatus.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/shared/enums/ElibroValidationType.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/shared/enums/Sex.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/shared/enums/StudentStatus.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/shared/exception/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/shared/exception/BusinessException.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/shared/exception/ErrorCode.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/shared/exception/GlobalExceptionHandler.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/shared/util/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/shared/util/ClientIpResolver.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/shared/util/EmailNormalizer.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/shared/util/SecurityLogSanitizer.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/shared/validation/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/java/mx/edu/utez/server/shared/validation/PasswordPolicy.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/resources/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/main/resources/application.properties" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/test/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/test/java/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/test/java/mx/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/test/java/mx/edu/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/test/java/mx/edu/utez/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/test/java/mx/edu/utez/server/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/test/java/mx/edu/utez/server/config/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/test/java/mx/edu/utez/server/config/AdminSeedRunnerIntegrationTest.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/test/java/mx/edu/utez/server/modules/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/test/java/mx/edu/utez/server/modules/auth/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/test/java/mx/edu/utez/server/modules/auth/controller/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/test/java/mx/edu/utez/server/modules/auth/controller/PasswordResetIntegrationTest.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/test/java/mx/edu/utez/server/modules/auth/controller/StudentAuthControllerIntegrationTest.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/test/java/mx/edu/utez/server/modules/auth/service/AuthLockoutPolicyTest.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/test/java/mx/edu/utez/server/modules/dashboard/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/test/java/mx/edu/utez/server/modules/dashboard/controller/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/test/java/mx/edu/utez/server/modules/dashboard/controller/DashboardControllerIntegrationTest.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/test/java/mx/edu/utez/server/modules/elibro/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/test/java/mx/edu/utez/server/modules/elibro/controller/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/test/java/mx/edu/utez/server/modules/elibro/controller/ElibroConfigControllerIntegrationTest.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/test/java/mx/edu/utez/server/modules/elibro/controller/StudentPortalSummaryIntegrationTest.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/test/java/mx/edu/utez/server/modules/logs/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/test/java/mx/edu/utez/server/modules/logs/LogSecurityIntegrationTest.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/test/java/mx/edu/utez/server/modules/logs/access/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/test/java/mx/edu/utez/server/modules/logs/access/controller/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/test/java/mx/edu/utez/server/modules/logs/access/controller/AccessLogQueryControllerIntegrationTest.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/test/java/mx/edu/utez/server/modules/logs/audit/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/test/java/mx/edu/utez/server/modules/logs/audit/controller/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/test/java/mx/edu/utez/server/modules/logs/audit/controller/AuditLogQueryControllerIntegrationTest.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/test/java/mx/edu/utez/server/modules/logs/audit/service/AuditLogServiceTransactionIntegrationTest.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/test/java/mx/edu/utez/server/modules/reports/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/test/java/mx/edu/utez/server/modules/reports/controller/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/test/java/mx/edu/utez/server/modules/reports/controller/ReportExportIntegrationTest.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/test/java/mx/edu/utez/server/modules/reports/controller/ReportXlsxExportIntegrationTest.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/test/java/mx/edu/utez/server/modules/students/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/test/java/mx/edu/utez/server/modules/students/controller/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/test/java/mx/edu/utez/server/modules/students/controller/StudentImportIntegrationTest.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/test/java/mx/edu/utez/server/security/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/test/java/mx/edu/utez/server/security/JwtAccessDeniedHandlerTest.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/test/java/mx/edu/utez/server/security/JwtAuthenticationEntryPointTest.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/test/java/mx/edu/utez/server/security/JwtTokenProviderTest.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/test/resources/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Copia de server/src/test/resources/application-test.properties" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/app/App.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/app/App.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/auth/auth-session-store.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/auth/auth-session-store.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../client/src/components/ui/forms/protected-field.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/components/ui/forms/protected-field.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/components/monitoring/components/date-range/date-range-selector.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/modules/admin/components/monitoring/components/date-range/date-range-selector.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/components/monitoring/components/monitoring-composer/access-status-field.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/modules/admin/components/monitoring/components/monitoring-composer/access-status-field.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/components/monitoring/components/monitoring-composer/analysis-mode-selector.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/modules/admin/components/monitoring/components/monitoring-composer/analysis-mode-selector.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/components/monitoring/components/monitoring-composer/career-multi-combobox-field.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/modules/admin/components/monitoring/components/monitoring-composer/career-multi-combobox-field.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/components/monitoring/components/monitoring-composer/career-select-field.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/modules/admin/components/monitoring/components/monitoring-composer/career-select-field.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/components/monitoring/components/monitoring-composer/composer-actions.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/modules/admin/components/monitoring/components/monitoring-composer/composer-actions.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/components/monitoring/components/monitoring-composer/monitoring-composer-bar.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/modules/admin/components/monitoring/components/monitoring-composer/monitoring-composer-bar.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/components/monitoring/components/monitoring-composer/monitoring-filters-card.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/modules/admin/components/monitoring/components/monitoring-composer/monitoring-filters-card.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/components/monitoring/components/monitoring-composer/sort-direction-field.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/modules/admin/components/monitoring/components/monitoring-composer/sort-direction-field.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/components/monitoring/components/monitoring-composer/student-lookup-field.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/modules/admin/components/monitoring/components/monitoring-composer/student-lookup-field.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/components/monitoring/components/monitoring-composer/top-n-field.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/modules/admin/components/monitoring/components/monitoring-composer/top-n-field.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/lib/api/access-logs-api.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/lib/api/access-logs-api.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/lib/api/api-client.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/lib/api/api-client.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/lib/api/audit-logs-api.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/lib/api/audit-logs-api.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/lib/api/elibro-config-api.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/lib/api/elibro-config-api.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/lib/api/student-portal-api.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/lib/api/student-portal-api.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/lib/api/students-api.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/lib/api/students-api.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/components/elibro-sso/ElibroCredentialsStaticCard.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/modules/admin/components/elibro-sso/ElibroCredentialsStaticCard.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/components/elibro-sso/ElibroGeneralStatusCard.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/components/elibro-sso/ElibroLatencyCard.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/components/elibro-sso/ElibroOperationalValidationCard.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/components/elibro-sso/ElibroRecentActivityCard.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/components/elibro-sso/ElibroValidationsWeekCard.tsx" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/layout/admin-topbar.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/modules/admin/layout/admin-topbar.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/auth/components/AdminLoginCard.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/modules/auth/components/AdminLoginCard.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/pages/AccessLogs.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/modules/admin/pages/AccessLogs.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/pages/ElibroSsoConfig.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/modules/admin/pages/ElibroSsoConfig.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/pages/MonitoringAndReports.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/modules/admin/pages/MonitoringAndReports.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../client/src/modules/auth/components/StudentsLoginCard.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/modules/auth/components/StudentsLoginCard.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/router/route-config.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/router/route-config.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/modules/student/components/layout/portal-top-bar.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/modules/student/components/layout/portal-top-bar.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/modules/student/pages/Portal.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/modules/student/pages/Portal.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/styles/global.css" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/styles/global.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/types/api.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/types/api.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/resources/application.properties" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/application.properties" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/admins/dto/AdminResponse.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/admins/dto/AdminResponse.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/admins/entity/Admin.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/admins/entity/Admin.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/admins/mapper/AdminMapper.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/admins/mapper/AdminMapper.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/auth/service/StudentAccessLoggingFacade.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/auth/service/StudentAccessLoggingFacade.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/auth/service/StudentAuthAuditFacade.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/auth/service/StudentAuthAuditFacade.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/auth/service/StudentGoogleLoginService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/auth/service/StudentGoogleLoginService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/auth/service/StudentPasswordLifecycleService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/auth/service/StudentPasswordLifecycleService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/careers/entity/Career.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/careers/entity/Career.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/careers/repository/CareerRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/careers/repository/CareerRepository.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/careers/service/CareerService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/careers/service/CareerService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/dashboard/repository/DashboardMetricsRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/dashboard/repository/DashboardMetricsRepository.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/dashboard/service/DashboardService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/dashboard/service/DashboardService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/elibro/controller/StudentPortalElibroController.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/elibro/controller/StudentPortalElibroController.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/elibro/dto/ElibroConfigResponse.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/elibro/dto/ElibroConfigResponse.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/elibro/dto/ElibroOverviewConfig.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/elibro/dto/ElibroOverviewConfig.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/elibro/dto/PatchElibroConfigRequest.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/elibro/dto/PatchElibroConfigRequest.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/elibro/dto/StudentPortalSummaryResponse.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/elibro/dto/StudentPortalSummaryResponse.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/elibro/dto/UpsertElibroConfigRequest.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/elibro/dto/UpsertElibroConfigRequest.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/elibro/entity/ElibroConfig.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/elibro/entity/ElibroConfig.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/elibro/mapper/ElibroConfigMapper.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/elibro/mapper/ElibroConfigMapper.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/elibro/repository/ElibroConfigRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/elibro/repository/ElibroConfigRepository.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/elibro/service/ElibroConfigOverviewService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/elibro/service/ElibroConfigOverviewService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/elibro/service/ElibroConfigService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/elibro/service/ElibroConfigService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/elibro/service/ElibroSsoService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/elibro/service/ElibroSsoService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/elibro/service/StudentPortalSummaryService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/elibro/service/StudentPortalSummaryService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/logs/access/.gitkeep" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/logs/access/controller/.gitkeep" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/logs/access/controller/AccessLogQueryController.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/logs/access/dto/.gitkeep" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/logs/access/dto/AccessLogResponse.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/logs/access/entity/.gitkeep" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/logs/access/entity/AccessLog.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/logs/access/entity/StudentAccessAlertState.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/logs/access/mapper/.gitkeep" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/logs/access/mapper/AccessLogMapper.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/logs/access/repository/.gitkeep" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/logs/access/repository/AccessLogRepository.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/logs/access/repository/StudentAccessAlertStateRepository.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/logs/access/service/.gitkeep" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/logs/access/service/AccessLogCommand.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/logs/access/service/AccessLogQueryService.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/logs/access/service/AccessLogService.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/logs/access/service/StudentAccessAlertService.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/logs/audit/dto/AuditLogResponse.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/logs/audit/dto/AuditLogResponse.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/logs/audit/entity/AuditLog.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/logs/audit/entity/AuditLog.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/logs/audit/mapper/AuditLogMapper.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/logs/audit/mapper/AuditLogMapper.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/logs/audit/service/AuditLogCommand.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/logs/audit/service/AuditLogCommand.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/logs/audit/service/AuditLogService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/logs/audit/service/AuditLogService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/logs/audit/service/AuditTrailService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/logs/audit/service/AuditTrailService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/reports/controller/ReportController.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/reports/controller/ReportController.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/reports/repository/ReportMetricsRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/reports/repository/ReportMetricsRepository.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/reports/service/AccessLogReportService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/reports/service/AccessLogReportService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/reports/service/AuditLogReportService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/reports/service/AuditLogReportService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/reports/service/ReportDataCollector.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/reports/service/ReportDataCollector.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/reports/service/ReportService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/reports/service/ReportService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/reports/service/ReportXlsxExportService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/reports/service/ReportXlsxExportService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/students/dto/StudentResponse.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/students/dto/StudentResponse.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/students/entity/Student.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/students/entity/Student.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/students/mapper/StudentMapper.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/students/mapper/StudentMapper.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/students/service/StudentService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/students/service/StudentService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/security/JwtAuthenticationFilter.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/security/JwtAuthenticationFilter.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/shared/enums/AccessResult.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/shared/enums/AuditActorType.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/shared/enums/AuditActorType.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/shared/enums/AuditOutcome.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/shared/enums/AuditOutcome.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/shared/enums/AuditSeverity.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/shared/enums/AuditSeverity.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/shared/enums/ElibroValidationRunStatus.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/shared/enums/ElibroValidationRunStatus.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/shared/util/SecurityLogSanitizer.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/shared/util/SecurityLogSanitizer.java" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -423,12 +187,22 @@
       <option name="presentableId" value="Default" />
       <updated>1775129648354</updated>
       <workItem from="1775129650520" duration="12814000" />
-      <workItem from="1775276153268" duration="12553000" />
+      <workItem from="1775276153268" duration="22766000" />
     </task>
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="3" />
+  </component>
+  <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <breakpoints>
+        <breakpoint enabled="true" type="java-exception">
+          <properties class="org.springframework.beans.factory.UnsatisfiedDependencyException" package="org.springframework.beans.factory" />
+          <option name="timeStamp" value="1" />
+        </breakpoint>
+      </breakpoints>
+    </breakpoint-manager>
   </component>
   <component name="github-copilot-workspace">
     <instructionFileLocations>

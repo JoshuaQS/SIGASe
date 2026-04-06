@@ -1,7 +1,7 @@
 package mx.edu.utez.server.modules.dashboard.repository;
 
-import mx.edu.utez.server.modules.logs.access.entity.AccessLog;
-import mx.edu.utez.server.shared.enums.AccessResult;
+import mx.edu.utez.server.modules.elibro.entity.ElibroAccessLog;
+import mx.edu.utez.server.shared.enums.ElibroAccessResult;
 import mx.edu.utez.server.shared.enums.StudentStatus;
 import java.sql.Date;
 import java.time.Instant;
@@ -13,19 +13,18 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-public interface DashboardMetricsRepository extends JpaRepository<AccessLog, UUID> {
+public interface DashboardMetricsRepository extends JpaRepository<ElibroAccessLog, UUID> {
 
     @Query("""
             select min(a.occurredAt)
-            from AccessLog a
+            from ElibroAccessLog a
             left join a.student s
-            where a.providerName = 'ELIBRO'
-              and (:studentId is null or (s is not null and s.id = :studentId))
+            where (:studentId is null or (s is not null and s.id = :studentId))
               and (:careerCodesEmpty = true or (s is not null and upper(s.career.code) in :careerCodes))
               and (:studentStatus is null or (s is not null and s.status = :studentStatus))
               and ((:accessStatus = 'ALL')
-                   or (:accessStatus = 'SUCCESS' and a.result = mx.edu.utez.server.shared.enums.AccessResult.SUCCESS)
-                   or (:accessStatus = 'FAILED' and a.result <> mx.edu.utez.server.shared.enums.AccessResult.SUCCESS))
+                   or (:accessStatus = 'SUCCESS' and a.result = mx.edu.utez.server.shared.enums.ElibroAccessResult.SUCCESS)
+                   or (:accessStatus = 'FAILED' and a.result <> mx.edu.utez.server.shared.enums.ElibroAccessResult.SUCCESS))
             """)
     Instant findFirstAccessAtByFilters(
             @Param("studentId") UUID studentId,
@@ -37,15 +36,14 @@ public interface DashboardMetricsRepository extends JpaRepository<AccessLog, UUI
 
     @Query("""
             select max(a.occurredAt)
-            from AccessLog a
+            from ElibroAccessLog a
             left join a.student s
-            where a.providerName = 'ELIBRO'
-              and (:studentId is null or (s is not null and s.id = :studentId))
+            where (:studentId is null or (s is not null and s.id = :studentId))
               and (:careerCodesEmpty = true or (s is not null and upper(s.career.code) in :careerCodes))
               and (:studentStatus is null or (s is not null and s.status = :studentStatus))
               and ((:accessStatus = 'ALL')
-                   or (:accessStatus = 'SUCCESS' and a.result = mx.edu.utez.server.shared.enums.AccessResult.SUCCESS)
-                   or (:accessStatus = 'FAILED' and a.result <> mx.edu.utez.server.shared.enums.AccessResult.SUCCESS))
+                   or (:accessStatus = 'SUCCESS' and a.result = mx.edu.utez.server.shared.enums.ElibroAccessResult.SUCCESS)
+                   or (:accessStatus = 'FAILED' and a.result <> mx.edu.utez.server.shared.enums.ElibroAccessResult.SUCCESS))
             """)
     Instant findLastAccessAtByFilters(
             @Param("studentId") UUID studentId,
@@ -57,12 +55,11 @@ public interface DashboardMetricsRepository extends JpaRepository<AccessLog, UUI
 
     @Query("""
             select max(a.occurredAt)
-            from AccessLog a
+            from ElibroAccessLog a
             left join a.student s
-            where a.providerName = 'ELIBRO'
-              and a.occurredAt >= :dateFrom
+            where a.occurredAt >= :dateFrom
               and a.occurredAt <= :dateTo
-              and a.result = mx.edu.utez.server.shared.enums.AccessResult.SUCCESS
+              and a.result = mx.edu.utez.server.shared.enums.ElibroAccessResult.SUCCESS
               and (:studentId is null or (s is not null and s.id = :studentId))
               and (:careerCodesEmpty = true or (s is not null and upper(s.career.code) in :careerCodes))
               and (:studentStatus is null or (s is not null and s.status = :studentStatus))
@@ -78,12 +75,11 @@ public interface DashboardMetricsRepository extends JpaRepository<AccessLog, UUI
 
     @Query("""
             select max(a.occurredAt)
-            from AccessLog a
+            from ElibroAccessLog a
             left join a.student s
-            where a.providerName = 'ELIBRO'
-              and a.occurredAt >= :dateFrom
+            where a.occurredAt >= :dateFrom
               and a.occurredAt <= :dateTo
-              and a.result <> mx.edu.utez.server.shared.enums.AccessResult.SUCCESS
+              and a.result <> mx.edu.utez.server.shared.enums.ElibroAccessResult.SUCCESS
               and (:studentId is null or (s is not null and s.id = :studentId))
               and (:careerCodesEmpty = true or (s is not null and upper(s.career.code) in :careerCodes))
               and (:studentStatus is null or (s is not null and s.status = :studentStatus))
@@ -99,12 +95,10 @@ public interface DashboardMetricsRepository extends JpaRepository<AccessLog, UUI
 
     @Query("""
             select count(a.id)
-            from AccessLog a
+            from ElibroAccessLog a
             left join a.student s
             where a.occurredAt >= :dateFrom
-              and a.occurredAt <= :dateTo
-              and a.providerName = 'ELIBRO'
-              and a.result = mx.edu.utez.server.shared.enums.AccessResult.SUCCESS
+              and a.occurredAt <= :dateTo              and a.result = mx.edu.utez.server.shared.enums.ElibroAccessResult.SUCCESS
               and (:studentId is null or (s is not null and s.id = :studentId))
               and (:careerCodesEmpty = true or (s is not null and upper(s.career.code) in :careerCodes))
               and (:studentStatus is null or (s is not null and s.status = :studentStatus))
@@ -122,12 +116,10 @@ public interface DashboardMetricsRepository extends JpaRepository<AccessLog, UUI
 
     @Query("""
             select count(a.id)
-            from AccessLog a
+            from ElibroAccessLog a
             left join a.student s
             where a.occurredAt >= :dateFrom
-              and a.occurredAt <= :dateTo
-              and a.providerName = 'ELIBRO'
-              and a.result <> mx.edu.utez.server.shared.enums.AccessResult.SUCCESS
+              and a.occurredAt <= :dateTo              and a.result <> mx.edu.utez.server.shared.enums.ElibroAccessResult.SUCCESS
               and (:studentId is null or (s is not null and s.id = :studentId))
               and (:careerCodesEmpty = true or (s is not null and upper(s.career.code) in :careerCodes))
               and (:studentStatus is null or (s is not null and s.status = :studentStatus))
@@ -145,17 +137,15 @@ public interface DashboardMetricsRepository extends JpaRepository<AccessLog, UUI
 
     @Query("""
             select count(distinct s.id)
-            from AccessLog a
+            from ElibroAccessLog a
             join a.student s
             where a.occurredAt >= :dateFrom
-              and a.occurredAt <= :dateTo
-              and a.providerName = 'ELIBRO'
-              and (:studentId is null or s.id = :studentId)
+              and a.occurredAt <= :dateTo              and (:studentId is null or s.id = :studentId)
               and (:careerCodesEmpty = true or upper(s.career.code) in :careerCodes)
               and (:studentStatus is null or s.status = :studentStatus)
               and ((:accessStatus = 'ALL')
-                   or (:accessStatus = 'SUCCESS' and a.result = mx.edu.utez.server.shared.enums.AccessResult.SUCCESS)
-                   or (:accessStatus = 'FAILED' and a.result <> mx.edu.utez.server.shared.enums.AccessResult.SUCCESS))
+                   or (:accessStatus = 'SUCCESS' and a.result = mx.edu.utez.server.shared.enums.ElibroAccessResult.SUCCESS)
+                   or (:accessStatus = 'FAILED' and a.result <> mx.edu.utez.server.shared.enums.ElibroAccessResult.SUCCESS))
             """)
     long countUniqueStudentsByAccessStatus(
             @Param("dateFrom") Instant dateFrom,
@@ -171,17 +161,15 @@ public interface DashboardMetricsRepository extends JpaRepository<AccessLog, UUI
             select function('date', a.occurredAt) as day,
                    a.result as result,
                    count(a.id) as total
-            from AccessLog a
+            from ElibroAccessLog a
             left join a.student s
             where a.occurredAt >= :dateFrom
-              and a.occurredAt <= :dateTo
-              and a.providerName = 'ELIBRO'
-              and (:studentId is null or (s is not null and s.id = :studentId))
+              and a.occurredAt <= :dateTo              and (:studentId is null or (s is not null and s.id = :studentId))
               and (:careerCodesEmpty = true or (s is not null and upper(s.career.code) in :careerCodes))
               and (:studentStatus is null or (s is not null and s.status = :studentStatus))
               and ((:accessStatus = 'ALL')
-                   or (:accessStatus = 'SUCCESS' and a.result = mx.edu.utez.server.shared.enums.AccessResult.SUCCESS)
-                   or (:accessStatus = 'FAILED' and a.result <> mx.edu.utez.server.shared.enums.AccessResult.SUCCESS))
+                   or (:accessStatus = 'SUCCESS' and a.result = mx.edu.utez.server.shared.enums.ElibroAccessResult.SUCCESS)
+                   or (:accessStatus = 'FAILED' and a.result <> mx.edu.utez.server.shared.enums.ElibroAccessResult.SUCCESS))
             group by function('date', a.occurredAt), a.result
             order by function('date', a.occurredAt) asc
             """)
@@ -201,15 +189,13 @@ public interface DashboardMetricsRepository extends JpaRepository<AccessLog, UUI
                    s.enrollmentId as enrollmentId,
                    s.career.code as careerCode,
                    s.career.name as careerName,
-                   sum(case when a.result = mx.edu.utez.server.shared.enums.AccessResult.SUCCESS then 1 else 0 end) as successfulAccesses,
-                   sum(case when a.result <> mx.edu.utez.server.shared.enums.AccessResult.SUCCESS then 1 else 0 end) as failedAccesses,
+                   sum(case when a.result = mx.edu.utez.server.shared.enums.ElibroAccessResult.SUCCESS then 1 else 0 end) as successfulAccesses,
+                   sum(case when a.result <> mx.edu.utez.server.shared.enums.ElibroAccessResult.SUCCESS then 1 else 0 end) as failedAccesses,
                    count(a.id) as totalAccesses
-            from AccessLog a
+            from ElibroAccessLog a
             join a.student s
             where a.occurredAt >= :dateFrom
-              and a.occurredAt <= :dateTo
-              and a.providerName = 'ELIBRO'
-              and (:studentId is null or s.id = :studentId)
+              and a.occurredAt <= :dateTo              and (:studentId is null or s.id = :studentId)
               and (:careerCodesEmpty = true or upper(s.career.code) in :careerCodes)
               and (:studentStatus is null or s.status = :studentStatus)
             group by s.id, s.name, s.enrollmentId, s.career.code, s.career.name
@@ -231,15 +217,13 @@ public interface DashboardMetricsRepository extends JpaRepository<AccessLog, UUI
                    s.enrollmentId as enrollmentId,
                    s.career.code as careerCode,
                    s.career.name as careerName,
-                   sum(case when a.result = mx.edu.utez.server.shared.enums.AccessResult.SUCCESS then 1 else 0 end) as successfulAccesses,
-                   sum(case when a.result <> mx.edu.utez.server.shared.enums.AccessResult.SUCCESS then 1 else 0 end) as failedAccesses,
+                   sum(case when a.result = mx.edu.utez.server.shared.enums.ElibroAccessResult.SUCCESS then 1 else 0 end) as successfulAccesses,
+                   sum(case when a.result <> mx.edu.utez.server.shared.enums.ElibroAccessResult.SUCCESS then 1 else 0 end) as failedAccesses,
                    count(a.id) as totalAccesses
-            from AccessLog a
+            from ElibroAccessLog a
             join a.student s
             where a.occurredAt >= :dateFrom
-              and a.occurredAt <= :dateTo
-              and a.providerName = 'ELIBRO'
-              and (:studentId is null or s.id = :studentId)
+              and a.occurredAt <= :dateTo              and (:studentId is null or s.id = :studentId)
               and (:careerCodesEmpty = true or upper(s.career.code) in :careerCodes)
               and (:studentStatus is null or s.status = :studentStatus)
             group by s.id, s.name, s.enrollmentId, s.career.code, s.career.name
@@ -261,19 +245,17 @@ public interface DashboardMetricsRepository extends JpaRepository<AccessLog, UUI
                    s.enrollmentId as enrollmentId,
                    s.career.code as careerCode,
                    s.career.name as careerName,
-                   sum(case when a.result = mx.edu.utez.server.shared.enums.AccessResult.SUCCESS then 1 else 0 end) as successfulAccesses,
-                   sum(case when a.result <> mx.edu.utez.server.shared.enums.AccessResult.SUCCESS then 1 else 0 end) as failedAccesses,
+                   sum(case when a.result = mx.edu.utez.server.shared.enums.ElibroAccessResult.SUCCESS then 1 else 0 end) as successfulAccesses,
+                   sum(case when a.result <> mx.edu.utez.server.shared.enums.ElibroAccessResult.SUCCESS then 1 else 0 end) as failedAccesses,
                    count(a.id) as totalAccesses
-            from AccessLog a
+            from ElibroAccessLog a
             join a.student s
             where a.occurredAt >= :dateFrom
-              and a.occurredAt <= :dateTo
-              and a.providerName = 'ELIBRO'
-              and (:studentId is null or s.id = :studentId)
+              and a.occurredAt <= :dateTo              and (:studentId is null or s.id = :studentId)
               and (:careerCodesEmpty = true or upper(s.career.code) in :careerCodes)
               and (:studentStatus is null or s.status = :studentStatus)
             group by s.id, s.name, s.enrollmentId, s.career.code, s.career.name
-            order by sum(case when a.result = mx.edu.utez.server.shared.enums.AccessResult.SUCCESS then 1 else 0 end) desc, s.name asc
+            order by sum(case when a.result = mx.edu.utez.server.shared.enums.ElibroAccessResult.SUCCESS then 1 else 0 end) desc, s.name asc
             """)
     Page<TopStudentProjection> findTopStudentsSuccessDesc(
             @Param("dateFrom") Instant dateFrom,
@@ -291,19 +273,17 @@ public interface DashboardMetricsRepository extends JpaRepository<AccessLog, UUI
                    s.enrollmentId as enrollmentId,
                    s.career.code as careerCode,
                    s.career.name as careerName,
-                   sum(case when a.result = mx.edu.utez.server.shared.enums.AccessResult.SUCCESS then 1 else 0 end) as successfulAccesses,
-                   sum(case when a.result <> mx.edu.utez.server.shared.enums.AccessResult.SUCCESS then 1 else 0 end) as failedAccesses,
+                   sum(case when a.result = mx.edu.utez.server.shared.enums.ElibroAccessResult.SUCCESS then 1 else 0 end) as successfulAccesses,
+                   sum(case when a.result <> mx.edu.utez.server.shared.enums.ElibroAccessResult.SUCCESS then 1 else 0 end) as failedAccesses,
                    count(a.id) as totalAccesses
-            from AccessLog a
+            from ElibroAccessLog a
             join a.student s
             where a.occurredAt >= :dateFrom
-              and a.occurredAt <= :dateTo
-              and a.providerName = 'ELIBRO'
-              and (:studentId is null or s.id = :studentId)
+              and a.occurredAt <= :dateTo              and (:studentId is null or s.id = :studentId)
               and (:careerCodesEmpty = true or upper(s.career.code) in :careerCodes)
               and (:studentStatus is null or s.status = :studentStatus)
             group by s.id, s.name, s.enrollmentId, s.career.code, s.career.name
-            order by sum(case when a.result = mx.edu.utez.server.shared.enums.AccessResult.SUCCESS then 1 else 0 end) asc, s.name asc
+            order by sum(case when a.result = mx.edu.utez.server.shared.enums.ElibroAccessResult.SUCCESS then 1 else 0 end) asc, s.name asc
             """)
     Page<TopStudentProjection> findTopStudentsSuccessAsc(
             @Param("dateFrom") Instant dateFrom,
@@ -321,19 +301,17 @@ public interface DashboardMetricsRepository extends JpaRepository<AccessLog, UUI
                    s.enrollmentId as enrollmentId,
                    s.career.code as careerCode,
                    s.career.name as careerName,
-                   sum(case when a.result = mx.edu.utez.server.shared.enums.AccessResult.SUCCESS then 1 else 0 end) as successfulAccesses,
-                   sum(case when a.result <> mx.edu.utez.server.shared.enums.AccessResult.SUCCESS then 1 else 0 end) as failedAccesses,
+                   sum(case when a.result = mx.edu.utez.server.shared.enums.ElibroAccessResult.SUCCESS then 1 else 0 end) as successfulAccesses,
+                   sum(case when a.result <> mx.edu.utez.server.shared.enums.ElibroAccessResult.SUCCESS then 1 else 0 end) as failedAccesses,
                    count(a.id) as totalAccesses
-            from AccessLog a
+            from ElibroAccessLog a
             join a.student s
             where a.occurredAt >= :dateFrom
-              and a.occurredAt <= :dateTo
-              and a.providerName = 'ELIBRO'
-              and (:studentId is null or s.id = :studentId)
+              and a.occurredAt <= :dateTo              and (:studentId is null or s.id = :studentId)
               and (:careerCodesEmpty = true or upper(s.career.code) in :careerCodes)
               and (:studentStatus is null or s.status = :studentStatus)
             group by s.id, s.name, s.enrollmentId, s.career.code, s.career.name
-            order by sum(case when a.result <> mx.edu.utez.server.shared.enums.AccessResult.SUCCESS then 1 else 0 end) desc, s.name asc
+            order by sum(case when a.result <> mx.edu.utez.server.shared.enums.ElibroAccessResult.SUCCESS then 1 else 0 end) desc, s.name asc
             """)
     Page<TopStudentProjection> findTopStudentsFailedDesc(
             @Param("dateFrom") Instant dateFrom,
@@ -351,19 +329,17 @@ public interface DashboardMetricsRepository extends JpaRepository<AccessLog, UUI
                    s.enrollmentId as enrollmentId,
                    s.career.code as careerCode,
                    s.career.name as careerName,
-                   sum(case when a.result = mx.edu.utez.server.shared.enums.AccessResult.SUCCESS then 1 else 0 end) as successfulAccesses,
-                   sum(case when a.result <> mx.edu.utez.server.shared.enums.AccessResult.SUCCESS then 1 else 0 end) as failedAccesses,
+                   sum(case when a.result = mx.edu.utez.server.shared.enums.ElibroAccessResult.SUCCESS then 1 else 0 end) as successfulAccesses,
+                   sum(case when a.result <> mx.edu.utez.server.shared.enums.ElibroAccessResult.SUCCESS then 1 else 0 end) as failedAccesses,
                    count(a.id) as totalAccesses
-            from AccessLog a
+            from ElibroAccessLog a
             join a.student s
             where a.occurredAt >= :dateFrom
-              and a.occurredAt <= :dateTo
-              and a.providerName = 'ELIBRO'
-              and (:studentId is null or s.id = :studentId)
+              and a.occurredAt <= :dateTo              and (:studentId is null or s.id = :studentId)
               and (:careerCodesEmpty = true or upper(s.career.code) in :careerCodes)
               and (:studentStatus is null or s.status = :studentStatus)
             group by s.id, s.name, s.enrollmentId, s.career.code, s.career.name
-            order by sum(case when a.result <> mx.edu.utez.server.shared.enums.AccessResult.SUCCESS then 1 else 0 end) asc, s.name asc
+            order by sum(case when a.result <> mx.edu.utez.server.shared.enums.ElibroAccessResult.SUCCESS then 1 else 0 end) asc, s.name asc
             """)
     Page<TopStudentProjection> findTopStudentsFailedAsc(
             @Param("dateFrom") Instant dateFrom,
@@ -378,15 +354,13 @@ public interface DashboardMetricsRepository extends JpaRepository<AccessLog, UUI
     @Query("""
             select s.career.code as careerCode,
                    s.career.name as careerName,
-                   sum(case when a.result = mx.edu.utez.server.shared.enums.AccessResult.SUCCESS then 1 else 0 end) as successfulAccesses,
-                   sum(case when a.result <> mx.edu.utez.server.shared.enums.AccessResult.SUCCESS then 1 else 0 end) as failedAccesses,
+                   sum(case when a.result = mx.edu.utez.server.shared.enums.ElibroAccessResult.SUCCESS then 1 else 0 end) as successfulAccesses,
+                   sum(case when a.result <> mx.edu.utez.server.shared.enums.ElibroAccessResult.SUCCESS then 1 else 0 end) as failedAccesses,
                    count(a.id) as totalAccesses
-            from AccessLog a
+            from ElibroAccessLog a
             join a.student s
             where a.occurredAt >= :dateFrom
-              and a.occurredAt <= :dateTo
-              and a.providerName = 'ELIBRO'
-              and (:studentId is null or s.id = :studentId)
+              and a.occurredAt <= :dateTo              and (:studentId is null or s.id = :studentId)
               and (:careerCodesEmpty = true or upper(s.career.code) in :careerCodes)
               and (:studentStatus is null or s.status = :studentStatus)
             group by s.career.code, s.career.name
@@ -405,15 +379,13 @@ public interface DashboardMetricsRepository extends JpaRepository<AccessLog, UUI
     @Query("""
             select s.career.code as careerCode,
                    s.career.name as careerName,
-                   sum(case when a.result = mx.edu.utez.server.shared.enums.AccessResult.SUCCESS then 1 else 0 end) as successfulAccesses,
-                   sum(case when a.result <> mx.edu.utez.server.shared.enums.AccessResult.SUCCESS then 1 else 0 end) as failedAccesses,
+                   sum(case when a.result = mx.edu.utez.server.shared.enums.ElibroAccessResult.SUCCESS then 1 else 0 end) as successfulAccesses,
+                   sum(case when a.result <> mx.edu.utez.server.shared.enums.ElibroAccessResult.SUCCESS then 1 else 0 end) as failedAccesses,
                    count(a.id) as totalAccesses
-            from AccessLog a
+            from ElibroAccessLog a
             join a.student s
             where a.occurredAt >= :dateFrom
-              and a.occurredAt <= :dateTo
-              and a.providerName = 'ELIBRO'
-              and (:studentId is null or s.id = :studentId)
+              and a.occurredAt <= :dateTo              and (:studentId is null or s.id = :studentId)
               and (:careerCodesEmpty = true or upper(s.career.code) in :careerCodes)
               and (:studentStatus is null or s.status = :studentStatus)
             group by s.career.code, s.career.name
@@ -432,19 +404,17 @@ public interface DashboardMetricsRepository extends JpaRepository<AccessLog, UUI
     @Query("""
             select s.career.code as careerCode,
                    s.career.name as careerName,
-                   sum(case when a.result = mx.edu.utez.server.shared.enums.AccessResult.SUCCESS then 1 else 0 end) as successfulAccesses,
-                   sum(case when a.result <> mx.edu.utez.server.shared.enums.AccessResult.SUCCESS then 1 else 0 end) as failedAccesses,
+                   sum(case when a.result = mx.edu.utez.server.shared.enums.ElibroAccessResult.SUCCESS then 1 else 0 end) as successfulAccesses,
+                   sum(case when a.result <> mx.edu.utez.server.shared.enums.ElibroAccessResult.SUCCESS then 1 else 0 end) as failedAccesses,
                    count(a.id) as totalAccesses
-            from AccessLog a
+            from ElibroAccessLog a
             join a.student s
             where a.occurredAt >= :dateFrom
-              and a.occurredAt <= :dateTo
-              and a.providerName = 'ELIBRO'
-              and (:studentId is null or s.id = :studentId)
+              and a.occurredAt <= :dateTo              and (:studentId is null or s.id = :studentId)
               and (:careerCodesEmpty = true or upper(s.career.code) in :careerCodes)
               and (:studentStatus is null or s.status = :studentStatus)
             group by s.career.code, s.career.name
-            order by sum(case when a.result = mx.edu.utez.server.shared.enums.AccessResult.SUCCESS then 1 else 0 end) desc, s.career.code asc
+            order by sum(case when a.result = mx.edu.utez.server.shared.enums.ElibroAccessResult.SUCCESS then 1 else 0 end) desc, s.career.code asc
             """)
     Page<TopCareerProjection> findTopCareersSuccessDesc(
             @Param("dateFrom") Instant dateFrom,
@@ -459,19 +429,17 @@ public interface DashboardMetricsRepository extends JpaRepository<AccessLog, UUI
     @Query("""
             select s.career.code as careerCode,
                    s.career.name as careerName,
-                   sum(case when a.result = mx.edu.utez.server.shared.enums.AccessResult.SUCCESS then 1 else 0 end) as successfulAccesses,
-                   sum(case when a.result <> mx.edu.utez.server.shared.enums.AccessResult.SUCCESS then 1 else 0 end) as failedAccesses,
+                   sum(case when a.result = mx.edu.utez.server.shared.enums.ElibroAccessResult.SUCCESS then 1 else 0 end) as successfulAccesses,
+                   sum(case when a.result <> mx.edu.utez.server.shared.enums.ElibroAccessResult.SUCCESS then 1 else 0 end) as failedAccesses,
                    count(a.id) as totalAccesses
-            from AccessLog a
+            from ElibroAccessLog a
             join a.student s
             where a.occurredAt >= :dateFrom
-              and a.occurredAt <= :dateTo
-              and a.providerName = 'ELIBRO'
-              and (:studentId is null or s.id = :studentId)
+              and a.occurredAt <= :dateTo              and (:studentId is null or s.id = :studentId)
               and (:careerCodesEmpty = true or upper(s.career.code) in :careerCodes)
               and (:studentStatus is null or s.status = :studentStatus)
             group by s.career.code, s.career.name
-            order by sum(case when a.result = mx.edu.utez.server.shared.enums.AccessResult.SUCCESS then 1 else 0 end) asc, s.career.code asc
+            order by sum(case when a.result = mx.edu.utez.server.shared.enums.ElibroAccessResult.SUCCESS then 1 else 0 end) asc, s.career.code asc
             """)
     Page<TopCareerProjection> findTopCareersSuccessAsc(
             @Param("dateFrom") Instant dateFrom,
@@ -486,19 +454,17 @@ public interface DashboardMetricsRepository extends JpaRepository<AccessLog, UUI
     @Query("""
             select s.career.code as careerCode,
                    s.career.name as careerName,
-                   sum(case when a.result = mx.edu.utez.server.shared.enums.AccessResult.SUCCESS then 1 else 0 end) as successfulAccesses,
-                   sum(case when a.result <> mx.edu.utez.server.shared.enums.AccessResult.SUCCESS then 1 else 0 end) as failedAccesses,
+                   sum(case when a.result = mx.edu.utez.server.shared.enums.ElibroAccessResult.SUCCESS then 1 else 0 end) as successfulAccesses,
+                   sum(case when a.result <> mx.edu.utez.server.shared.enums.ElibroAccessResult.SUCCESS then 1 else 0 end) as failedAccesses,
                    count(a.id) as totalAccesses
-            from AccessLog a
+            from ElibroAccessLog a
             join a.student s
             where a.occurredAt >= :dateFrom
-              and a.occurredAt <= :dateTo
-              and a.providerName = 'ELIBRO'
-              and (:studentId is null or s.id = :studentId)
+              and a.occurredAt <= :dateTo              and (:studentId is null or s.id = :studentId)
               and (:careerCodesEmpty = true or upper(s.career.code) in :careerCodes)
               and (:studentStatus is null or s.status = :studentStatus)
             group by s.career.code, s.career.name
-            order by sum(case when a.result <> mx.edu.utez.server.shared.enums.AccessResult.SUCCESS then 1 else 0 end) desc, s.career.code asc
+            order by sum(case when a.result <> mx.edu.utez.server.shared.enums.ElibroAccessResult.SUCCESS then 1 else 0 end) desc, s.career.code asc
             """)
     Page<TopCareerProjection> findTopCareersFailedDesc(
             @Param("dateFrom") Instant dateFrom,
@@ -513,19 +479,17 @@ public interface DashboardMetricsRepository extends JpaRepository<AccessLog, UUI
     @Query("""
             select s.career.code as careerCode,
                    s.career.name as careerName,
-                   sum(case when a.result = mx.edu.utez.server.shared.enums.AccessResult.SUCCESS then 1 else 0 end) as successfulAccesses,
-                   sum(case when a.result <> mx.edu.utez.server.shared.enums.AccessResult.SUCCESS then 1 else 0 end) as failedAccesses,
+                   sum(case when a.result = mx.edu.utez.server.shared.enums.ElibroAccessResult.SUCCESS then 1 else 0 end) as successfulAccesses,
+                   sum(case when a.result <> mx.edu.utez.server.shared.enums.ElibroAccessResult.SUCCESS then 1 else 0 end) as failedAccesses,
                    count(a.id) as totalAccesses
-            from AccessLog a
+            from ElibroAccessLog a
             join a.student s
             where a.occurredAt >= :dateFrom
-              and a.occurredAt <= :dateTo
-              and a.providerName = 'ELIBRO'
-              and (:studentId is null or s.id = :studentId)
+              and a.occurredAt <= :dateTo              and (:studentId is null or s.id = :studentId)
               and (:careerCodesEmpty = true or upper(s.career.code) in :careerCodes)
               and (:studentStatus is null or s.status = :studentStatus)
             group by s.career.code, s.career.name
-            order by sum(case when a.result <> mx.edu.utez.server.shared.enums.AccessResult.SUCCESS then 1 else 0 end) asc, s.career.code asc
+            order by sum(case when a.result <> mx.edu.utez.server.shared.enums.ElibroAccessResult.SUCCESS then 1 else 0 end) asc, s.career.code asc
             """)
     Page<TopCareerProjection> findTopCareersFailedAsc(
             @Param("dateFrom") Instant dateFrom,
@@ -539,7 +503,7 @@ public interface DashboardMetricsRepository extends JpaRepository<AccessLog, UUI
 
     interface DailyResultCountProjection {
         Date getDay();
-        AccessResult getResult();
+        ElibroAccessResult getResult();
         long getTotal();
     }
 
@@ -613,12 +577,12 @@ public interface DashboardMetricsRepository extends JpaRepository<AccessLog, UUI
             UUID careerId,
             String careerCode,
             StudentStatus studentStatus,
-            AccessResult result
+            ElibroAccessResult result
     ) {
         List<String> codes = careerCode == null || careerCode.isBlank()
                 ? List.of()
                 : List.of(careerCode.trim().toUpperCase());
-        String accessStatus = result == null ? "ALL" : result == AccessResult.SUCCESS ? "SUCCESS" : "FAILED";
+        String accessStatus = result == null ? "ALL" : result == ElibroAccessResult.SUCCESS ? "SUCCESS" : "FAILED";
         return findDailyAccessCounts(
                 dateFrom, dateTo, null, codes, codes.isEmpty(), studentStatus, accessStatus
         );

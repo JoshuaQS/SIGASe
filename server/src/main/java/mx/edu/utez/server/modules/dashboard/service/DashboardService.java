@@ -28,7 +28,8 @@ import mx.edu.utez.server.modules.elibro.entity.ElibroConfig;
 import mx.edu.utez.server.modules.elibro.repository.ElibroConfigRepository;
 import mx.edu.utez.server.modules.students.entity.Student;
 import mx.edu.utez.server.modules.students.repository.StudentRepository;
-import mx.edu.utez.server.shared.enums.AccessResult;
+import mx.edu.utez.server.shared.enums.ElibroAccessResult;
+import mx.edu.utez.server.shared.enums.ElibroConfigStatus;
 import mx.edu.utez.server.shared.enums.ElibroValidationStatus;
 import mx.edu.utez.server.shared.enums.StudentStatus;
 import mx.edu.utez.server.shared.exception.BusinessException;
@@ -212,7 +213,7 @@ public class DashboardService {
             if (accumulator == null) {
                 continue;
             }
-            if (row.getResult() == AccessResult.SUCCESS) {
+            if (row.getResult() == ElibroAccessResult.SUCCESS) {
                 accumulator.successful += row.getTotal();
             } else {
                 accumulator.failed += row.getTotal();
@@ -525,7 +526,7 @@ public class DashboardService {
     }
 
     private String resolveElibroStatus() {
-        ElibroConfig activeConfig = elibroConfigRepository.findFirstByActiveTrueOrderByUpdatedAtDesc().orElse(null);
+        ElibroConfig activeConfig = elibroConfigRepository.findFirstByStatusOrderByUpdatedAtDesc(ElibroConfigStatus.ACTIVE).orElse(null);
         if (activeConfig == null) {
             return "NO_ACTIVE_CONFIG";
         }

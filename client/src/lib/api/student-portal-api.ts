@@ -15,8 +15,7 @@ export type StudentPortalSummaryResponse = {
     status: string;
   };
   accountStatus: {
-    active: boolean;
-    state: string;
+    status: string;
     message: string | null;
   };
   accessMetrics: {

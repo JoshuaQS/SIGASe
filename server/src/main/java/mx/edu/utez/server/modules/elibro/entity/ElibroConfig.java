@@ -2,22 +2,27 @@ package mx.edu.utez.server.modules.elibro.entity;
 
 import mx.edu.utez.server.modules.admins.entity.Admin;
 import mx.edu.utez.server.shared.entity.BaseAuditableEntity;
+import mx.edu.utez.server.shared.enums.ElibroConfigStatus;
 import mx.edu.utez.server.shared.enums.ElibroValidationStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
+import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.Instant;
 
 @Entity
-@Table(name = "elibro_configs")
+@Table(name = "elibro_configs", indexes = {
+        @Index(name = "idx_elibro_configs_name", columnList = "name", unique = true),
+        @Index(name = "idx_elibro_configs_status", columnList = "status")
+})
 public class ElibroConfig extends BaseAuditableEntity {
 
-    @Column(name = "name", nullable = false, length = 160)
+    @Column(name = "name", nullable = false, length = 160, unique = true)
     private String name;
 
     @Column(name = "auth_token_encrypted", nullable = false, length = 1024)
@@ -32,11 +37,12 @@ public class ElibroConfig extends BaseAuditableEntity {
     @Column(name = "channel_name", nullable = false, length = 120)
     private String channelName;
 
-    @Column(name = "auth_endpoint", nullable = false, length = 512)
-    private String authEndpoint;
+    @Column(name = "next_url", length = 512)
+    private String nextUrl;
 
-    @Column(name = "active", nullable = false)
-    private boolean active = true;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 16)
+    private ElibroConfigStatus status = ElibroConfigStatus.ACTIVE;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "validation_status", nullable = false, length = 20)
@@ -96,20 +102,20 @@ public class ElibroConfig extends BaseAuditableEntity {
         this.channelName = channelName;
     }
 
-    public String getAuthEndpoint() {
-        return authEndpoint;
+    public String getNextUrl() {
+        return nextUrl;
     }
 
-    public void setAuthEndpoint(String authEndpoint) {
-        this.authEndpoint = authEndpoint;
+    public void setNextUrl(String nextUrl) {
+        this.nextUrl = nextUrl;
     }
 
-    public boolean isActive() {
-        return active;
+    public ElibroConfigStatus getStatus() {
+        return status;
     }
 
-    public void setActive(boolean active) {
-        this.active = active;
+    public void setStatus(ElibroConfigStatus status) {
+        this.status = status;
     }
 
     public ElibroValidationStatus getValidationStatus() {

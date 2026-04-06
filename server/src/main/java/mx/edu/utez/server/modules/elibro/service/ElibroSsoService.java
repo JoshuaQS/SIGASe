@@ -2,17 +2,16 @@ package mx.edu.utez.server.modules.elibro.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import mx.edu.utez.server.config.AppProperties;
 import mx.edu.utez.server.modules.elibro.dto.StudentElibroAccessResponse;
 import mx.edu.utez.server.modules.elibro.entity.ElibroConfig;
 import mx.edu.utez.server.modules.elibro.repository.ElibroConfigRepository;
-import mx.edu.utez.server.modules.logs.access.service.AccessLogCommand;
-import mx.edu.utez.server.modules.logs.access.service.AccessLogService;
-import mx.edu.utez.server.modules.logs.access.service.StudentAccessAlertService;
 import mx.edu.utez.server.modules.students.entity.Student;
 import mx.edu.utez.server.modules.students.repository.StudentRepository;
 import mx.edu.utez.server.shared.context.RequestContext;
 import mx.edu.utez.server.shared.crypto.Aes256CryptoService;
-import mx.edu.utez.server.shared.enums.AccessResult;
+import mx.edu.utez.server.shared.enums.ElibroAccessResult;
+import mx.edu.utez.server.shared.enums.ElibroConfigStatus;
 import mx.edu.utez.server.shared.enums.StudentStatus;
 import mx.edu.utez.server.shared.exception.BusinessException;
 import mx.edu.utez.server.shared.exception.ErrorCode;
@@ -35,15 +34,13 @@ import org.springframework.web.util.UriComponentsBuilder;
 @Service
 public class ElibroSsoService {
 
-    private static final String ELIBRO_PROVIDER_NAME = "ELIBRO";
-
     private final StudentRepository studentRepository;
     private final ElibroConfigRepository elibroConfigRepository;
     private final Aes256CryptoService aes256CryptoService;
     private final NextUrlValidator nextUrlValidator;
-    private final AccessLogService accessLogService;
-    private final StudentAccessAlertService studentAccessAlertService;
+    private final ElibroAccessLogService elibroAccessLogService;
     private final ClientIpResolver clientIpResolver;
+    private final AppProperties appProperties;
     private final RestClient elibroRestClient;
     private final ObjectMapper objectMapper;
 
@@ -52,9 +49,9 @@ public class ElibroSsoService {
             ElibroConfigRepository elibroConfigRepository,
             Aes256CryptoService aes256CryptoService,
             NextUrlValidator nextUrlValidator,
-            AccessLogService accessLogService,
-            StudentAccessAlertService studentAccessAlertService,
+            ElibroAccessLogService elibroAccessLogService,
             ClientIpResolver clientIpResolver,
+            AppProperties appProperties,
             RestClient elibroRestClient,
             ObjectMapper objectMapper
     ) {
@@ -62,9 +59,9 @@ public class ElibroSsoService {
         this.elibroConfigRepository = elibroConfigRepository;
         this.aes256CryptoService = aes256CryptoService;
         this.nextUrlValidator = nextUrlValidator;
-        this.accessLogService = accessLogService;
-        this.studentAccessAlertService = studentAccessAlertService;
+        this.elibroAccessLogService = elibroAccessLogService;
         this.clientIpResolver = clientIpResolver;
+        this.appProperties = appProperties;
         this.elibroRestClient = elibroRestClient;
         this.objectMapper = objectMapper;
     }
@@ -80,14 +77,18 @@ public class ElibroSsoService {
         String correlationId = (String) request.getAttribute(RequestContext.CORRELATION_ID_ATTR);
         String ipAddress = clientIpResolver.resolve(request);
         String userAgent = request.getHeader("User-Agent");
+        String sessionId = request.getRequestedSessionId();
+        String origin = request.getHeader("Origin");
+        String referer = request.getHeader("Referer");
+        String httpMethod = request.getMethod();
+        String requestPath = request.getRequestURI();
 
         if (student.getStatus() != StudentStatus.ACTIVE) {
-            studentAccessAlertService.registerFailedAttempt(normalizedEmail, student);
-            accessLogService.log(new AccessLogCommand(
+            elibroAccessLogService.log(new ElibroAccessLogCommand(
                     student,
                     attemptedEmail,
                     normalizedEmail,
-                    AccessResult.FAILED_STUDENT_INACTIVE,
+                    ElibroAccessResult.FAILED_STUDENT_INACTIVE,
                     "STUDENT_INACTIVE",
                     "Estudiante inactivo.",
                     elapsed(startMs),
@@ -95,8 +96,17 @@ public class ElibroSsoService {
                     correlationId,
                     ipAddress,
                     userAgent,
-                    ELIBRO_PROVIDER_NAME,
+                    sessionId,
+                    origin,
+                    referer,
+                    httpMethod,
+                    requestPath,
                     next,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
                     null
             ));
             throw new BusinessException(ErrorCode.UNAUTHORIZED, "Estudiante inactivo.");
@@ -106,12 +116,11 @@ public class ElibroSsoService {
         try {
             normalizedNext = nextUrlValidator.validateAndNormalize(next);
         } catch (BusinessException ex) {
-            studentAccessAlertService.registerFailedAttempt(normalizedEmail, student);
-            accessLogService.log(new AccessLogCommand(
+            elibroAccessLogService.log(new ElibroAccessLogCommand(
                     student,
                     attemptedEmail,
                     normalizedEmail,
-                    AccessResult.FAILED_NEXT_URL_VALIDATION,
+                    ElibroAccessResult.FAILED_NEXT_URL_VALIDATION,
                     "INVALID_NEXT",
                     "Parámetro next inválido.",
                     elapsed(startMs),
@@ -119,14 +128,23 @@ public class ElibroSsoService {
                     correlationId,
                     ipAddress,
                     userAgent,
-                    ELIBRO_PROVIDER_NAME,
+                    sessionId,
+                    origin,
+                    referer,
+                    httpMethod,
+                    requestPath,
                     next,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
                     null
             ));
             throw ex;
         }
 
-        ElibroConfig config = elibroConfigRepository.findFirstByActiveTrueOrderByUpdatedAtDesc()
+        ElibroConfig config = elibroConfigRepository.findFirstByStatusOrderByUpdatedAtDesc(ElibroConfigStatus.ACTIVE)
                 .orElseThrow(() -> missingConfig(
                         student,
                         attemptedEmail,
@@ -135,24 +153,14 @@ public class ElibroSsoService {
                         correlationId,
                         ipAddress,
                         userAgent,
+                        sessionId,
+                        origin,
+                        referer,
+                        httpMethod,
+                        requestPath,
                         normalizedNext.orElse(null),
                         startMs
                 ));
-
-        String authEndpoint = config.getAuthEndpoint();
-        if (!StringUtils.hasText(authEndpoint)) {
-            throw missingConfig(
-                    student,
-                    attemptedEmail,
-                    normalizedEmail,
-                    requestId,
-                    correlationId,
-                    ipAddress,
-                    userAgent,
-                    normalizedNext.orElse(null),
-                    startMs
-            );
-        }
 
         String authToken;
         String channelId;
@@ -173,12 +181,18 @@ public class ElibroSsoService {
                     correlationId,
                     ipAddress,
                     userAgent,
+                    sessionId,
+                    origin,
+                    referer,
+                    httpMethod,
+                    requestPath,
                     normalizedNext.orElse(null),
                     startMs
             );
         }
 
-        URI requestUri = buildRequestUri(authEndpoint, normalizedNext);
+        String effectiveNext = normalizedNext.orElse(config.getNextUrl());
+        URI requestUri = buildRequestUri(effectiveNext);
         Map<String, String> payload = new LinkedHashMap<>();
         payload.put("secret", channelSecret);
         payload.put("channel_id", channelId);
@@ -203,12 +217,11 @@ public class ElibroSsoService {
                 throw new IllegalStateException("No redirect URL in eLibro response");
             }
 
-            studentAccessAlertService.registerSuccess(normalizedEmail);
-            accessLogService.log(new AccessLogCommand(
+            elibroAccessLogService.log(new ElibroAccessLogCommand(
                     student,
                     attemptedEmail,
                     normalizedEmail,
-                    AccessResult.SUCCESS,
+                    ElibroAccessResult.SUCCESS,
                     null,
                     null,
                     elapsed(startMs),
@@ -216,19 +229,28 @@ public class ElibroSsoService {
                     correlationId,
                     ipAddress,
                     userAgent,
-                    ELIBRO_PROVIDER_NAME,
-                    normalizedNext.orElse(null),
-                    redirectUrl
+                    sessionId,
+                    origin,
+                    referer,
+                    httpMethod,
+                    requestPath,
+                    effectiveNext,
+                    redirectUrl,
+                    config.getChannelName(),
+                    200,
+                    null,
+                    null,
+                    null
             ));
             return new StudentElibroAccessResponse(redirectUrl);
         } catch (Exception ex) {
             String providerErrorDetail = buildProviderErrorDetail(ex);
-            studentAccessAlertService.registerFailedAttempt(normalizedEmail, student);
-            accessLogService.log(new AccessLogCommand(
+            Integer providerStatusCode = extractProviderStatusCode(ex);
+            elibroAccessLogService.log(new ElibroAccessLogCommand(
                     student,
                     attemptedEmail,
                     normalizedEmail,
-                    AccessResult.FAILED_ELIBRO_API,
+                    ElibroAccessResult.FAILED_ELIBRO_API,
                     "ELIBRO_API_ERROR",
                     providerErrorDetail,
                     elapsed(startMs),
@@ -236,8 +258,17 @@ public class ElibroSsoService {
                     correlationId,
                     ipAddress,
                     userAgent,
-                    ELIBRO_PROVIDER_NAME,
-                    normalizedNext.orElse(null),
+                    sessionId,
+                    origin,
+                    referer,
+                    httpMethod,
+                    requestPath,
+                    effectiveNext,
+                    null,
+                    config.getChannelName(),
+                    providerStatusCode,
+                    "ELIBRO_API_ERROR",
+                    providerErrorDetail,
                     null
             ));
             throw new BusinessException(ErrorCode.PROVIDER_ERROR, "No se pudo abrir sesión en eLibro. " + providerErrorDetail);
@@ -252,15 +283,19 @@ public class ElibroSsoService {
             String correlationId,
             String ipAddress,
             String userAgent,
+            String sessionId,
+            String origin,
+            String referer,
+            String httpMethod,
+            String requestPath,
             String nextUrl,
             long startMs
     ) {
-        studentAccessAlertService.registerFailedAttempt(normalizedEmail, student);
-        accessLogService.log(new AccessLogCommand(
+        elibroAccessLogService.log(new ElibroAccessLogCommand(
                 student,
                 attemptedEmail,
                 normalizedEmail,
-                AccessResult.FAILED_ELIBRO_CONFIG,
+                ElibroAccessResult.FAILED_ELIBRO_CONFIG,
                 "ELIBRO_CONFIG_MISSING",
                 "Configuración eLibro incompleta o inactiva.",
                 elapsed(startMs),
@@ -268,16 +303,27 @@ public class ElibroSsoService {
                 correlationId,
                 ipAddress,
                 userAgent,
-                ELIBRO_PROVIDER_NAME,
+                sessionId,
+                origin,
+                referer,
+                httpMethod,
+                requestPath,
                 nextUrl,
+                null,
+                null,
+                null,
+                null,
+                null,
                 null
         ));
         return new BusinessException(ErrorCode.SERVICE_UNAVAILABLE, "Configuración eLibro no disponible.");
     }
 
-    private URI buildRequestUri(String endpoint, Optional<String> next) {
-        UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(endpoint);
-        next.ifPresent(value -> builder.queryParam("next", value));
+    private URI buildRequestUri(String nextUrl) {
+        UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(appProperties.getElibro().getBaseUrl());
+        if (StringUtils.hasText(nextUrl)) {
+            builder.queryParam("next", nextUrl);
+        }
         return builder.build(true).toUri();
     }
 
@@ -329,6 +375,13 @@ public class ElibroSsoService {
             return statusLine;
         }
         return truncate(sanitize(ex.getMessage()), 220);
+    }
+
+    private Integer extractProviderStatusCode(Exception ex) {
+        if (ex instanceof RestClientResponseException restEx) {
+            return restEx.getStatusCode().value();
+        }
+        return null;
     }
 
     private String serializePayload(Map<String, String> payload) {

@@ -1,15 +1,15 @@
 package mx.edu.utez.server.modules.reports.service;
 
 import mx.edu.utez.server.modules.admins.entity.Admin;
-import mx.edu.utez.server.modules.logs.access.entity.AccessLog;
-import mx.edu.utez.server.modules.logs.access.repository.AccessLogRepository;
+import mx.edu.utez.server.modules.elibro.entity.ElibroAccessLog;
+import mx.edu.utez.server.modules.elibro.repository.ElibroAccessLogRepository;
 import mx.edu.utez.server.modules.logs.audit.entity.AuditLog;
 import mx.edu.utez.server.modules.logs.audit.repository.AuditLogRepository;
 import mx.edu.utez.server.modules.logs.audit.service.AuditTrailService;
-import mx.edu.utez.server.shared.enums.AccessResult;
 import mx.edu.utez.server.shared.enums.AuditActorType;
 import mx.edu.utez.server.shared.enums.AuditOutcome;
 import mx.edu.utez.server.shared.enums.AuditSeverity;
+import mx.edu.utez.server.shared.enums.ElibroAccessResult;
 import mx.edu.utez.server.shared.enums.StudentStatus;
 import mx.edu.utez.server.shared.exception.BusinessException;
 import mx.edu.utez.server.shared.exception.ErrorCode;
@@ -40,14 +40,14 @@ public class ReportXlsxExportService {
 
     private static final int CHUNK_SIZE = 500;
 
-    private final AccessLogRepository accessLogRepository;
+    private final ElibroAccessLogRepository accessLogRepository;
     private final AuditLogRepository auditLogRepository;
     private final ReportService reportService;
     private final ReportDataCollector reportDataCollector;
     private final AuditTrailService auditTrailService;
 
     public ReportXlsxExportService(
-            AccessLogRepository accessLogRepository,
+            ElibroAccessLogRepository accessLogRepository,
             AuditLogRepository auditLogRepository,
             ReportService reportService,
             ReportDataCollector reportDataCollector,
@@ -65,13 +65,13 @@ public class ReportXlsxExportService {
     @Transactional(readOnly = true)
     public void exportAccessLogs(
             OutputStream out,
-            Instant dateFrom, Instant dateTo, AccessResult result,
+            Instant dateFrom, Instant dateTo, ElibroAccessResult result,
             String normalizedEmail, String attemptedEmail, UUID studentId,
-            String ipAddress, String providerName,
+            String ipAddress, String channelName,
             Admin actor, HttpServletRequest request
     ) {
-        Specification<AccessLog> spec = reportService.buildAccessLogSpec(
-                dateFrom, dateTo, result, normalizedEmail, attemptedEmail, studentId, ipAddress, providerName
+        Specification<ElibroAccessLog> spec = reportService.buildAccessLogSpec(
+                dateFrom, dateTo, result, normalizedEmail, attemptedEmail, studentId, ipAddress, channelName
         );
         long total = accessLogRepository.count(spec);
         if (total > 50_000) {
@@ -206,7 +206,7 @@ public class ReportXlsxExportService {
     }
 
     private void writeAccessLogDetail(SXSSFSheet sheet, SXSSFWorkbook wb,
-                                      Specification<AccessLog> spec) {
+                                      Specification<ElibroAccessLog> spec) {
         CellStyle headerStyle = XlsxExportService.createHeaderStyle(wb);
         String[] headers = ReportService.ACCESS_LOG_HEADERS;
 
@@ -220,9 +220,9 @@ public class ReportXlsxExportService {
         int page = 0;
         while (true) {
             PageRequest pr = PageRequest.of(page, CHUNK_SIZE, Sort.by(Sort.Direction.DESC, "occurredAt"));
-            Page<AccessLog> result = accessLogRepository.findAll(spec, pr);
+            Page<ElibroAccessLog> result = accessLogRepository.findAll(spec, pr);
             if (result.isEmpty()) break;
-            for (AccessLog a : result.getContent()) {
+            for (ElibroAccessLog a : result.getContent()) {
                 Row row = sheet.createRow(rowIdx++);
                 row.createCell(0).setCellValue(CsvExportService.formatInstant(a.getOccurredAt()));
                 row.createCell(1).setCellValue(XlsxExportService.sanitize(nullSafe(a.getAttemptedEmail())));
@@ -231,12 +231,13 @@ public class ReportXlsxExportService {
                 row.createCell(4).setCellValue(nullSafe(a.getErrorCode()));
                 row.createCell(5).setCellValue(ReportService.truncateErrorDetail(a.getErrorDetail()));
                 row.createCell(6).setCellValue(a.getLatencyMs() != null ? a.getLatencyMs() : 0);
-                row.createCell(7).setCellValue(XlsxExportService.sanitize(nullSafe(a.getIpAddress())));
-                row.createCell(8).setCellValue(nullSafe(a.getUserAgent()));
-                row.createCell(9).setCellValue(nullSafe(a.getProviderName()));
+                row.createCell(7).setCellValue(XlsxExportService.sanitize(nullSafe(a.getIpAddressMasked())));
+                row.createCell(8).setCellValue(nullSafe(a.getIpAddressHash()));
+                row.createCell(9).setCellValue(nullSafe(a.getUserAgentSanitized()));
                 row.createCell(10).setCellValue(nullSafe(a.getNextUrl()));
                 row.createCell(11).setCellValue(nullSafe(a.getRedirectUrl()));
                 row.createCell(12).setCellValue(nullSafe(a.getRequestId()));
+                row.createCell(13).setCellValue(nullSafe(a.getChannelNameSnapshot()));
             }
             page++;
         }
@@ -246,7 +247,7 @@ public class ReportXlsxExportService {
             sheet.setAutoFilter(new CellRangeAddress(0, rowIdx - 1, 0, headers.length - 1));
         }
 
-        int[] widths = {20, 25, 25, 28, 15, 20, 10, 15, 20, 12, 25, 25, 20};
+        int[] widths = {20, 25, 25, 28, 15, 20, 10, 15, 22, 24, 25, 25, 20, 18};
         for (int i = 0; i < widths.length && i < headers.length; i++) {
             sheet.setColumnWidth(i, widths[i] * 256);
         }
@@ -340,8 +341,10 @@ public class ReportXlsxExportService {
                 row.createCell(5).setCellValue(nullSafe(a.getEntityId()));
                 row.createCell(6).setCellValue(a.getOutcome() != null ? a.getOutcome().name() : "");
                 row.createCell(7).setCellValue(a.getSeverity() != null ? a.getSeverity().name() : "");
-                row.createCell(8).setCellValue(XlsxExportService.sanitize(nullSafe(a.getIpAddress())));
-                row.createCell(9).setCellValue(nullSafe(a.getRequestId()));
+                row.createCell(8).setCellValue(XlsxExportService.sanitize(nullSafe(a.getIpAddressMasked())));
+                row.createCell(9).setCellValue(nullSafe(a.getIpAddressHash()));
+                row.createCell(10).setCellValue(nullSafe(a.getUserAgentSanitized()));
+                row.createCell(11).setCellValue(nullSafe(a.getRequestId()));
             }
             page++;
         }
@@ -351,7 +354,7 @@ public class ReportXlsxExportService {
             sheet.setAutoFilter(new CellRangeAddress(0, rowIdx - 1, 0, headers.length - 1));
         }
 
-        int[] widths = {20, 12, 25, 25, 15, 20, 10, 10, 15, 20};
+        int[] widths = {20, 12, 25, 25, 15, 20, 10, 10, 15, 20, 22, 20};
         for (int i = 0; i < widths.length && i < headers.length; i++) {
             sheet.setColumnWidth(i, widths[i] * 256);
         }

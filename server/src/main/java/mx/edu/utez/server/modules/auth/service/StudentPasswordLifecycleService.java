@@ -17,6 +17,7 @@ import mx.edu.utez.server.shared.context.RequestContext;
 import mx.edu.utez.server.shared.enums.AuditActorType;
 import mx.edu.utez.server.shared.enums.AuditOutcome;
 import mx.edu.utez.server.shared.enums.AuditSeverity;
+import mx.edu.utez.server.shared.enums.AuditSourceModule;
 import mx.edu.utez.server.shared.enums.StudentStatus;
 import mx.edu.utez.server.shared.exception.BusinessException;
 import mx.edu.utez.server.shared.exception.ErrorCode;
@@ -161,18 +162,24 @@ public class StudentPasswordLifecycleService {
         String correlationId = request != null ? (String) request.getAttribute(RequestContext.CORRELATION_ID_ATTR) : null;
         String ipAddress = request != null ? clientIpResolver.resolve(request) : null;
         auditLogService.log(new AuditLogCommand(
-                AuditActorType.STUDENT,
+                AuditActorType.SYSTEM,
                 null,
                 studentId.toString(),
                 action,
                 "STUDENT",
                 studentId.toString(),
                 outcome,
-                outcome == AuditOutcome.SUCCESS ? AuditSeverity.INFO : AuditSeverity.WARN,
+                outcome == AuditOutcome.SUCCESS ? AuditSeverity.INFO : AuditSeverity.WARNING,
+                AuditSourceModule.AUTH,
                 null,
                 requestId,
                 correlationId,
-                ipAddress
+                ipAddress,
+                request != null ? request.getHeader("User-Agent") : null,
+                request != null ? request.getRequestedSessionId() : null,
+                request != null ? request.getHeader("Origin") : null,
+                request != null ? request.getMethod() : null,
+                request != null ? request.getRequestURI() : null
         ));
     }
 

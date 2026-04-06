@@ -5,6 +5,7 @@ import mx.edu.utez.server.shared.entity.BaseUuidEntity;
 import mx.edu.utez.server.shared.enums.AuditActorType;
 import mx.edu.utez.server.shared.enums.AuditOutcome;
 import mx.edu.utez.server.shared.enums.AuditSeverity;
+import mx.edu.utez.server.shared.enums.AuditSourceModule;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -22,7 +23,9 @@ import java.time.Instant;
         @Index(name = "idx_audit_logs_action", columnList = "action"),
         @Index(name = "idx_audit_logs_entity", columnList = "entity_type,entity_id"),
         @Index(name = "idx_audit_logs_actor_type", columnList = "actor_type"),
-        @Index(name = "idx_audit_logs_severity", columnList = "severity")
+        @Index(name = "idx_audit_logs_severity", columnList = "severity"),
+        @Index(name = "idx_audit_logs_source_module", columnList = "source_module"),
+        @Index(name = "idx_audit_logs_outcome", columnList = "outcome")
 })
 public class AuditLog extends BaseUuidEntity {
 
@@ -51,7 +54,7 @@ public class AuditLog extends BaseUuidEntity {
     private AuditOutcome outcome;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "severity", length = 20)
+    @Column(name = "severity", nullable = false, length = 20)
     private AuditSeverity severity;
 
     @Column(name = "metadata_json", columnDefinition = "json")
@@ -63,11 +66,53 @@ public class AuditLog extends BaseUuidEntity {
     @Column(name = "correlation_id", nullable = false, length = 80)
     private String correlationId;
 
-    @Column(name = "ip_address", nullable = false, length = 60)
-    private String ipAddress;
-
     @Column(name = "occurred_at", nullable = false)
     private Instant occurredAt = Instant.now();
+
+    // ── Extended fields ──────────────────────────────────────────────────────
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "source_module", nullable = false, length = 20)
+    private AuditSourceModule sourceModule = AuditSourceModule.SYSTEM;
+
+    @Column(name = "description", length = 500)
+    private String description;
+
+    @Column(name = "entity_snapshot_name", length = 160)
+    private String entitySnapshotName;
+
+    @Column(name = "target_label", length = 254)
+    private String targetLabel;
+
+    @Column(name = "http_method", length = 10)
+    private String httpMethod;
+
+    @Column(name = "endpoint", length = 512)
+    private String endpoint;
+
+    @Column(name = "route_pattern", length = 256)
+    private String routePattern;
+
+    @Column(name = "status_code")
+    private Integer statusCode;
+
+    @Column(name = "origin", length = 254)
+    private String origin;
+
+    @Column(name = "session_id", length = 128)
+    private String sessionId;
+
+    @Column(name = "ip_address_masked", length = 60)
+    private String ipAddressMasked;
+
+    @Column(name = "ip_address_hash", length = 64)
+    private String ipAddressHash;
+
+    @Column(name = "user_agent_sanitized", length = 300)
+    private String userAgentSanitized;
+
+    @Column(name = "changed_fields_json", columnDefinition = "json")
+    private String changedFieldsJson;
 
     public AuditActorType getActorType() {
         return actorType;
@@ -157,19 +202,123 @@ public class AuditLog extends BaseUuidEntity {
         this.correlationId = correlationId;
     }
 
-    public String getIpAddress() {
-        return ipAddress;
-    }
-
-    public void setIpAddress(String ipAddress) {
-        this.ipAddress = ipAddress;
-    }
-
     public Instant getOccurredAt() {
         return occurredAt;
     }
 
     public void setOccurredAt(Instant occurredAt) {
         this.occurredAt = occurredAt;
+    }
+
+    public AuditSourceModule getSourceModule() {
+        return sourceModule;
+    }
+
+    public void setSourceModule(AuditSourceModule sourceModule) {
+        this.sourceModule = sourceModule;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public String getEntitySnapshotName() {
+        return entitySnapshotName;
+    }
+
+    public void setEntitySnapshotName(String entitySnapshotName) {
+        this.entitySnapshotName = entitySnapshotName;
+    }
+
+    public String getTargetLabel() {
+        return targetLabel;
+    }
+
+    public void setTargetLabel(String targetLabel) {
+        this.targetLabel = targetLabel;
+    }
+
+    public String getHttpMethod() {
+        return httpMethod;
+    }
+
+    public void setHttpMethod(String httpMethod) {
+        this.httpMethod = httpMethod;
+    }
+
+    public String getEndpoint() {
+        return endpoint;
+    }
+
+    public void setEndpoint(String endpoint) {
+        this.endpoint = endpoint;
+    }
+
+    public String getRoutePattern() {
+        return routePattern;
+    }
+
+    public void setRoutePattern(String routePattern) {
+        this.routePattern = routePattern;
+    }
+
+    public Integer getStatusCode() {
+        return statusCode;
+    }
+
+    public void setStatusCode(Integer statusCode) {
+        this.statusCode = statusCode;
+    }
+
+    public String getOrigin() {
+        return origin;
+    }
+
+    public void setOrigin(String origin) {
+        this.origin = origin;
+    }
+
+    public String getSessionId() {
+        return sessionId;
+    }
+
+    public void setSessionId(String sessionId) {
+        this.sessionId = sessionId;
+    }
+
+    public String getIpAddressMasked() {
+        return ipAddressMasked;
+    }
+
+    public void setIpAddressMasked(String ipAddressMasked) {
+        this.ipAddressMasked = ipAddressMasked;
+    }
+
+    public String getIpAddressHash() {
+        return ipAddressHash;
+    }
+
+    public void setIpAddressHash(String ipAddressHash) {
+        this.ipAddressHash = ipAddressHash;
+    }
+
+    public String getUserAgentSanitized() {
+        return userAgentSanitized;
+    }
+
+    public void setUserAgentSanitized(String userAgentSanitized) {
+        this.userAgentSanitized = userAgentSanitized;
+    }
+
+    public String getChangedFieldsJson() {
+        return changedFieldsJson;
+    }
+
+    public void setChangedFieldsJson(String changedFieldsJson) {
+        this.changedFieldsJson = changedFieldsJson;
     }
 }

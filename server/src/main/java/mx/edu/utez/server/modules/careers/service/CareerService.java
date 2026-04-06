@@ -11,7 +11,7 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
-
+import mx.edu.utez.server.shared.enums.CareerStatus;
 @Service
 public class CareerService {
 
@@ -23,7 +23,7 @@ public class CareerService {
 
     @Transactional(readOnly = true)
     public List<CareerResponse> listActive() {
-        return careerRepository.findByIsActiveTrueOrderByNameAsc()
+        return careerRepository.findByStatusOrderByNameAsc(CareerStatus.ACTIVE)
                 .stream()
                 .map(this::toResponse)
                 .toList();

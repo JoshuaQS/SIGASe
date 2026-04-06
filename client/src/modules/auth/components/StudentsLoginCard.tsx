@@ -2,14 +2,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-
+import {logger} from '@/lib/debug/logger';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { FormField } from '@/components/ui/forms/form-field';
 import { PasswordField } from '@/components/ui/forms/password-field';
-import { authSession } from '@//auth/auth-session-store';
+import { authSession } from '@/auth/auth-session-store';
 import { useAppToast } from '@/components/ui/app-toast-provider';
 import { studentPasswordLoginSchema, type StudentPasswordLoginFields } from '../lib/auth-schemas';
 
@@ -72,41 +72,77 @@ function setGoogleCredentialDispatcher(dispatcher: ((response: GoogleCredentialR
 }
 
 function initializeGoogleIdentity(clientId: string) {
+  logger.info('GoogleAuth', 'initializeGoogleIdentity:start', {
+    hasGoogle: !!window.google,
+    hasAccounts: !!window.google?.accounts,
+    hasGoogleId: !!window.google?.accounts?.id,
+    clientIdPresent: !!clientId,
+    initializedClientId: getInitializedGoogleClientId(),
+  });
+
   if (!window.google?.accounts?.id) {
+    logger.error('GoogleAuth', 'initializeGoogleIdentity:google-not-available');
     throw new Error('Google Identity Services no está disponible.');
   }
 
   const initializedGoogleClientId = getInitializedGoogleClientId();
   if (initializedGoogleClientId === clientId) {
+    logger.debug('GoogleAuth', 'initializeGoogleIdentity:already-initialized', {
+      clientId,
+    });
     return;
   }
 
   window.google.accounts.id.initialize({
     client_id: clientId,
     callback: (response) => {
+      logger.info('GoogleAuth', 'google-callback:received', {
+        hasCredential: !!response?.credential,
+        credentialLength: response?.credential?.length ?? 0,
+      });
       window.__sigaseGsiCredentialDispatcher?.(response);
     },
   });
 
   setInitializedGoogleClientId(clientId);
+  logger.info('GoogleAuth', 'initializeGoogleIdentity:done', { clientId });
 }
 
 function loadGoogleIdentityScript() {
+  logger.info('GoogleAuth', 'loadGoogleIdentityScript:start');
+
   return new Promise<void>((resolve, reject) => {
     if (typeof window === 'undefined') {
+      logger.error('GoogleAuth', 'loadGoogleIdentityScript:no-window');
       reject(new Error('Google Identity solo está disponible en navegador.'));
       return;
     }
 
     if (window.google?.accounts?.id) {
+      logger.info('GoogleAuth', 'loadGoogleIdentityScript:already-loaded');
       resolve();
       return;
     }
 
     const existing = document.getElementById(GOOGLE_IDENTITY_SCRIPT_ID) as HTMLScriptElement | null;
     if (existing) {
-      existing.addEventListener('load', () => resolve(), { once: true });
-      existing.addEventListener('error', () => reject(new Error('No se pudo cargar Google Identity Services.')), { once: true });
+      logger.info('GoogleAuth', 'loadGoogleIdentityScript:existing-script-found');
+      existing.addEventListener(
+        'load',
+        () => {
+          logger.info('GoogleAuth', 'loadGoogleIdentityScript:existing-script-loaded');
+          resolve();
+        },
+        { once: true },
+      );
+      existing.addEventListener(
+        'error',
+        () => {
+          logger.error('GoogleAuth', 'loadGoogleIdentityScript:existing-script-error');
+          reject(new Error('No se pudo cargar Google Identity Services.'));
+        },
+        { once: true },
+      );
       return;
     }
 
@@ -115,8 +151,16 @@ function loadGoogleIdentityScript() {
     script.src = 'https://accounts.google.com/gsi/client';
     script.async = true;
     script.defer = true;
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error('No se pudo cargar Google Identity Services.'));
+    script.onload = () => {
+      logger.info('GoogleAuth', 'loadGoogleIdentityScript:script-loaded');
+      resolve();
+    };
+    script.onerror = () => {
+      logger.error('GoogleAuth', 'loadGoogleIdentityScript:script-error');
+      reject(new Error('No se pudo cargar Google Identity Services.'));
+    };
+
+    logger.info('GoogleAuth', 'loadGoogleIdentityScript:append-script');
     document.head.appendChild(script);
   });
 }
@@ -142,10 +186,17 @@ export default function StudentsLoginCard({
   const googleButtonRef = useRef<HTMLDivElement | null>(null);
   const googleCredentialHandlerRef = useRef<(idToken: string) => void>(() => undefined);
 
-  const googleClientId = useMemo(() => {
-    const env = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env;
-    return env?.VITE_GOOGLE_CLIENT_ID?.trim() || '';
-  }, []);
+const googleClientId = useMemo(() => {
+  const env = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env;
+  const value = env?.VITE_GOOGLE_CLIENT_ID?.trim() || '';
+
+  logger.debug('GoogleAuth', 'googleClientId:resolved', {
+    present: !!value,
+    length: value.length,
+  });
+
+  return value;
+}, []);
 
   const {
     register,
@@ -158,15 +209,89 @@ export default function StudentsLoginCard({
 
   const isBusy = isSubmitting || isGoogleSubmitting;
 
-  const onPasswordLogin = async (data: StudentPasswordLoginFields) => {
+const onPasswordLogin = async (data: StudentPasswordLoginFields) => {
+  logger.info('StudentAuth', 'password-login:start', {
+    email: data.email,
+  });
+
+  setErrorMessage(null);
+
+  try {
+    const session = await authSession.loginStudent(data.email, data.password);
+
+    logger.info('StudentAuth', 'password-login:success', {
+      mustChangePassword: !!session?.mustChangePassword,
+    });
+
+    showToast({
+      severity: 'success',
+      title: 'Sesión iniciada',
+      description: 'Bienvenido al portal estudiantil.',
+    });
+
+    if (session?.mustChangePassword) {
+      navigate('/student/force-password-change', { replace: true });
+    } else {
+      navigate('/student/portal', { replace: true });
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'No se pudo iniciar sesión.';
+    logger.error('StudentAuth', 'password-login:error', {
+      email: data.email,
+      message,
+      error,
+    });
+
+    setErrorMessage(message);
+    showToast({
+      severity: 'error',
+      title: 'Error de autenticación',
+      description: message,
+    });
+  }
+};
+
+const handleFormSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const submitter = (event.nativeEvent as SubmitEvent).submitter;
+
+  logger.debug('StudentAuth', 'form-submit:received', {
+    submitterTag: submitter?.tagName ?? null,
+    submitterType: (submitter as HTMLButtonElement | null)?.type ?? null,
+  });
+
+  if (!submitter || (submitter as HTMLButtonElement).type !== 'submit') {
+    logger.warn('StudentAuth', 'form-submit:blocked-non-explicit-submit');
+    event.preventDefault();
+    event.stopPropagation();
+    return;
+  }
+
+  logger.debug('StudentAuth', 'form-submit:accepted');
+  void handleSubmit(onPasswordLogin)(event);
+};
+
+const handleGoogleCredential = useCallback(
+  async (idToken: string) => {
+    logger.info('GoogleAuth', 'handleGoogleCredential:start', {
+      tokenLength: idToken?.length ?? 0,
+    });
+
+    setIsGoogleSubmitting(true);
     setErrorMessage(null);
+    setGoogleError(null);
 
     try {
-      const session = await authSession.loginStudent(data.email, data.password);
+      logger.info('GoogleAuth', 'handleGoogleCredential:calling-backend');
+      const session = await authSession.loginStudentWithGoogle(idToken);
+
+      logger.info('GoogleAuth', 'handleGoogleCredential:backend-success', {
+        mustChangePassword: !!session?.mustChangePassword,
+      });
+
       showToast({
         severity: 'success',
         title: 'Sesión iniciada',
-        description: 'Bienvenido al portal estudiantil.',
+        description: 'Autenticación con Google completada.',
       });
 
       if (session?.mustChangePassword) {
@@ -175,69 +300,34 @@ export default function StudentsLoginCard({
         navigate('/student/portal', { replace: true });
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'No se pudo iniciar sesión.';
-      setErrorMessage(message);
+      const message = error instanceof Error ? error.message : 'No se pudo iniciar sesión con Google.';
+      logger.error('GoogleAuth', 'handleGoogleCredential:error', {
+        message,
+        error,
+      });
+
+      setGoogleError(message);
       showToast({
         severity: 'error',
-        title: 'Error de autenticación',
+        title: 'Error con Google',
         description: message,
       });
+    } finally {
+      logger.debug('GoogleAuth', 'handleGoogleCredential:finally');
+      setIsGoogleSubmitting(false);
     }
+  },
+  [navigate, showToast],
+);
+useEffect(() => {
+  logger.debug('GoogleAuth', 'credential-handler-ref:update');
+  googleCredentialHandlerRef.current = (idToken: string) => {
+    logger.debug('GoogleAuth', 'credential-handler-ref:invoked', {
+      tokenLength: idToken?.length ?? 0,
+    });
+    void handleGoogleCredential(idToken);
   };
-
-  const handleFormSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    // Bloquea submits programáticos (autofill del password manager de Chrome,
-    // Credential Management API, "Sign in with Google" del navegador, eventos
-    // colaterales del botón hijo de Google Identity, etc.). Solo aceptamos
-    // submits originados por el botón de submit explícito.
-    const submitter = (event.nativeEvent as SubmitEvent).submitter;
-    if (!submitter || (submitter as HTMLButtonElement).type !== 'submit') {
-      event.preventDefault();
-      event.stopPropagation();
-      return;
-    }
-    void handleSubmit(onPasswordLogin)(event);
-  };
-
-  const handleGoogleCredential = useCallback(
-    async (idToken: string) => {
-      setIsGoogleSubmitting(true);
-      setErrorMessage(null);
-      setGoogleError(null);
-
-      try {
-        const session = await authSession.loginStudentWithGoogle(idToken);
-        showToast({
-          severity: 'success',
-          title: 'Sesión iniciada',
-          description: 'Autenticación con Google completada.',
-        });
-
-        if (session?.mustChangePassword) {
-          navigate('/student/force-password-change', { replace: true });
-        } else {
-          navigate('/student/portal', { replace: true });
-        }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'No se pudo iniciar sesión con Google.';
-        setGoogleError(message);
-        showToast({
-          severity: 'error',
-          title: 'Error con Google',
-          description: message,
-        });
-      } finally {
-        setIsGoogleSubmitting(false);
-      }
-    },
-    [navigate, showToast],
-  );
-
-  useEffect(() => {
-    googleCredentialHandlerRef.current = (idToken: string) => {
-      void handleGoogleCredential(idToken);
-    };
-  }, [handleGoogleCredential]);
+}, [handleGoogleCredential]);
 
   useEffect(() => {
     if (!googleClientId) {
@@ -288,118 +378,101 @@ export default function StudentsLoginCard({
     };
   }, [googleClientId]);
 
-  useEffect(() => {
-    if (!googleClientId || !isGoogleIdentityReady) return;
+useEffect(() => {
+  logger.info('GoogleAuth', 'hybrid-overlay-effect:start', {
+    hasClientId: !!googleClientId,
+    isGoogleIdentityReady,
+  });
 
-    let cancelled = false;
-    let resizeObserver: ResizeObserver | null = null;
-    let frameId: number | null = null;
-    let lastRenderedWidth = -1;
+  if (!googleClientId || !isGoogleIdentityReady) {
+    logger.debug('GoogleAuth', 'hybrid-overlay-effect:skipped');
+    return;
+  }
 
-    const renderGoogleButton = (targetWidth: number) => {
-      if (cancelled || !googleButtonRef.current || !window.google?.accounts?.id) return;
+  let cancelled = false;
 
-      googleButtonRef.current.innerHTML = '';
-      lastRenderedWidth = targetWidth;
-
-      window.google.accounts.id.renderButton(googleButtonRef.current, {
-        type: 'standard',
-        theme: 'outline',
-        size: 'large',
-        text: 'signin_with',
-        shape: 'rectangular',
-        width: targetWidth,
-        logo_alignment: 'left',
+  const renderGoogleOverlay = () => {
+    if (cancelled || !googleButtonRef.current || !window.google?.accounts?.id) {
+      logger.warn('GoogleAuth', 'renderGoogleOverlay:skipped', {
+        hasRef: !!googleButtonRef.current,
+        hasGoogleId: !!window.google?.accounts?.id,
       });
+      return;
+    }
 
-      // Marca el botón como renderizado en el siguiente frame para evitar clicks
-      // prematuros (antes de que el iframe/div[role=button] de Google exista).
-      window.requestAnimationFrame(() => {
-        if (cancelled) return;
-        setIsGoogleButtonRendered(true);
-      });
-    };
+    logger.info('GoogleAuth', 'renderGoogleOverlay:rendering');
 
-    const scheduleGoogleButtonRender = () => {
-      if (cancelled || !googleButtonRef.current || !window.google?.accounts?.id) return;
-
-      const widthSource = googleButtonRef.current.parentElement ?? googleButtonRef.current;
-      const containerWidth = Math.round(widthSource.getBoundingClientRect().width);
-      if (!Number.isFinite(containerWidth) || containerWidth <= 0) return;
-
-      const targetWidth = Math.min(384, containerWidth);
-      if (targetWidth === lastRenderedWidth) return;
-
-      if (frameId !== null) {
-        window.cancelAnimationFrame(frameId);
-      }
-
-      // Run render in the next frame to avoid ResizeObserver recursive layout loops.
-      frameId = window.requestAnimationFrame(() => {
-        frameId = null;
-        renderGoogleButton(targetWidth);
-      });
-    };
-
-    scheduleGoogleButtonRender();
-
-    resizeObserver = new ResizeObserver(() => {
-      scheduleGoogleButtonRender();
+    const containerRect = googleButtonRef.current.getBoundingClientRect();
+    logger.debug('GoogleAuth', 'renderGoogleOverlay:container-measured', {
+      width: containerRect.width,
+      height: containerRect.height,
     });
-    const observedElement = googleButtonRef.current?.parentElement ?? googleButtonRef.current;
-    if (observedElement) {
-      resizeObserver.observe(observedElement);
-    }
 
-    return () => {
-      cancelled = true;
-      if (frameId !== null) {
-        window.cancelAnimationFrame(frameId);
-      }
-      resizeObserver?.disconnect();
-      setIsGoogleButtonRendered(false);
-    };
-  }, [googleClientId, isGoogleIdentityReady]);
+    googleButtonRef.current.innerHTML = '';
 
-  const triggerGoogleSignIn = useCallback(() => {
-    const googleButton = googleButtonRef.current?.querySelector('div[role="button"]') as HTMLElement | null;
-    if (googleButton) {
-      googleButton.click();
-      return true;
-    }
-    return false;
-  }, []);
+    window.google.accounts.id.renderButton(googleButtonRef.current, {
+      type: 'standard',
+      theme: 'outline',
+      size: 'large',
+      text: 'signin_with',
+      shape: 'rectangular',
+      width: Math.round(containerRect.width),
+      logo_alignment: 'left',
+    });
 
-  const handleGoogleSignInClick = useCallback(
-    (event: React.MouseEvent<HTMLButtonElement>) => {
-      // Garantiza que este click nunca pueda llegar al submit del <form> padre.
-      event.preventDefault();
-      event.stopPropagation();
-
-      if (
-        isBusy ||
-        !googleClientId ||
-        !isGoogleIdentityReady ||
-        isGoogleInteractionBlocked ||
-        !isGoogleButtonRendered
-      ) {
+    window.requestAnimationFrame(() => {
+      if (cancelled) {
+        logger.warn('GoogleAuth', 'renderGoogleOverlay:raf-cancelled');
         return;
       }
 
-      setGoogleError(null);
-      if (!triggerGoogleSignIn()) {
-        setGoogleError('No se pudo inicializar el botón de Google. Intenta nuevamente.');
-      }
-    },
-    [
-      googleClientId,
-      isBusy,
-      isGoogleButtonRendered,
-      isGoogleIdentityReady,
-      isGoogleInteractionBlocked,
-      triggerGoogleSignIn,
-    ],
-  );
+      const hasContent = (googleButtonRef.current?.innerHTML?.length ?? 0) > 0;
+      logger.info('GoogleAuth', 'renderGoogleOverlay:rendered', {
+        hasContent,
+      });
+
+      setIsGoogleButtonRendered(hasContent);
+    });
+  };
+
+  window.setTimeout(() => {
+    if (!cancelled) {
+      renderGoogleOverlay();
+    }
+  }, 100);
+
+  return () => {
+    logger.info('GoogleAuth', 'hybrid-overlay-effect:cleanup');
+    cancelled = true;
+    setIsGoogleButtonRendered(false);
+  };
+}, [googleClientId, isGoogleIdentityReady]);
+useEffect(() => {
+  logger.debug('GoogleAuth', 'state:isGoogleSubmitting', { value: isGoogleSubmitting });
+}, [isGoogleSubmitting]);
+
+useEffect(() => {
+  logger.debug('GoogleAuth', 'state:googleError', { value: googleError });
+}, [googleError]);
+
+useEffect(() => {
+  logger.debug('GoogleAuth', 'state:isGoogleIdentityReady', { value: isGoogleIdentityReady });
+}, [isGoogleIdentityReady]);
+
+useEffect(() => {
+  logger.debug('GoogleAuth', 'state:isGoogleInteractionBlocked', { value: isGoogleInteractionBlocked });
+}, [isGoogleInteractionBlocked]);
+
+useEffect(() => {
+  logger.debug('GoogleAuth', 'state:isGoogleButtonRendered', { value: isGoogleButtonRendered });
+}, [isGoogleButtonRendered]);
+
+useEffect(() => {
+  logger.debug('StudentAuth', 'state:errorMessage', { value: errorMessage });
+}, [errorMessage]);
+
+
+
 
   return (
     <div className="flex flex-col gap-8 transition-all">
@@ -474,20 +547,14 @@ export default function StudentsLoginCard({
               </fieldset>
 
               <div className="my-6">
-                <div className="mx-auto w-full max-w-sm">
+                <div className="mx-auto w-full max-w-sm relative">
+                  {/* Visual custom button as base layer */}
                   <Button
                     type="button"
                     size="lg"
                     variant="outline"
-                    disabled={
-                      isBusy ||
-                      !googleClientId ||
-                      !isGoogleIdentityReady ||
-                      isGoogleInteractionBlocked ||
-                      !isGoogleButtonRendered
-                    }
-                    onClick={handleGoogleSignInClick}
-                    className="w-full"
+                    disabled={isBusy || !isGoogleButtonRendered}
+                    className="w-full pointer-events-none"
                     leftIcon={
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden className="h-5 w-5 shrink-0">
                         <defs>
@@ -520,22 +587,17 @@ export default function StudentsLoginCard({
                   >
                     {isGoogleSubmitting
                       ? 'Validando con Google...'
-                      : isGoogleInteractionBlocked || !isGoogleButtonRendered
+                      : !isGoogleButtonRendered
                         ? 'Preparando Google...'
                         : 'Continuar con Google'}
                   </Button>
 
+                  {/* Official Google button - invisible overlay, receives clicks */}
                   <div
                     ref={googleButtonRef}
-                    className="absolute -left-[9999px] top-0 w-full opacity-0"
-                    aria-hidden
-                  >
-                    {!googleClientId ? (
-                      <span className="px-3 text-center text-[11px] text-muted-foreground">
-                        Google OAuth deshabilitado (falta client id).
-                      </span>
-                    ) : null}
-                  </div>
+                    className="absolute inset-0 w-full h-full opacity-0 z-10 pointer-events-auto"
+                    role="presentation"
+                  />
 
                   {googleError ? (
                     <p className="mt-2 text-center text-[11px] text-destructive">{googleError}</p>

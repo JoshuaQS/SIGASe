@@ -37,23 +37,23 @@ export interface PaginatedResponse<T, F = Record<string, unknown>> {
 export interface AdminUser {
     id: string;
     email: string;
-    fullName: string;
+    name: string;
     role: AdminRole;
 }
 
 export interface StudentUser {
     id: string;
     email: string;
-    fullName: string;
+    name: string;
     status: StudentStatus;
 }
 
 export interface ManagedAdmin {
     id: string;
     email: string;
-    fullName: string;
+    name: string;
     role: AdminRole;
-    active: boolean;
+    status: 'ACTIVE' | 'INACTIVE' | string;
     lastLoginAt?: string | null;
     createdAt: string;
     updatedAt: string;
@@ -68,7 +68,7 @@ export interface AuthResponse<TUser> {
 export interface Student {
     id: string;
     matricula: string;
-    fullName: string;
+    name: string;
     lastNamePaternal: string;
     lastNameMaternal?: string | null;
     sex: StudentSex;
@@ -76,10 +76,6 @@ export interface Student {
     institutionalEmail: string;
     career: string;
     status: StudentStatus;
-    deactivatedAt?: string | null;
-    deactivationReason?: string | null;
-    reactivatedAt?: string | null;
-    reactivationReason?: string | null;
     createdAt: string;
     updatedAt: string;
 }
@@ -105,8 +101,8 @@ export type ElibroValidationStatus = 'NOT_VALIDATED' | 'VALID' | 'INVALID';
 export interface ElibroConfigResponse {
     id: string;
     channelName: string;
-    authEndpoint: string;
-    active: boolean;
+    nextUrl: string | null;
+    status: 'ACTIVE' | 'INACTIVE' | string;
     validationStatus: ElibroValidationStatus;
     validationMessage: string | null;
     lastValidatedAt: string | null;
@@ -191,7 +187,7 @@ export interface AccessLog {
     result: string;
     destinationUrl?: string;
     redirectUrl?: string | null;
-    providerName?: string | null;
+    channelNameSnapshot?: string | null;
     providerStatusCode?: number | null;
     providerErrorCode?: string | null;
     providerErrorMessage?: string | null;
@@ -199,7 +195,7 @@ export interface AccessLog {
     errorDetail?: string;
     ipOrigin?: string;
     ipAddressMasked?: string | null;
-    userAgentTruncated?: string | null;
+    userAgentSanitized?: string | null;
     referer?: string | null;
     requestId?: string;
     correlationId?: string;

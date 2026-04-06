@@ -12,6 +12,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import mx.edu.utez.server.config.AppProperties;
 import mx.edu.utez.server.modules.admins.entity.Admin;
 import mx.edu.utez.server.modules.elibro.dto.ElibroConfigResponse;
 import mx.edu.utez.server.modules.elibro.dto.ElibroConfigStatusChangeRequest;
@@ -29,6 +30,7 @@ import mx.edu.utez.server.modules.students.repository.StudentRepository;
 import mx.edu.utez.server.shared.context.RequestContext;
 import mx.edu.utez.server.shared.crypto.Aes256CryptoService;
 import mx.edu.utez.server.shared.enums.AuditOutcome;
+import mx.edu.utez.server.shared.enums.ElibroConfigStatus;
 import mx.edu.utez.server.shared.enums.ElibroValidationRunStatus;
 import mx.edu.utez.server.shared.enums.ElibroValidationStatus;
 import mx.edu.utez.server.shared.enums.ElibroValidationType;
@@ -55,6 +57,8 @@ public class ElibroConfigService {
     private final ElibroConfigMapper mapper;
     private final Aes256CryptoService aes256CryptoService;
     private final AuditTrailService auditTrailService;
+    private final NextUrlValidator nextUrlValidator;
+    private final AppProperties appProperties;
     private final RestClient elibroRestClient;
     private final ObjectMapper objectMapper;
 
@@ -65,6 +69,8 @@ public class ElibroConfigService {
             ElibroConfigMapper mapper,
             Aes256CryptoService aes256CryptoService,
             AuditTrailService auditTrailService,
+            NextUrlValidator nextUrlValidator,
+            AppProperties appProperties,
             RestClient elibroRestClient,
             ObjectMapper objectMapper
     ) {
@@ -74,6 +80,8 @@ public class ElibroConfigService {
         this.mapper = mapper;
         this.aes256CryptoService = aes256CryptoService;
         this.auditTrailService = auditTrailService;
+        this.nextUrlValidator = nextUrlValidator;
+        this.appProperties = appProperties;
         this.elibroRestClient = elibroRestClient;
         this.objectMapper = objectMapper;
     }
@@ -94,7 +102,7 @@ public class ElibroConfigService {
 
     @Transactional(readOnly = true)
     public ElibroConfig getActiveConfigOrThrow() {
-        return elibroConfigRepository.findFirstByActiveTrueOrderByUpdatedAtDesc()
+        return elibroConfigRepository.findFirstByStatusOrderByUpdatedAtDesc(ElibroConfigStatus.ACTIVE)
                 .orElseThrow(() -> new BusinessException(ErrorCode.RESOURCE_NOT_FOUND, "No hay configuración eLibro activa."));
     }
 
@@ -104,7 +112,7 @@ public class ElibroConfigService {
             Admin actorAdmin,
             HttpServletRequest httpRequest
     ) {
-        validateAuthEndpoint(request.authEndpoint());
+        validateNextUrl(request.nextUrl());
 
         ElibroConfig config = new ElibroConfig();
         config.setName(resolveConfigName(request.name(), request.channelName()));
@@ -112,26 +120,26 @@ public class ElibroConfigService {
         config.setChannelIdEncrypted(aes256CryptoService.encrypt(request.channelId().trim()));
         config.setChannelSecretEncrypted(aes256CryptoService.encrypt(request.channelSecret().trim()));
         config.setChannelName(request.channelName().trim());
-        config.setAuthEndpoint(request.authEndpoint().trim());
-        config.setActive(request.active());
+        config.setNextUrl(normalizeNextUrl(request.nextUrl()));
+        config.setStatus(resolveStatus(request.status()));
         config.setCreatedByAdmin(actorAdmin);
         config.setUpdatedByAdmin(actorAdmin);
 
-        if (request.active()) {
-            deactivateOthers(null);
+        if (config.getStatus() == ElibroConfigStatus.ACTIVE) {
+            assertNoOtherActiveConfig(null);
         }
 
         applyStructuralStatus(config);
         ElibroConfig saved = elibroConfigRepository.save(config);
-        if (saved.isActive()) {
+        if (saved.getStatus() == ElibroConfigStatus.ACTIVE) {
             executeValidation(saved, actorAdmin, httpRequest);
         }
 
         Map<String, Object> metadata = new LinkedHashMap<>();
         metadata.put("name", saved.getName());
         metadata.put("channelName", saved.getChannelName());
-        metadata.put("authEndpoint", saved.getAuthEndpoint());
-        metadata.put("active", saved.isActive());
+        metadata.put("nextUrl", saved.getNextUrl());
+        metadata.put("status", saved.getStatus().name());
         metadata.put("validationStatus", saved.getValidationStatus().name());
         metadata.put("hasAuthToken", StringUtils.hasText(saved.getAuthTokenEncrypted()));
         metadata.put("hasChannelSecret", StringUtils.hasText(saved.getChannelSecretEncrypted()));
@@ -190,15 +198,15 @@ public class ElibroConfigService {
             changedFields.add("channelName");
             changed = true;
         }
-        if (StringUtils.hasText(request.authEndpoint())) {
-            validateAuthEndpoint(request.authEndpoint());
-            config.setAuthEndpoint(request.authEndpoint().trim());
-            changedFields.add("authEndpoint");
+        if (request.nextUrl() != null) {
+            validateNextUrl(request.nextUrl());
+            config.setNextUrl(normalizeNextUrl(request.nextUrl()));
+            changedFields.add("nextUrl");
             changed = true;
         }
-        if (request.active() != null) {
-            config.setActive(request.active());
-            changedFields.add("active");
+        if (request.status() != null) {
+            config.setStatus(request.status());
+            changedFields.add("status");
             changed = true;
         }
 
@@ -208,19 +216,20 @@ public class ElibroConfigService {
 
         config.setUpdatedByAdmin(actorAdmin);
 
-        if (config.isActive()) {
-            deactivateOthers(config.getId());
+        if (config.getStatus() == ElibroConfigStatus.ACTIVE) {
+            assertNoOtherActiveConfig(config.getId());
         }
 
         applyStructuralStatus(config);
         ElibroConfig saved = elibroConfigRepository.save(config);
-        if (saved.isActive()) {
+        if (saved.getStatus() == ElibroConfigStatus.ACTIVE) {
             executeValidation(saved, actorAdmin, httpRequest);
         }
 
         Map<String, Object> metadata = new LinkedHashMap<>();
         metadata.put("name", saved.getName());
-        metadata.put("active", saved.isActive());
+        metadata.put("status", saved.getStatus().name());
+        metadata.put("nextUrl", saved.getNextUrl());
         metadata.put("validationStatus", saved.getValidationStatus().name());
         metadata.put("changedFields", changedFields);
         metadata.put("secretRotated", secretRotated);
@@ -245,10 +254,10 @@ public class ElibroConfigService {
             HttpServletRequest httpRequest
     ) {
         ElibroConfig config = findByIdOrThrow(configId);
-        if (!config.isActive()) {
-            config.setActive(true);
+        if (config.getStatus() != ElibroConfigStatus.ACTIVE) {
+            assertNoOtherActiveConfig(config.getId());
+            config.setStatus(ElibroConfigStatus.ACTIVE);
             config.setUpdatedByAdmin(actorAdmin);
-            deactivateOthers(config.getId());
             config = elibroConfigRepository.save(config);
         }
         executeValidation(config, actorAdmin, httpRequest);
@@ -272,8 +281,8 @@ public class ElibroConfigService {
             HttpServletRequest httpRequest
     ) {
         ElibroConfig config = findByIdOrThrow(configId);
-        if (config.isActive()) {
-            config.setActive(false);
+        if (config.getStatus() == ElibroConfigStatus.ACTIVE) {
+            config.setStatus(ElibroConfigStatus.INACTIVE);
             config.setUpdatedByAdmin(actorAdmin);
             config = elibroConfigRepository.save(config);
         }
@@ -335,7 +344,7 @@ public class ElibroConfigService {
         Map<String, Object> metadata = new LinkedHashMap<>();
         metadata.put("name", config.getName());
         metadata.put("channelName", config.getChannelName());
-        metadata.put("active", config.isActive());
+        metadata.put("status", config.getStatus().name());
         metadata.put("validationStatus", config.getValidationStatus().name());
 
         auditTrailService.auditAdminAction(
@@ -361,7 +370,7 @@ public class ElibroConfigService {
             config.setValidationMessage(structural.message);
             config.setLastValidatedAt(checkedAt);
             result = new ValidationExecutionResult(
-                    ElibroValidationRunStatus.ERROR,
+                    ElibroValidationRunStatus.FAILURE,
                     structural.message,
                     null,
                     "STRUCTURAL_INVALID",
@@ -396,7 +405,7 @@ public class ElibroConfigService {
             config.setValidationMessage(message);
             config.setLastValidatedAt(checkedAt);
             return new ValidationExecutionResult(
-                    ElibroValidationRunStatus.ERROR,
+                    ElibroValidationRunStatus.FAILURE,
                     message,
                     null,
                     "PROBE_STUDENT_NOT_FOUND",
@@ -419,7 +428,7 @@ public class ElibroConfigService {
         long startedAt = System.nanoTime();
         try {
             Object responseBody = elibroRestClient.post()
-                    .uri(URI.create(config.getAuthEndpoint().trim()))
+                    .uri(URI.create(appProperties.getElibro().getBaseUrl().trim()))
                     .header(HttpHeaders.AUTHORIZATION, "Token " + structural.authToken)
                     .header(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
                     .header(HttpHeaders.CONTENT_LENGTH, String.valueOf(payloadLength))
@@ -436,7 +445,7 @@ public class ElibroConfigService {
                 config.setValidationMessage(message);
                 config.setLastValidatedAt(checkedAt);
                 return new ValidationExecutionResult(
-                        ElibroValidationRunStatus.ERROR,
+                        ElibroValidationRunStatus.FAILURE,
                         message,
                         latencyMs,
                         "MISSING_REDIRECT_URL",
@@ -468,7 +477,7 @@ public class ElibroConfigService {
             config.setValidationMessage(message);
             config.setLastValidatedAt(checkedAt);
             return new ValidationExecutionResult(
-                    ElibroValidationRunStatus.ERROR,
+                    ElibroValidationRunStatus.FAILURE,
                     message,
                     latencyMs,
                     "ELIBRO_API_ERROR",
@@ -489,7 +498,7 @@ public class ElibroConfigService {
         run.setMessage(result.message);
         run.setLatencyMs(result.latencyMs);
         run.setErrorCode(result.errorCode);
-        run.setEndpointTested(config.getAuthEndpoint());
+        run.setEndpointTested(appProperties.getElibro().getBaseUrl());
         run.setRequestId(result.requestId);
         run.setCorrelationId(result.correlationId);
         run.setCheckedAt(result.checkedAt);
@@ -521,7 +530,7 @@ public class ElibroConfigService {
 
     private StructuralValidationResult evaluateStructure(ElibroConfig config) {
         try {
-            validateAuthEndpoint(config.getAuthEndpoint());
+            validateNextUrl(config.getNextUrl());
             String authToken = aes256CryptoService.decrypt(config.getAuthTokenEncrypted());
             String channelId = aes256CryptoService.decrypt(config.getChannelIdEncrypted());
             String channelSecret = aes256CryptoService.decrypt(config.getChannelSecretEncrypted());
@@ -536,31 +545,38 @@ public class ElibroConfigService {
         }
     }
 
-    private void deactivateOthers(UUID currentId) {
-        if (currentId == null) {
-            elibroConfigRepository.findAll().forEach(item -> {
-                if (item.isActive()) {
-                    item.setActive(false);
-                    elibroConfigRepository.save(item);
-                }
-            });
-            return;
+    private void assertNoOtherActiveConfig(UUID currentId) {
+        Optional<ElibroConfig> activeConflict = currentId == null
+                ? elibroConfigRepository.findFirstByStatusOrderByUpdatedAtDesc(ElibroConfigStatus.ACTIVE)
+                : elibroConfigRepository.findFirstByStatusAndIdNotOrderByUpdatedAtDesc(ElibroConfigStatus.ACTIVE, currentId);
+        if (activeConflict.isPresent()) {
+            throw new BusinessException(
+                    ErrorCode.VALIDATION_ERROR,
+                    "Ya existe una configuración eLibro ACTIVE. Desactívala antes de activar otra."
+            );
         }
-        elibroConfigRepository.findAllByActiveTrueAndIdNot(currentId).forEach(item -> {
-            item.setActive(false);
-            elibroConfigRepository.save(item);
-        });
     }
 
-    private void validateAuthEndpoint(String endpoint) {
-        try {
-            URI uri = URI.create(endpoint.trim());
-            if (!uri.isAbsolute() || !"https".equalsIgnoreCase(uri.getScheme()) || !StringUtils.hasText(uri.getHost())) {
-                throw new BusinessException(ErrorCode.VALIDATION_ERROR, "authEndpoint inválido.");
-            }
-        } catch (IllegalArgumentException ex) {
-            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "authEndpoint inválido.");
+    private void validateNextUrl(String nextUrl) {
+        if (!StringUtils.hasText(nextUrl)) {
+            return;
         }
+        try {
+            nextUrlValidator.validateAndNormalize(nextUrl);
+        } catch (BusinessException ex) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "nextUrl inválido.");
+        }
+    }
+
+    private String normalizeNextUrl(String nextUrl) {
+        if (!StringUtils.hasText(nextUrl)) {
+            return null;
+        }
+        return nextUrlValidator.validateAndNormalize(nextUrl).orElse(null);
+    }
+
+    private ElibroConfigStatus resolveStatus(ElibroConfigStatus status) {
+        return status == null ? ElibroConfigStatus.ACTIVE : status;
     }
 
     private String resolveConfigName(String requestName, String fallbackChannelName) {

@@ -2,11 +2,11 @@ package mx.edu.utez.server.modules.elibro.dto;
 
 import java.time.Instant;
 import java.util.UUID;
+import mx.edu.utez.server.shared.enums.ElibroConfigStatus;
 
 public record ElibroOverviewConfig(
         UUID id,
         String name,
-        String endpoint,
         String channelName,
         String channelIdMasked,
         boolean hasAuthToken,
@@ -16,6 +16,7 @@ public record ElibroOverviewConfig(
         String updatedByName,
         Instant createdAt,
         Instant updatedAt,
-        boolean active
+        String nextUrl,
+        ElibroConfigStatus status
 ) {
 }

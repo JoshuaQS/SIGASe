@@ -26,12 +26,12 @@ public class ElibroConfigMapper {
                 config.getId(),
                 config.getName(),
                 config.getChannelName(),
-                config.getAuthEndpoint(),
                 maskChannelId(config),
                 hasSecret(config.getAuthTokenEncrypted()),
                 hasSecret(config.getChannelSecretEncrypted()),
                 hasSecret(config.getChannelIdEncrypted()),
-                config.isActive(),
+                config.getNextUrl(),
+                config.getStatus(),
                 config.getValidationStatus(),
                 config.getValidationMessage(),
                 config.getLastValidatedAt(),
@@ -50,7 +50,6 @@ public class ElibroConfigMapper {
         return new ElibroOverviewConfig(
                 config.getId(),
                 config.getName(),
-                config.getAuthEndpoint(),
                 config.getChannelName(),
                 maskChannelId(config),
                 hasSecret(config.getAuthTokenEncrypted()),
@@ -60,7 +59,8 @@ public class ElibroConfigMapper {
                 adminDisplayName(updatedByAdmin),
                 config.getCreatedAt(),
                 config.getUpdatedAt(),
-                config.isActive()
+                config.getNextUrl(),
+                config.getStatus()
         );
     }
 

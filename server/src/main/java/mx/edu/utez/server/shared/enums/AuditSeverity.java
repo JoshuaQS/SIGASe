@@ -2,6 +2,8 @@ package mx.edu.utez.server.shared.enums;
 
 public enum AuditSeverity {
     INFO,
-    WARN,
+    NOTICE,
+    WARNING,
+    SECURITY,
     CRITICAL
 }
