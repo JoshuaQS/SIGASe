@@ -7,7 +7,6 @@ import java.nio.charset.StandardCharsets;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.mail.MailException;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
@@ -36,7 +35,7 @@ public class StudentPasswordResetNotifier {
     }
 
     public String buildStudentResetLink(String rawToken) {
-        return UriComponentsBuilder.fromHttpUrl(frontendBaseUrl)
+        return UriComponentsBuilder.fromUriString(frontendBaseUrl)
                 .path("/reset-password")
                 .queryParam("mode", "student")
                 .queryParam("token", rawToken)
@@ -45,7 +44,7 @@ public class StudentPasswordResetNotifier {
     }
 
     public String buildStudentOnboardingLink(String rawToken) {
-        return UriComponentsBuilder.fromHttpUrl(frontendBaseUrl)
+        return UriComponentsBuilder.fromUriString(frontendBaseUrl)
                 .path("/student/force-password-change")
                 .queryParam("token", rawToken)
                 .build()
@@ -53,8 +52,8 @@ public class StudentPasswordResetNotifier {
     }
 
     public boolean sendStudentPasswordReset(String email, String rawToken) {
-        String resetLink = buildStudentResetLink(rawToken);
         try {
+            String resetLink = buildStudentResetLink(rawToken);
             sendStyledEmail(
                     email,
                     "SIGASe | Restablece tu contraseña",
@@ -72,7 +71,7 @@ public class StudentPasswordResetNotifier {
                     securityLogSanitizer.redactSensitiveQueryParams(resetLink)
             );
             return true;
-        } catch (MailException | MessagingException ex) {
+        } catch (MessagingException | RuntimeException ex) {
             log.error(
                     "Failed to send student password reset email to {}: {}",
                     securityLogSanitizer.sanitizeEmailForLookup(email),
@@ -83,8 +82,8 @@ public class StudentPasswordResetNotifier {
     }
 
     public boolean sendStudentOnboardingPasswordSetup(String email, String rawToken) {
-        String onboardingLink = buildStudentOnboardingLink(rawToken);
         try {
+            String onboardingLink = buildStudentOnboardingLink(rawToken);
             sendStyledEmail(
                     email,
                     "SIGASe | Configura tu contraseña",
@@ -102,7 +101,7 @@ public class StudentPasswordResetNotifier {
                     securityLogSanitizer.redactSensitiveQueryParams(onboardingLink)
             );
             return true;
-        } catch (MailException | MessagingException ex) {
+        } catch (MessagingException | RuntimeException ex) {
             log.error(
                     "Failed to send student onboarding password setup email to {}: {}",
                     securityLogSanitizer.sanitizeEmailForLookup(email),
@@ -214,7 +213,7 @@ public class StudentPasswordResetNotifier {
         MimeMessage message = mailSender.createMimeMessage();
         MimeMessageHelper helper = new MimeMessageHelper(
                 message,
-                MimeMessageHelper.MULTIPART_MODE_NO,
+                MimeMessageHelper.MULTIPART_MODE_MIXED_RELATED,
                 StandardCharsets.UTF_8.name()
         );
         if (StringUtils.hasText(mailFrom)) {

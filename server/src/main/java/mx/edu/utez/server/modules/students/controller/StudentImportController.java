@@ -8,10 +8,12 @@ import mx.edu.utez.server.shared.api.ApiResponse;
 import mx.edu.utez.server.shared.api.ApiRoutes;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -35,16 +37,33 @@ public class StudentImportController {
     }
 
     @PostMapping(value = "/import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @Operation(summary = "Importar estudiantes desde CSV")
+    @Operation(summary = "Importar estudiantes desde CSV o XLSX")
     public ApiResponse<StudentImportResultResponse> importCsv(
             @RequestParam("file") MultipartFile file,
             Authentication authentication,
             HttpServletRequest request
     ) throws Exception {
         Admin actor = adminContextService.requireCurrentAdmin(authentication);
-        StudentImportResultResponse result = studentImportService.importCsv(
-                file.getInputStream(), actor, request
+        StudentImportResultResponse result = studentImportService.importFile(
+                file.getInputStream(), file.getOriginalFilename(), actor, request
         );
         return new ApiResponse<>(true, "Importación completada.", result, HttpStatus.OK.value());
+    }
+
+    @GetMapping("/import-template")
+    @Operation(summary = "Descargar plantilla de importación de estudiantes en CSV o XLSX")
+    public void downloadTemplate(
+            @RequestParam(defaultValue = "csv") String format,
+            HttpServletResponse response
+    ) throws Exception {
+        String safeFormat = format.trim().toLowerCase();
+        if ("xlsx".equals(safeFormat)) {
+            response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+            response.setHeader("Content-Disposition", "attachment; filename=\"students-import-template.xlsx\"");
+        } else {
+            response.setContentType("text/csv; charset=UTF-8");
+            response.setHeader("Content-Disposition", "attachment; filename=\"students-import-template.csv\"");
+        }
+        studentImportService.writeTemplate(response.getOutputStream(), safeFormat);
     }
 }

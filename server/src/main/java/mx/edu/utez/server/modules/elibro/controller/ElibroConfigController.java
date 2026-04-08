@@ -6,6 +6,8 @@ import mx.edu.utez.server.modules.elibro.dto.ElibroConfigOverviewResponse;
 import mx.edu.utez.server.modules.elibro.dto.ElibroConfigResponse;
 import mx.edu.utez.server.modules.elibro.dto.ElibroConfigStatusChangeRequest;
 import mx.edu.utez.server.modules.elibro.dto.ElibroConfigValidationResponse;
+import mx.edu.utez.server.modules.elibro.dto.ElibroControlledValidationRequest;
+import mx.edu.utez.server.modules.elibro.dto.ElibroControlledValidationResponse;
 import mx.edu.utez.server.modules.elibro.dto.PatchElibroConfigRequest;
 import mx.edu.utez.server.modules.elibro.dto.UpsertElibroConfigRequest;
 import mx.edu.utez.server.modules.elibro.service.ElibroConfigOverviewService;
@@ -143,6 +145,19 @@ public class ElibroConfigController {
         Admin actor = adminContextService.requireCurrentAdmin(authentication);
         ElibroConfigValidationResponse response = elibroConfigService.validate(configId, actor, httpRequest);
         return new ApiResponse<>(true, "Validación ejecutada.", response, HttpStatus.OK.value());
+    }
+
+    @PostMapping("/{configId}/validate-controlled")
+    @Operation(summary = "Ejecutar prueba controlada de configuración eLibro")
+    public ApiResponse<ElibroControlledValidationResponse> validateControlled(
+            @PathVariable UUID configId,
+            @Valid @RequestBody ElibroControlledValidationRequest request,
+            Authentication authentication,
+            HttpServletRequest httpRequest
+    ) {
+        Admin actor = adminContextService.requireCurrentAdmin(authentication);
+        ElibroControlledValidationResponse response = elibroConfigService.validateControlled(configId, request, actor, httpRequest);
+        return new ApiResponse<>(true, "Prueba controlada ejecutada.", response, HttpStatus.OK.value());
     }
 
     @DeleteMapping("/{configId}")

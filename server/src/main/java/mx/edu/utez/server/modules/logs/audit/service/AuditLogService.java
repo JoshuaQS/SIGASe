@@ -2,9 +2,12 @@ package mx.edu.utez.server.modules.logs.audit.service;
 
 import mx.edu.utez.server.modules.logs.audit.entity.AuditLog;
 import mx.edu.utez.server.modules.logs.audit.repository.AuditLogRepository;
+import mx.edu.utez.server.modules.notifications.service.NotificationService;
 import mx.edu.utez.server.shared.enums.AuditSeverity;
 import mx.edu.utez.server.shared.enums.AuditSourceModule;
 import mx.edu.utez.server.shared.util.SecurityLogSanitizer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -13,15 +16,20 @@ import org.springframework.util.StringUtils;
 @Service
 public class AuditLogService {
 
+    private static final Logger log = LoggerFactory.getLogger(AuditLogService.class);
+
     private final AuditLogRepository auditLogRepository;
     private final SecurityLogSanitizer securityLogSanitizer;
+    private final NotificationService notificationService;
 
     public AuditLogService(
             AuditLogRepository auditLogRepository,
-            SecurityLogSanitizer securityLogSanitizer
+            SecurityLogSanitizer securityLogSanitizer,
+            NotificationService notificationService
     ) {
         this.auditLogRepository = auditLogRepository;
         this.securityLogSanitizer = securityLogSanitizer;
+        this.notificationService = notificationService;
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -46,7 +54,13 @@ public class AuditLogService {
         auditLog.setOrigin(securityLogSanitizer.sanitizeText(command.origin(), 254));
         auditLog.setHttpMethod(securityLogSanitizer.sanitizeText(command.httpMethod(), 10));
         auditLog.setEndpoint(securityLogSanitizer.sanitizeUrl(command.requestPath()));
-        auditLogRepository.save(auditLog);
+        AuditLog saved = auditLogRepository.save(auditLog);
+
+        try {
+            notificationService.handleAuditEvent(saved);
+        } catch (RuntimeException ex) {
+            log.warn("No se pudo generar notificación para audit log {}.", saved.getId(), ex);
+        }
     }
 
     private String defaultValue(String value, String defaultValue) {

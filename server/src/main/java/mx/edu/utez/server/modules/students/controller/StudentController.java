@@ -10,6 +10,7 @@ import mx.edu.utez.server.modules.students.service.StudentService;
 import mx.edu.utez.server.shared.api.ApiRoutes;
 import mx.edu.utez.server.shared.api.ApiResponse;
 import mx.edu.utez.server.shared.api.PageResponse;
+import mx.edu.utez.server.shared.enums.Sex;
 import mx.edu.utez.server.shared.enums.StudentStatus;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.servlet.http.HttpServletRequest;
@@ -83,8 +84,13 @@ public class StudentController {
     @Operation(summary = "Listar estudiantes con filtros")
     public ApiResponse<PageResponse<StudentResponse>> list(
             @RequestParam(required = false) String q,
+            @RequestParam(required = false) String enrollmentId,
+            @RequestParam(required = false) String lastNamePaternal,
+            @RequestParam(required = false) String lastNameMaternal,
             @RequestParam(required = false) UUID careerId,
             @RequestParam(required = false) String careerCode,
+            @RequestParam(required = false) Sex sex,
+            @RequestParam(required = false) Integer quarter,
             @RequestParam(required = false) StudentStatus status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
@@ -95,7 +101,21 @@ public class StudentController {
     ) {
         Admin actor = adminContextService.requireCurrentAdmin(authentication);
         PageResponse<StudentResponse> response = studentService.list(
-                q, careerId, careerCode, status, page, size, sortBy, sortDir, actor, httpRequest
+                q,
+                enrollmentId,
+                lastNamePaternal,
+                lastNameMaternal,
+                careerId,
+                careerCode,
+                sex,
+                quarter,
+                status,
+                page,
+                size,
+                sortBy,
+                sortDir,
+                actor,
+                httpRequest
         );
         return new ApiResponse<>(true, "Listado de estudiantes.", response, HttpStatus.OK.value());
     }

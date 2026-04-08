@@ -12,6 +12,7 @@ import mx.edu.utez.server.modules.admins.entity.Admin;
 import mx.edu.utez.server.modules.students.entity.Student;
 import mx.edu.utez.server.modules.students.repository.StudentRepository;
 import mx.edu.utez.server.shared.enums.AuditOutcome;
+import mx.edu.utez.server.shared.enums.Sex;
 import mx.edu.utez.server.shared.enums.StudentStatus;
 import mx.edu.utez.server.shared.exception.BusinessException;
 import mx.edu.utez.server.shared.exception.ErrorCode;
@@ -67,15 +68,40 @@ public class StudentReportService {
     public void export(
             OutputStream out,
             String query,
+            String enrollmentId,
+            String lastNamePaternal,
+            String lastNameMaternal,
             UUID careerId,
             String careerCode,
+            Sex sex,
+            Integer quarter,
             StudentStatus status,
             Admin actor,
             HttpServletRequest request
     ) {
-        Specification<Student> spec = buildSpec(query, careerId, careerCode, status);
+        Specification<Student> spec = buildSpec(
+                query,
+                enrollmentId,
+                lastNamePaternal,
+                lastNameMaternal,
+                careerId,
+                careerCode,
+                sex,
+                quarter,
+                status
+        );
         long total = studentRepository.count(spec);
-        Map<String, Object> filterMeta = buildFilterMeta(query, careerId, careerCode, status);
+        Map<String, Object> filterMeta = buildFilterMeta(
+                query,
+                enrollmentId,
+                lastNamePaternal,
+                lastNameMaternal,
+                careerId,
+                careerCode,
+                sex,
+                quarter,
+                status
+        );
 
         try {
             csvExportService.write(out, STUDENT_HEADERS, STUDENT_EXTRACTORS, page -> {
@@ -91,7 +117,17 @@ public class StudentReportService {
         reportExportAuditService.auditCsvExport(actor, "STUDENTS", filterMeta, total, AuditOutcome.SUCCESS, request);
     }
 
-    public Specification<Student> buildSpec(String query, UUID careerId, String careerCode, StudentStatus status) {
+    public Specification<Student> buildSpec(
+            String query,
+            String enrollmentId,
+            String lastNamePaternal,
+            String lastNameMaternal,
+            UUID careerId,
+            String careerCode,
+            Sex sex,
+            Integer quarter,
+            StudentStatus status
+    ) {
         return (root, q, cb) -> {
             var predicate = cb.conjunction();
             if (StringUtils.hasText(query)) {
@@ -104,6 +140,30 @@ public class StudentReportService {
                         cb.like(cb.lower(root.get("institutionalEmailNormalized")), normalized)
                 ));
             }
+            if (StringUtils.hasText(enrollmentId)) {
+                predicate = cb.and(
+                        predicate,
+                        cb.like(cb.lower(root.get("enrollmentId")), "%" + enrollmentId.trim().toLowerCase(Locale.ROOT) + "%")
+                );
+            }
+            if (StringUtils.hasText(lastNamePaternal)) {
+                predicate = cb.and(
+                        predicate,
+                        cb.like(
+                                cb.lower(root.get("lastNamePaternal")),
+                                "%" + lastNamePaternal.trim().toLowerCase(Locale.ROOT) + "%"
+                        )
+                );
+            }
+            if (StringUtils.hasText(lastNameMaternal)) {
+                predicate = cb.and(
+                        predicate,
+                        cb.like(
+                                cb.lower(root.get("lastNameMaternal")),
+                                "%" + lastNameMaternal.trim().toLowerCase(Locale.ROOT) + "%"
+                        )
+                );
+            }
             if (careerId != null) {
                 predicate = cb.and(predicate, cb.equal(root.get("career").get("id"), careerId));
             } else if (StringUtils.hasText(careerCode)) {
@@ -112,6 +172,12 @@ public class StudentReportService {
                         cb.equal(cb.lower(root.get("career").get("code")), careerCode.trim().toLowerCase(Locale.ROOT))
                 );
             }
+            if (sex != null) {
+                predicate = cb.and(predicate, cb.equal(root.get("sex"), sex));
+            }
+            if (quarter != null) {
+                predicate = cb.and(predicate, cb.equal(root.get("quarter"), quarter));
+            }
             if (status != null) {
                 predicate = cb.and(predicate, cb.equal(root.get("status"), status));
             }
@@ -119,8 +185,31 @@ public class StudentReportService {
         };
     }
 
-    public void validateExport(String query, UUID careerId, String careerCode, StudentStatus status) {
-        Specification<Student> spec = buildSpec(query, careerId, careerCode, status);
+    public void validateExport(
+            String query,
+            String enrollmentId,
+            String lastNamePaternal,
+            String lastNameMaternal,
+            UUID careerId,
+            String careerCode,
+            Sex sex,
+            Integer quarter,
+            StudentStatus status
+    ) {
+        if (quarter != null && (quarter < 1 || quarter > 12)) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "quarter debe estar entre 1 y 12.");
+        }
+        Specification<Student> spec = buildSpec(
+                query,
+                enrollmentId,
+                lastNamePaternal,
+                lastNameMaternal,
+                careerId,
+                careerCode,
+                sex,
+                quarter,
+                status
+        );
         long total = studentRepository.count(spec);
         if (total > MAX_STUDENTS_EXPORT) {
             throw new BusinessException(
@@ -131,16 +220,41 @@ public class StudentReportService {
         }
     }
 
-    private Map<String, Object> buildFilterMeta(String query, UUID careerId, String careerCode, StudentStatus status) {
+    private Map<String, Object> buildFilterMeta(
+            String query,
+            String enrollmentId,
+            String lastNamePaternal,
+            String lastNameMaternal,
+            UUID careerId,
+            String careerCode,
+            Sex sex,
+            Integer quarter,
+            StudentStatus status
+    ) {
         Map<String, Object> filters = new LinkedHashMap<>();
         if (StringUtils.hasText(query)) {
             filters.put("q", query);
+        }
+        if (StringUtils.hasText(enrollmentId)) {
+            filters.put("enrollmentId", enrollmentId);
+        }
+        if (StringUtils.hasText(lastNamePaternal)) {
+            filters.put("lastNamePaternal", lastNamePaternal);
+        }
+        if (StringUtils.hasText(lastNameMaternal)) {
+            filters.put("lastNameMaternal", lastNameMaternal);
         }
         if (careerId != null) {
             filters.put("careerId", careerId.toString());
         }
         if (StringUtils.hasText(careerCode)) {
             filters.put("careerCode", careerCode);
+        }
+        if (sex != null) {
+            filters.put("sex", sex.name());
+        }
+        if (quarter != null) {
+            filters.put("quarter", quarter);
         }
         if (status != null) {
             filters.put("status", status.name());

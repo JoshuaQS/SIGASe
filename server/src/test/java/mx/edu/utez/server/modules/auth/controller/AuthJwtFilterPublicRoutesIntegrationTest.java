@@ -1,6 +1,7 @@
 package mx.edu.utez.server.modules.auth.controller;
 
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -10,22 +11,25 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import mx.edu.utez.server.modules.admins.entity.Admin;
 import mx.edu.utez.server.modules.admins.repository.AdminRepository;
+import mx.edu.utez.server.modules.auth.repository.AdminAuthEventRepository;
 import mx.edu.utez.server.modules.auth.service.GoogleIdentity;
 import mx.edu.utez.server.modules.auth.service.GoogleTokenVerifierService;
 import mx.edu.utez.server.modules.careers.entity.Career;
 import mx.edu.utez.server.modules.careers.repository.CareerRepository;
-import mx.edu.utez.server.modules.logs.access.repository.AccessLogRepository;
 import mx.edu.utez.server.modules.students.entity.Student;
+import mx.edu.utez.server.modules.students.repository.StudentAuthEventRepository;
 import mx.edu.utez.server.modules.students.repository.StudentRepository;
 import mx.edu.utez.server.shared.api.ApiRoutes;
 import mx.edu.utez.server.shared.enums.AdminRole;
+import mx.edu.utez.server.shared.enums.AdminStatus;
+import mx.edu.utez.server.shared.enums.CareerStatus;
 import mx.edu.utez.server.shared.enums.Sex;
 import mx.edu.utez.server.shared.enums.StudentStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -48,23 +52,27 @@ class AuthJwtFilterPublicRoutesIntegrationTest {
     private StudentRepository studentRepository;
 
     @Autowired
+    private StudentAuthEventRepository studentAuthEventRepository;
+
+    @Autowired
     private AdminRepository adminRepository;
+
+    @Autowired
+    private AdminAuthEventRepository adminAuthEventRepository;
 
     @Autowired
     private CareerRepository careerRepository;
 
     @Autowired
-    private AccessLogRepository accessLogRepository;
-
-    @Autowired
     private PasswordEncoder passwordEncoder;
 
-    @MockBean
+    @MockitoBean
     private GoogleTokenVerifierService googleTokenVerifierService;
 
     @BeforeEach
     void setUp() {
-        accessLogRepository.deleteAll();
+        adminAuthEventRepository.deleteAll();
+        studentAuthEventRepository.deleteAll();
         studentRepository.deleteAll();
         careerRepository.deleteAll();
         adminRepository.deleteAll();
@@ -75,12 +83,13 @@ class AuthJwtFilterPublicRoutesIntegrationTest {
         admin.setLastNamePaternal("TI");
         admin.setPasswordHash(passwordEncoder.encode("AdminPass.123"));
         admin.setRole(AdminRole.ADMIN_TI);
-        admin.setActive(true);
+        admin.setStatus(AdminStatus.ACTIVE);
         admin = adminRepository.save(admin);
 
         Career career = new Career();
         career.setCode("SIS");
         career.setName("Sistemas");
+        career.setStatus(CareerStatus.ACTIVE);
         career = careerRepository.save(career);
 
         Student student = new Student();
@@ -130,6 +139,11 @@ class AuthJwtFilterPublicRoutesIntegrationTest {
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.token").isNotEmpty());
+
+        assertEquals(1, studentAuthEventRepository.count());
+        var event = studentAuthEventRepository.findAll().getFirst();
+        assertEquals("GOOGLE", event.getAuthMethod().name());
+        assertEquals("SUCCESS", event.getResult().name());
     }
 
     @Test

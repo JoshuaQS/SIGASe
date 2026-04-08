@@ -137,6 +137,7 @@ public class SecurityLogSanitizer {
             return null;
         }
         String sanitized = CONTROL_CHARS.matcher(value).replaceAll(" ").trim();
+        sanitized = redactInlineSensitiveAssignments(sanitized);
         return truncate(sanitized, maxLength);
     }
 
@@ -189,7 +190,7 @@ public class SecurityLogSanitizer {
         }
         if (node.isObject()) {
             ObjectNode result = objectMapper.createObjectNode();
-            node.fields().forEachRemaining(entry ->
+            node.properties().forEach(entry ->
                     result.set(entry.getKey(), sanitizeJsonNode(entry.getKey(), entry.getValue())));
             return result;
         }
@@ -206,7 +207,6 @@ public class SecurityLogSanitizer {
         }
         return node;
     }
-
     private boolean isSensitiveKey(String key) {
         if (!StringUtils.hasText(key)) {
             return false;
@@ -226,6 +226,29 @@ public class SecurityLogSanitizer {
             }
         }
         return false;
+    }
+
+    private String redactInlineSensitiveAssignments(String value) {
+        if (!StringUtils.hasText(value)) {
+            return value;
+        }
+        List<String> keys = appProperties.getLogs().getSanitization().getSensitiveKeys();
+        if (keys == null || keys.isEmpty()) {
+            return value;
+        }
+
+        String sanitized = value;
+        for (String configured : keys) {
+            if (!StringUtils.hasText(configured)) {
+                continue;
+            }
+            String quotedKey = Pattern.quote(configured.trim());
+            sanitized = sanitized.replaceAll(
+                    "(?i)(" + quotedKey + "\\s*[:=]\\s*)([^\\s,;&]+)",
+                    "$1" + REDACTED
+            );
+        }
+        return sanitized;
     }
 
     private String maskIp(String ipAddress) {

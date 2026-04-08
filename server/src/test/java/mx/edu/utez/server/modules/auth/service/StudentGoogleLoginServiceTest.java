@@ -3,7 +3,6 @@ package mx.edu.utez.server.modules.auth.service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.verify;
@@ -11,9 +10,9 @@ import static org.mockito.Mockito.when;
 
 import jakarta.servlet.http.HttpServletRequest;
 import mx.edu.utez.server.config.AppProperties;
-import mx.edu.utez.server.modules.logs.access.service.StudentAccessAlertService;
 import mx.edu.utez.server.modules.students.repository.StudentRepository;
-import mx.edu.utez.server.shared.enums.AccessResult;
+import mx.edu.utez.server.shared.enums.StudentAuthMethod;
+import mx.edu.utez.server.shared.enums.StudentAuthResult;
 import mx.edu.utez.server.shared.exception.BusinessException;
 import mx.edu.utez.server.shared.exception.ErrorCode;
 import mx.edu.utez.server.shared.util.EmailNormalizer;
@@ -32,7 +31,6 @@ class StudentGoogleLoginServiceTest {
     @Mock private StudentRepository studentRepository;
     @Mock private AppProperties appProperties;
     @Mock private EmailNormalizer emailNormalizer;
-    @Mock private StudentAccessAlertService studentAccessAlertService;
     @Mock private StudentAccessLoggingFacade studentAccessLoggingFacade;
     @Mock private StudentAuthAuditFacade studentAuthAuditFacade;
     @Mock private AuthLockoutPolicy authLockoutPolicy;
@@ -48,7 +46,6 @@ class StudentGoogleLoginServiceTest {
                 studentRepository,
                 appProperties,
                 emailNormalizer,
-                studentAccessAlertService,
                 studentAccessLoggingFacade,
                 studentAuthAuditFacade,
                 authLockoutPolicy,
@@ -60,7 +57,7 @@ class StudentGoogleLoginServiceTest {
     void shouldLogInvalidGoogleTokenCategoryWhenVerifierRejectsCredentials() {
         assertVerifierFailureMapping(
                 ErrorCode.INVALID_TOKEN,
-                AccessResult.FAILED_INVALID_GOOGLE_TOKEN,
+                StudentAuthResult.FAILED_INVALID_GOOGLE_TOKEN,
                 "INVALID_GOOGLE_TOKEN"
         );
     }
@@ -69,7 +66,7 @@ class StudentGoogleLoginServiceTest {
     void shouldLogProviderUnavailableCategoryWhenVerifierHasTransientFailure() {
         assertVerifierFailureMapping(
                 ErrorCode.SERVICE_UNAVAILABLE,
-                AccessResult.FAILED_GOOGLE_PROVIDER_UNAVAILABLE,
+                StudentAuthResult.FAILED_GOOGLE_PROVIDER_UNAVAILABLE,
                 "GOOGLE_PROVIDER_UNAVAILABLE"
         );
     }
@@ -78,14 +75,14 @@ class StudentGoogleLoginServiceTest {
     void shouldLogProviderErrorCategoryWhenVerifierFailsUnexpectedly() {
         assertVerifierFailureMapping(
                 ErrorCode.PROVIDER_ERROR,
-                AccessResult.FAILED_GOOGLE_PROVIDER_ERROR,
+                StudentAuthResult.FAILED_GOOGLE_PROVIDER_ERROR,
                 "GOOGLE_PROVIDER_ERROR"
         );
     }
 
     private void assertVerifierFailureMapping(
             ErrorCode errorCode,
-            AccessResult expectedResult,
+            StudentAuthResult expectedResult,
             String expectedAccessErrorCode
     ) {
         HttpServletRequest request = new MockHttpServletRequest();
@@ -100,10 +97,11 @@ class StudentGoogleLoginServiceTest {
         assertEquals(errorCode, thrown.getErrorCode());
         verify(studentAccessLoggingFacade).log(
                 eq(request),
-                anyLong(),
                 isNull(),
                 isNull(),
                 isNull(),
+                isNull(),
+                eq(StudentAuthMethod.GOOGLE),
                 eq(expectedResult),
                 eq(expectedAccessErrorCode),
                 any()

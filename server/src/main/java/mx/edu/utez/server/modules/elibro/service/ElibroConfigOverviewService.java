@@ -32,6 +32,7 @@ import mx.edu.utez.server.modules.elibro.repository.ElibroAccessLogRepository;
 import mx.edu.utez.server.modules.elibro.repository.ElibroValidationRunRepository;
 import mx.edu.utez.server.modules.logs.audit.entity.AuditLog;
 import mx.edu.utez.server.modules.logs.audit.repository.AuditLogRepository;
+import mx.edu.utez.server.config.AppProperties;
 import mx.edu.utez.server.shared.enums.AuditOutcome;
 import mx.edu.utez.server.shared.enums.ElibroConfigStatus;
 import mx.edu.utez.server.shared.enums.ElibroValidationRunStatus;
@@ -45,6 +46,7 @@ import org.springframework.util.StringUtils;
 public class ElibroConfigOverviewService {
 
     private static final String PROVIDER_LABEL = "eLibro";
+    private static final String DEFAULT_SSO_ENDPOINT = "https://auth.elibro.net/auth/sso/";
 
     private static final List<String> RECENT_ACTIVITY_ACTIONS = List.of(
             "ELIBRO_CONFIG_CREATE",
@@ -59,19 +61,22 @@ public class ElibroConfigOverviewService {
     private final ElibroAccessLogRepository elibroAccessLogRepository;
     private final ElibroValidationRunRepository validationRunRepository;
     private final AuditLogRepository auditLogRepository;
+    private final AppProperties appProperties;
 
     public ElibroConfigOverviewService(
             ElibroConfigService elibroConfigService,
             ElibroConfigMapper mapper,
             ElibroAccessLogRepository elibroAccessLogRepository,
             ElibroValidationRunRepository validationRunRepository,
-            AuditLogRepository auditLogRepository
+            AuditLogRepository auditLogRepository,
+            AppProperties appProperties
     ) {
         this.elibroConfigService = elibroConfigService;
         this.mapper = mapper;
         this.elibroAccessLogRepository = elibroAccessLogRepository;
         this.validationRunRepository = validationRunRepository;
         this.auditLogRepository = auditLogRepository;
+        this.appProperties = appProperties;
     }
 
     @Transactional(readOnly = true)
@@ -83,7 +88,7 @@ public class ElibroConfigOverviewService {
                 configDto.hasAuthToken(),
                 configDto.hasChannelId(),
                 configDto.hasChannelSecret(),
-                hasValidEndpoint(config.getNextUrl()),
+                hasValidEndpoint(resolveSsoEndpoint()),
                 configDto.hasChannelId() && StringUtils.hasText(config.getChannelName())
         );
 
@@ -337,6 +342,14 @@ public class ElibroConfigOverviewService {
         } catch (IllegalArgumentException ex) {
             return false;
         }
+    }
+
+    private String resolveSsoEndpoint() {
+        String configuredEndpoint = appProperties.getElibro().getBaseUrl();
+        if (StringUtils.hasText(configuredEndpoint)) {
+            return configuredEndpoint;
+        }
+        return DEFAULT_SSO_ENDPOINT;
     }
 
     private Long averageLatencyMs(List<ElibroAccessLog> logs) {

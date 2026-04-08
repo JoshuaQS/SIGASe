@@ -5,17 +5,21 @@ import mx.edu.utez.server.modules.admins.repository.AdminRepository;
 import mx.edu.utez.server.modules.auth.repository.AdminPasswordResetTokenRepository;
 import mx.edu.utez.server.modules.careers.entity.Career;
 import mx.edu.utez.server.modules.careers.repository.CareerRepository;
+import mx.edu.utez.server.modules.elibro.entity.ElibroAccessLog;
 import mx.edu.utez.server.modules.elibro.entity.ElibroConfig;
+import mx.edu.utez.server.modules.elibro.repository.ElibroAccessLogRepository;
 import mx.edu.utez.server.modules.elibro.repository.ElibroConfigRepository;
 import mx.edu.utez.server.modules.elibro.repository.ElibroValidationRunRepository;
-import mx.edu.utez.server.modules.logs.access.entity.AccessLog;
-import mx.edu.utez.server.modules.logs.access.repository.AccessLogRepository;
 import mx.edu.utez.server.modules.logs.audit.repository.AuditLogRepository;
 import mx.edu.utez.server.modules.students.entity.Student;
+import mx.edu.utez.server.modules.students.repository.StudentAuthEventRepository;
 import mx.edu.utez.server.modules.students.repository.StudentRepository;
 import mx.edu.utez.server.security.RoleConstants;
-import mx.edu.utez.server.shared.enums.AccessResult;
 import mx.edu.utez.server.shared.enums.AdminRole;
+import mx.edu.utez.server.shared.enums.AdminStatus;
+import mx.edu.utez.server.shared.enums.CareerStatus;
+import mx.edu.utez.server.shared.enums.ElibroAccessResult;
+import mx.edu.utez.server.shared.enums.ElibroConfigStatus;
 import mx.edu.utez.server.shared.enums.ElibroValidationStatus;
 import mx.edu.utez.server.shared.enums.Sex;
 import mx.edu.utez.server.shared.enums.StudentStatus;
@@ -24,7 +28,7 @@ import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -39,19 +43,23 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @ActiveProfiles("test")
+@AutoConfigureMockMvc
 class DashboardControllerIntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;
 
     @Autowired
-    private AccessLogRepository accessLogRepository;
+    private ElibroAccessLogRepository accessLogRepository;
 
     @Autowired
     private AuditLogRepository auditLogRepository;
 
     @Autowired
     private StudentRepository studentRepository;
+
+    @Autowired
+    private StudentAuthEventRepository studentAuthEventRepository;
 
     @Autowired
     private AdminRepository adminRepository;
@@ -80,6 +88,7 @@ class DashboardControllerIntegrationTest {
         auditLogRepository.deleteAll();
         validationRunRepository.deleteAll();
         elibroConfigRepository.deleteAll();
+        studentAuthEventRepository.deleteAll();
         studentRepository.deleteAll();
         careerRepository.deleteAll();
         passwordResetTokenRepository.deleteAll();
@@ -103,7 +112,7 @@ class DashboardControllerIntegrationTest {
         mockMvc.perform(get("/api/v1/dashboard/summary")
                         .param("dateFrom", "2026-03-20T00:00:00Z")
                         .param("dateTo", "2026-03-22T23:59:59Z")
-                        .param("careerCode", "SIS")
+                        .param("careerCodes", "SIS")
                         .with(auth(adminTi.getId().toString(), RoleConstants.ADMIN_TI)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.totalStudents").value(2))
@@ -121,7 +130,7 @@ class DashboardControllerIntegrationTest {
         mockMvc.perform(get("/api/v1/dashboard/access-trends")
                         .param("dateFrom", "2026-03-20T00:00:00Z")
                         .param("dateTo", "2026-03-22T23:59:59Z")
-                        .param("careerCode", "SIS")
+                        .param("careerCodes", "SIS")
                         .with(auth(adminTi.getId().toString(), RoleConstants.ADMIN_TI)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.points.length()").value(3))
@@ -141,8 +150,9 @@ class DashboardControllerIntegrationTest {
         mockMvc.perform(get("/api/v1/dashboard/top-students")
                         .param("dateFrom", "2026-03-20T00:00:00Z")
                         .param("dateTo", "2026-03-22T23:59:59Z")
-                        .param("careerCode", "SIS")
-                        .param("limit", "2")
+                        .param("careerCodes", "SIS")
+                        .param("topEnabled", "true")
+                        .param("topN", "2")
                         .param("sortDir", "desc")
                         .with(auth(adminBiblioteca.getId().toString(), RoleConstants.ADMIN_BIBLIOTECA)))
                 .andExpect(status().isOk())
@@ -179,7 +189,8 @@ class DashboardControllerIntegrationTest {
         mockMvc.perform(get("/api/v1/dashboard/top-students")
                         .param("dateFrom", "2026-03-20T00:00:00Z")
                         .param("dateTo", "2026-03-22T23:59:59Z")
-                        .param("limit", "51")
+                        .param("topEnabled", "true")
+                        .param("topN", "51")
                         .with(auth(adminTi.getId().toString(), RoleConstants.ADMIN_TI)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errorCode").value("VALIDATION_ERROR"));
@@ -187,20 +198,20 @@ class DashboardControllerIntegrationTest {
         mockMvc.perform(get("/api/v1/dashboard/top-students")
                         .param("dateFrom", "2026-03-20T00:00:00Z")
                         .param("dateTo", "2026-03-22T23:59:59Z")
-                        .param("result", "FAILED_ELIBRO_API")
+                        .param("status", "FAILED_ELIBRO_API")
                         .with(auth(adminTi.getId().toString(), RoleConstants.ADMIN_TI)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errorCode").value("VALIDATION_ERROR"));
     }
 
     private void seedAccessLogs() {
-        saveAccessLog(studentOne, AccessResult.SUCCESS, "2026-03-20T10:00:00Z");
-        saveAccessLog(studentTwo, AccessResult.SUCCESS, "2026-03-20T11:00:00Z");
-        saveAccessLog(studentOne, AccessResult.SUCCESS, "2026-03-21T09:00:00Z");
-        saveAccessLog(studentOne, AccessResult.FAILED_ELIBRO_API, "2026-03-21T10:00:00Z");
-        saveAccessLog(studentThree, AccessResult.SUCCESS, "2026-03-22T08:00:00Z");
-        saveAccessLog(null, AccessResult.FAILED_INVALID_GOOGLE_TOKEN, "2026-03-22T09:00:00Z");
-        saveAccessLog(studentOne, AccessResult.SUCCESS, "2026-03-10T09:00:00Z");
+        saveAccessLog(studentOne, ElibroAccessResult.SUCCESS, "2026-03-20T10:00:00Z");
+        saveAccessLog(studentTwo, ElibroAccessResult.SUCCESS, "2026-03-20T11:00:00Z");
+        saveAccessLog(studentOne, ElibroAccessResult.SUCCESS, "2026-03-21T09:00:00Z");
+        saveAccessLog(studentOne, ElibroAccessResult.FAILED_ELIBRO_API, "2026-03-21T10:00:00Z");
+        saveAccessLog(studentThree, ElibroAccessResult.SUCCESS, "2026-03-22T08:00:00Z");
+        saveAccessLog(null, ElibroAccessResult.FAILED_INTERNAL_ERROR, "2026-03-22T09:00:00Z");
+        saveAccessLog(studentOne, ElibroAccessResult.SUCCESS, "2026-03-10T09:00:00Z");
     }
 
     private void saveElibroConfig() {
@@ -210,8 +221,8 @@ class DashboardControllerIntegrationTest {
         config.setChannelIdEncrypted("enc-channel-id");
         config.setChannelSecretEncrypted("enc-channel-secret");
         config.setChannelName("UTEZ");
-        config.setAuthEndpoint("https://auth.elibro.net/auth/sso/");
-        config.setActive(true);
+        config.setNextUrl("https://elibro.net/es/lc/utez/inicio");
+        config.setStatus(ElibroConfigStatus.ACTIVE);
         config.setValidationStatus(ElibroValidationStatus.VALID);
         config.setValidationMessage("ok");
         config.setLastValidatedAt(Instant.parse("2026-03-19T00:00:00Z"));
@@ -228,7 +239,7 @@ class DashboardControllerIntegrationTest {
         admin.setLastNameMaternal(null);
         admin.setPasswordHash("$2a$10$123456789012345678901u2sNfJ0wYl8Bv0p5Wn4eC6zYkM8d8vS.");
         admin.setRole(role);
-        admin.setActive(true);
+        admin.setStatus(AdminStatus.ACTIVE);
         return adminRepository.save(admin);
     }
 
@@ -253,37 +264,27 @@ class DashboardControllerIntegrationTest {
         Career career = new Career();
         career.setCode(code);
         career.setName(name);
-        career.setActive(true);
+        career.setStatus(CareerStatus.ACTIVE);
         return careerRepository.save(career);
     }
 
-    private void saveAccessLog(Student student, AccessResult result, String occurredAt) {
-        AccessLog log = new AccessLog();
+    private void saveAccessLog(Student student, ElibroAccessResult result, String occurredAt) {
+        ElibroAccessLog log = new ElibroAccessLog();
         log.setStudent(student);
         log.setAttemptedEmail(student == null ? "unknown@utez.edu.mx" : student.getInstitutionalEmail());
         log.setNormalizedEmail(student == null ? "unknown@utez.edu.mx" : student.getInstitutionalEmailNormalized());
         log.setResult(result);
-        log.setErrorCode(result == AccessResult.SUCCESS ? null : "ERR");
-        log.setErrorDetail(result == AccessResult.SUCCESS ? null : "detail");
+        log.setErrorCode(result == ElibroAccessResult.SUCCESS ? null : "ERR");
+        log.setErrorDetail(result == ElibroAccessResult.SUCCESS ? null : "detail");
         log.setLatencyMs(90L);
         log.setRequestId("req-" + result.name() + "-" + occurredAt);
         log.setCorrelationId("corr-" + result.name() + "-" + occurredAt);
-        log.setIpAddress("127.0.0.1");
-        log.setUserAgent("JUnit");
-        log.setProviderName(isElibroAccessResult(result) ? "ELIBRO" : null);
+        log.setIpAddressMasked("127.0.0.0");
+        log.setIpAddressHash("hash-127.0.0.1");
+        log.setUserAgentSanitized("JUnit");
+        log.setChannelNameSnapshot("ELIBRO");
         log.setOccurredAt(Instant.parse(occurredAt));
         accessLogRepository.save(log);
-    }
-
-    private boolean isElibroAccessResult(AccessResult result) {
-        return switch (result) {
-            case SUCCESS,
-                 FAILED_STUDENT_INACTIVE,
-                 FAILED_NEXT_URL_VALIDATION,
-                 FAILED_ELIBRO_CONFIG,
-                 FAILED_ELIBRO_API -> true;
-            default -> false;
-        };
     }
 
     private RequestPostProcessor auth(String principal, String role) {

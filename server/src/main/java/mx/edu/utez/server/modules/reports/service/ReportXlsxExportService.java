@@ -110,7 +110,6 @@ public class ReportXlsxExportService {
             writeAccessLogDetail(detailSheet, wb, spec);
 
             wb.write(out);
-            wb.dispose();
         } catch (BusinessException e) {
             throw e;
         } catch (Exception ex) {
@@ -285,7 +284,6 @@ public class ReportXlsxExportService {
             writeAuditLogDetail(detailSheet, wb, spec);
 
             wb.write(out);
-            wb.dispose();
         } catch (BusinessException e) {
             throw e;
         } catch (Exception ex) {

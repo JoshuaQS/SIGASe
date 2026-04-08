@@ -1,7 +1,5 @@
 package mx.edu.utez.server.config;
 
-import mx.edu.utez.server.config.AdminSeedRunner;
-import mx.edu.utez.server.config.AppProperties;
 import mx.edu.utez.server.modules.admins.entity.Admin;
 import mx.edu.utez.server.modules.admins.repository.AdminRepository;
 import mx.edu.utez.server.modules.auth.repository.AdminPasswordResetTokenRepository;

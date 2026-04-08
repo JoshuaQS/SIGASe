@@ -9,8 +9,10 @@ import mx.edu.utez.server.modules.admins.entity.Admin;
 import mx.edu.utez.server.modules.admins.mapper.AdminMapper;
 import mx.edu.utez.server.modules.admins.repository.AdminRepository;
 import mx.edu.utez.server.modules.logs.audit.service.AuditTrailService;
+import mx.edu.utez.server.modules.notifications.service.NotificationService;
 import mx.edu.utez.server.shared.api.PageResponse;
 import mx.edu.utez.server.shared.enums.AdminRole;
+import mx.edu.utez.server.shared.enums.AdminStatus;
 import mx.edu.utez.server.shared.enums.AuditOutcome;
 import mx.edu.utez.server.shared.exception.BusinessException;
 import mx.edu.utez.server.shared.exception.ErrorCode;
@@ -34,7 +36,7 @@ import org.springframework.util.StringUtils;
 public class AdminManagementService {
 
     private static final Set<String> ALLOWED_SORT_FIELDS = Set.of(
-            "createdAt", "updatedAt", "email", "name", "lastNamePaternal", "lastNameMaternal", "role", "active", "lastLoginAt"
+            "createdAt", "updatedAt", "email", "name", "lastNamePaternal", "lastNameMaternal", "role", "status", "lastLoginAt"
     );
 
     private final AdminRepository adminRepository;
@@ -42,19 +44,22 @@ public class AdminManagementService {
     private final EmailNormalizer emailNormalizer;
     private final PasswordEncoder passwordEncoder;
     private final AuditTrailService auditTrailService;
+    private final NotificationService notificationService;
 
     public AdminManagementService(
             AdminRepository adminRepository,
             AdminMapper adminMapper,
             EmailNormalizer emailNormalizer,
             PasswordEncoder passwordEncoder,
-            AuditTrailService auditTrailService
+            AuditTrailService auditTrailService,
+            NotificationService notificationService
     ) {
         this.adminRepository = adminRepository;
         this.adminMapper = adminMapper;
         this.emailNormalizer = emailNormalizer;
         this.passwordEncoder = passwordEncoder;
         this.auditTrailService = auditTrailService;
+        this.notificationService = notificationService;
     }
 
     @Transactional
@@ -71,16 +76,17 @@ public class AdminManagementService {
         admin.setLastNameMaternal(trimToNull(request.lastNameMaternal()));
         admin.setPasswordHash(passwordEncoder.encode(request.password()));
         admin.setRole(request.role());
-        admin.setActive(request.active());
+        admin.setStatus(request.status());
 
         Admin saved = adminRepository.save(admin);
+        notificationService.ensureDefaultPreferences(saved);
         auditTrailService.auditAdminAction(
                 actorAdmin,
                 "ADMIN_CREATE",
                 "ADMIN",
                 saved.getId().toString(),
                 AuditOutcome.SUCCESS,
-                Map.of("email", saved.getEmail(), "role", saved.getRole().name(), "active", saved.isActive()),
+                Map.of("email", saved.getEmail(), "role", saved.getRole().name(), "status", saved.getStatus().name()),
                 httpRequest
         );
         return adminMapper.toResponse(saved);
@@ -122,7 +128,7 @@ public class AdminManagementService {
     @Transactional(readOnly = true)
     public PageResponse<AdminResponse> list(
             String q,
-            Boolean active,
+            AdminStatus status,
             AdminRole role,
             String sortBy,
             String sortDir,
@@ -135,7 +141,7 @@ public class AdminManagementService {
             throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Parámetros de paginación inválidos.");
         }
         Pageable pageable = PageRequest.of(page, size, buildSort(sortBy, sortDir));
-        Specification<Admin> spec = buildSpecification(q, active, role);
+        Specification<Admin> spec = buildSpecification(q, status, role);
         Page<AdminResponse> result = adminRepository.findAll(spec, pageable).map(adminMapper::toResponse);
 
         return new PageResponse<>(
@@ -227,7 +233,7 @@ public class AdminManagementService {
         );
     }
 
-    private Specification<Admin> buildSpecification(String q, Boolean active, AdminRole role) {
+    private Specification<Admin> buildSpecification(String q, AdminStatus status, AdminRole role) {
         return (root, query, cb) -> {
             var predicate = cb.conjunction();
             if (StringUtils.hasText(q)) {
@@ -239,8 +245,8 @@ public class AdminManagementService {
                         cb.like(cb.lower(root.get("lastNameMaternal")), term)
                 ));
             }
-            if (active != null) {
-                predicate = cb.and(predicate, cb.equal(root.get("active"), active));
+            if (status != null) {
+                predicate = cb.and(predicate, cb.equal(root.get("status"), status));
             }
             if (role != null) {
                 predicate = cb.and(predicate, cb.equal(root.get("role"), role));

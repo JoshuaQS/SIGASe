@@ -4,6 +4,7 @@ import mx.edu.utez.server.modules.admins.entity.Admin;
 import mx.edu.utez.server.modules.students.entity.Student;
 import mx.edu.utez.server.modules.students.repository.StudentRepository;
 import mx.edu.utez.server.shared.enums.AuditOutcome;
+import mx.edu.utez.server.shared.enums.Sex;
 import mx.edu.utez.server.shared.enums.StudentStatus;
 import mx.edu.utez.server.shared.exception.BusinessException;
 import mx.edu.utez.server.shared.exception.ErrorCode;
@@ -60,10 +61,28 @@ public class StudentXlsxExportService {
     @Transactional(readOnly = true)
     public void export(
             OutputStream out,
-            String q, UUID careerId, String careerCode, StudentStatus status,
+            String q,
+            String enrollmentId,
+            String lastNamePaternal,
+            String lastNameMaternal,
+            UUID careerId,
+            String careerCode,
+            Sex sex,
+            Integer quarter,
+            StudentStatus status,
             Admin actor, HttpServletRequest request
     ) {
-        Specification<Student> spec = reportService.buildStudentSpec(q, careerId, careerCode, status);
+        Specification<Student> spec = reportService.buildStudentSpec(
+                q,
+                enrollmentId,
+                lastNamePaternal,
+                lastNameMaternal,
+                careerId,
+                careerCode,
+                sex,
+                quarter,
+                status
+        );
         long total = studentRepository.count(spec);
 
         try (SXSSFWorkbook wb = new SXSSFWorkbook(CHUNK_SIZE)) {
@@ -83,7 +102,17 @@ public class StudentXlsxExportService {
             XlsxExportService.writeMergedRow(sheet, 1, lastCol,
                     "Generado: " + XlsxExportService.formatInstantNow() + " UTC", subtitleStyle);
             XlsxExportService.writeMergedRow(sheet, 2, lastCol,
-                    "Filtros: " + buildFilterText(q, careerId, careerCode, status), subtitleStyle);
+                    "Filtros: " + buildFilterText(
+                            q,
+                            enrollmentId,
+                            lastNamePaternal,
+                            lastNameMaternal,
+                            careerId,
+                            careerCode,
+                            sex,
+                            quarter,
+                            status
+                    ), subtitleStyle);
 
             // Header row
             Row headerRow = sheet.createRow(HEADER_ROW_IDX);
@@ -139,7 +168,7 @@ public class StudentXlsxExportService {
             }
 
             wb.write(out);
-            wb.dispose();
+
         } catch (Exception ex) {
             Map<String, Object> meta = new LinkedHashMap<>();
             meta.put("format", "xlsx");
@@ -153,11 +182,26 @@ public class StudentXlsxExportService {
         auditExport(actor, "STUDENTS", meta, total, AuditOutcome.SUCCESS, request);
     }
 
-    private String buildFilterText(String q, UUID careerId, String careerCode, StudentStatus status) {
+    private String buildFilterText(
+            String q,
+            String enrollmentId,
+            String lastNamePaternal,
+            String lastNameMaternal,
+            UUID careerId,
+            String careerCode,
+            Sex sex,
+            Integer quarter,
+            StudentStatus status
+    ) {
         StringBuilder sb = new StringBuilder();
         if (StringUtils.hasText(q)) sb.append("q=").append(q).append(", ");
+        if (StringUtils.hasText(enrollmentId)) sb.append("enrollmentId=").append(enrollmentId).append(", ");
+        if (StringUtils.hasText(lastNamePaternal)) sb.append("lastNamePaternal=").append(lastNamePaternal).append(", ");
+        if (StringUtils.hasText(lastNameMaternal)) sb.append("lastNameMaternal=").append(lastNameMaternal).append(", ");
         if (careerId != null) sb.append("careerId=").append(careerId).append(", ");
         if (StringUtils.hasText(careerCode)) sb.append("careerCode=").append(careerCode).append(", ");
+        if (sex != null) sb.append("sex=").append(sex.name()).append(", ");
+        if (quarter != null) sb.append("quarter=").append(quarter).append(", ");
         if (status != null) sb.append("status=").append(status.name()).append(", ");
         if (sb.isEmpty()) return "Sin filtros";
         return sb.substring(0, sb.length() - 2);

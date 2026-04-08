@@ -59,7 +59,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         boolean shouldSkip = HttpMethod.OPTIONS.matches(request.getMethod()) || PUBLIC_ROUTES_MATCHER.matches(request);
 
         if (shouldSkip) {
-            log.info("[JWT] skip filter method={} path={}", request.getMethod(), request.getRequestURI());
+            log.debug("[JWT] skip filter method={} path={}", request.getMethod(), request.getRequestURI());
         }
 
         return shouldSkip;
@@ -73,26 +73,26 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String path = request.getRequestURI();
         String header = request.getHeader(HttpHeaders.AUTHORIZATION);
 
-        log.info("[JWT] start method={} path={} hasAuthHeader={} bearerPrefix={}",
+        log.debug("[JWT] start method={} path={} hasAuthHeader={} bearerPrefix={}",
                 method,
                 path,
                 StringUtils.hasText(header),
                 StringUtils.hasText(header) && header.startsWith(BEARER_PREFIX));
 
         if (!StringUtils.hasText(header) || !header.startsWith(BEARER_PREFIX)) {
-            log.warn("[JWT] missing or invalid Authorization header method={} path={}", method, path);
+            log.debug("[JWT] missing or invalid Authorization header method={} path={}", method, path);
             filterChain.doFilter(request, response);
-            log.info("[JWT] passthrough complete method={} path={} status={}", method, path, response.getStatus());
+            log.debug("[JWT] passthrough complete method={} path={} status={}", method, path, response.getStatus());
             return;
         }
 
         String token = header.substring(BEARER_PREFIX.length()).trim();
-        log.info("[JWT] token extracted method={} path={} tokenLength={}", method, path, token.length());
+        log.debug("[JWT] token extracted method={} path={} tokenLength={}", method, path, token.length());
 
         try {
             ParsedToken parsedToken = jwtTokenProvider.validateAndParse(token);
 
-            log.info("[JWT] token parsed method={} path={} userId={} role={} mustChangePassword={}",
+            log.debug("[JWT] token parsed method={} path={} userId={} role={} mustChangePassword={}",
                     method,
                     path,
                     parsedToken.userId(),
@@ -100,7 +100,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     parsedToken.mustChangePassword());
 
             if (!sessionTokenValidationService.isTokenVersionCurrent(parsedToken)) {
-                log.error("[JWT] token version invalid method={} path={} userId={} role={}",
+                log.warn("[JWT] token version invalid method={} path={} userId={} role={}",
                         method,
                         path,
                         parsedToken.userId(),
@@ -117,7 +117,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                     || (HttpMethod.POST.matches(method) && path.equals(ApiRoutes.httpPath(ApiRoutes.AUTH_STUDENT_LOGOUT)));
                 }
 
-                log.warn("[JWT] student must change password method={} path={} userId={} allowed={}",
+                log.debug("[JWT] student must change password method={} path={} userId={} allowed={}",
                         method,
                         path,
                         parsedToken.userId(),
@@ -145,7 +145,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
             SecurityContextHolder.getContext().setAuthentication(authentication);
 
-            log.info("[JWT] authentication set method={} path={} principal={} authorities={}",
+            log.debug("[JWT] authentication set method={} path={} principal={} authorities={}",
                     method,
                     path,
                     authentication.getPrincipal(),
@@ -153,21 +153,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
             filterChain.doFilter(request, response);
 
-            log.info("[JWT] success method={} path={} status={}", method, path, response.getStatus());
+            log.debug("[JWT] success method={} path={} status={}", method, path, response.getStatus());
 
         } catch (SessionExpiredAuthenticationException | InvalidJwtAuthenticationException ex) {
             SecurityContextHolder.clearContext();
 
-            log.error("[JWT] auth failure method={} path={} message={} type={}",
+            log.warn("[JWT] auth failure method={} path={} message={} type={}",
                     method,
                     path,
                     ex.getMessage(),
-                    ex.getClass().getSimpleName(),
-                    ex);
+                    ex.getClass().getSimpleName());
 
             authenticationEntryPoint.commence(request, response, ex);
 
-            log.error("[JWT] entry point invoked method={} path={} finalStatus={}",
+            log.debug("[JWT] entry point invoked method={} path={} finalStatus={}",
                     method,
                     path,
                     response.getStatus());

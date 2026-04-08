@@ -53,7 +53,6 @@ public class StudentGoogleLoginService {
     }
 
     public StudentAuthResponse loginWithGoogle(String idToken, HttpServletRequest request) {
-        long startMs = System.currentTimeMillis();
         GoogleIdentity identity;
         try {
             identity = googleTokenVerifierService.verify(idToken);

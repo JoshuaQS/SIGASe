@@ -3,23 +3,27 @@ package mx.edu.utez.server.modules.logs.audit.controller;
 import mx.edu.utez.server.modules.admins.entity.Admin;
 import mx.edu.utez.server.modules.admins.repository.AdminRepository;
 import mx.edu.utez.server.modules.auth.repository.AdminPasswordResetTokenRepository;
+import mx.edu.utez.server.modules.elibro.repository.ElibroAccessLogRepository;
 import mx.edu.utez.server.modules.elibro.repository.ElibroConfigRepository;
 import mx.edu.utez.server.modules.elibro.repository.ElibroValidationRunRepository;
-import mx.edu.utez.server.modules.logs.access.repository.AccessLogRepository;
+
 import mx.edu.utez.server.modules.logs.audit.entity.AuditLog;
 import mx.edu.utez.server.modules.logs.audit.repository.AuditLogRepository;
+import mx.edu.utez.server.modules.students.repository.StudentAuthEventRepository;
 import mx.edu.utez.server.modules.students.repository.StudentRepository;
 import mx.edu.utez.server.security.RoleConstants;
 import mx.edu.utez.server.shared.enums.AdminRole;
+import mx.edu.utez.server.shared.enums.AdminStatus;
 import mx.edu.utez.server.shared.enums.AuditActorType;
 import mx.edu.utez.server.shared.enums.AuditOutcome;
 import mx.edu.utez.server.shared.enums.AuditSeverity;
+import mx.edu.utez.server.shared.enums.AuditSourceModule;
 import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -34,6 +38,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @ActiveProfiles("test")
+@AutoConfigureMockMvc
 class AuditLogQueryControllerIntegrationTest {
 
     @Autowired
@@ -43,13 +48,16 @@ class AuditLogQueryControllerIntegrationTest {
     private AuditLogRepository auditLogRepository;
 
     @Autowired
+    private ElibroAccessLogRepository accessLogRepository;
+
+    @Autowired
     private AdminRepository adminRepository;
 
     @Autowired
     private StudentRepository studentRepository;
 
     @Autowired
-    private AccessLogRepository accessLogRepository;
+    private StudentAuthEventRepository studentAuthEventRepository;
 
     @Autowired
     private ElibroConfigRepository elibroConfigRepository;
@@ -70,6 +78,7 @@ class AuditLogQueryControllerIntegrationTest {
         auditLogRepository.deleteAll();
         validationRunRepository.deleteAll();
         elibroConfigRepository.deleteAll();
+        studentAuthEventRepository.deleteAll();
         studentRepository.deleteAll();
         passwordResetTokenRepository.deleteAll();
         adminRepository.deleteAll();
@@ -86,16 +95,6 @@ class AuditLogQueryControllerIntegrationTest {
                 Instant.parse("2026-03-20T10:00:00Z"),
                 "req-a-1",
                 "corr-a-1"
-        );
-        saveAuditLog(
-                adminTi,
-                "ADMIN_UPDATE",
-                "ADMIN",
-                AuditOutcome.FAILURE,
-                AuditSeverity.WARN,
-                Instant.parse("2026-03-21T10:00:00Z"),
-                "req-a-2",
-                "corr-a-2"
         );
         saveAuditLog(
                 adminBiblioteca,
@@ -122,14 +121,19 @@ class AuditLogQueryControllerIntegrationTest {
                         .with(auth(adminTi, RoleConstants.ADMIN_TI)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.totalElements").value(2))
+                .andExpect(jsonPath("$.data.totalElements").value(1))
                 .andExpect(jsonPath("$.data.content.length()").value(1))
                 .andExpect(jsonPath("$.data.content[0].id").value(firstLog.getId().toString()))
-                .andExpect(jsonPath("$.data.content[0].actorAdminEmail").value("audit.ti@utez.edu.mx"));
+                .andExpect(jsonPath("$.data.content[0].actorAdminEmail").value("audit.ti@utez.edu.mx"))
+                .andExpect(jsonPath("$.data.content[0].sourceModule").value("ADMINS"))
+                .andExpect(jsonPath("$.data.content[0].description").value("Evento ADMIN_CREATE de prueba"))
+                .andExpect(jsonPath("$.data.content[0].httpMethod").value("POST"))
+                .andExpect(jsonPath("$.data.content[0].endpoint").value("/api/v1/admins"))
+                .andExpect(jsonPath("$.data.content[0].statusCode").value(201));
     }
 
     @Test
-    void shouldGetAuditLogByIdForTiAndBiblioteca() throws Exception {
+    void shouldGetAuditLogByIdForTiOnly() throws Exception {
         mockMvc.perform(get("/api/v1/audit-logs/{id}", firstLog.getId())
                         .with(auth(adminTi, RoleConstants.ADMIN_TI)))
                 .andExpect(status().isOk())
@@ -137,12 +141,17 @@ class AuditLogQueryControllerIntegrationTest {
 
         mockMvc.perform(get("/api/v1/audit-logs/{id}", firstLog.getId())
                         .with(auth(adminBiblioteca, RoleConstants.ADMIN_BIBLIOTECA)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.id").value(firstLog.getId().toString()));
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.errorCode").value("FORBIDDEN"));
     }
 
     @Test
-    void shouldRejectAuditEndpointsForStudentRole() throws Exception {
+    void shouldRejectAuditEndpointsForNonTiRoles() throws Exception {
+        mockMvc.perform(get("/api/v1/audit-logs")
+                        .with(auth(adminBiblioteca, RoleConstants.ADMIN_BIBLIOTECA)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.errorCode").value("FORBIDDEN"));
+
         mockMvc.perform(get("/api/v1/audit-logs")
                         .with(auth(adminTi, RoleConstants.STUDENT)))
                 .andExpect(status().isForbidden())
@@ -191,7 +200,7 @@ class AuditLogQueryControllerIntegrationTest {
         admin.setLastNameMaternal(null);
         admin.setPasswordHash("$2a$10$123456789012345678901u2sNfJ0wYl8Bv0p5Wn4eC6zYkM8d8vS.");
         admin.setRole(role);
-        admin.setActive(true);
+        admin.setStatus(AdminStatus.ACTIVE);
         return adminRepository.save(admin);
     }
 
@@ -215,9 +224,15 @@ class AuditLogQueryControllerIntegrationTest {
         log.setOutcome(outcome);
         log.setSeverity(severity);
         log.setMetadataJson("{\"source\":\"test\"}");
+        log.setSourceModule(AuditSourceModule.ADMINS);
+        log.setDescription("Evento " + action + " de prueba");
+        log.setEntitySnapshotName("Audit Admin " + actorAdmin.getEmail());
+        log.setTargetLabel(actorAdmin.getEmail());
+        log.setHttpMethod("POST");
+        log.setEndpoint("/api/v1/admins");
+        log.setStatusCode(201);
         log.setRequestId(requestId);
         log.setCorrelationId(correlationId);
-        log.setIpAddress("127.0.0.1");
         log.setOccurredAt(occurredAt);
         return auditLogRepository.save(log);
     }

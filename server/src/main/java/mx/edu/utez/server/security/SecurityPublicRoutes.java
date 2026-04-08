@@ -5,7 +5,7 @@ import java.util.Arrays;
 import java.util.List;
 import mx.edu.utez.server.shared.api.ApiRoutes;
 import org.springframework.http.HttpMethod;
-import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
+import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
 import org.springframework.security.web.util.matcher.OrRequestMatcher;
 import org.springframework.security.web.util.matcher.RequestMatcher;
 
@@ -50,12 +50,15 @@ public final class SecurityPublicRoutes {
 
     private static RequestMatcher buildPublicRoutesMatcher() {
         List<RequestMatcher> matchers = new ArrayList<>(PUBLIC_ANY_METHOD_PATTERNS.length + PUBLIC_POST_ONLY_PATTERNS.length);
+
         for (String pattern : PUBLIC_ANY_METHOD_PATTERNS) {
-            matchers.add(new AntPathRequestMatcher(pattern));
+            matchers.add(PathPatternRequestMatcher.withDefaults().matcher(pattern));
         }
+
         for (String pattern : PUBLIC_POST_ONLY_PATTERNS) {
-            matchers.add(new AntPathRequestMatcher(pattern, HttpMethod.POST.name()));
+            matchers.add(PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.POST, pattern));
         }
+
         return new OrRequestMatcher(matchers);
     }
 }

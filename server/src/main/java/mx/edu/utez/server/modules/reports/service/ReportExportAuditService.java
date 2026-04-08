@@ -25,11 +25,23 @@ public class ReportExportAuditService {
             AuditOutcome outcome,
             HttpServletRequest request
     ) {
+        auditExport(actor, reportType, filters, rowCount, "csv", outcome, request);
+    }
+
+    public void auditExport(
+            Admin actor,
+            String reportType,
+            Map<String, Object> filters,
+            long rowCount,
+            String format,
+            AuditOutcome outcome,
+            HttpServletRequest request
+    ) {
         Map<String, Object> metadata = new LinkedHashMap<>();
         metadata.put("reportType", reportType);
         metadata.put("filters", filters);
         metadata.put("rowCount", rowCount);
-        metadata.put("format", "csv");
+        metadata.put("format", format);
         auditTrailService.auditAdminAction(
                 actor,
                 "REPORT_EXPORT",

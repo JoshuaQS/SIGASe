@@ -2,7 +2,6 @@ package mx.edu.utez.server.security;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import mx.edu.utez.server.security.JwtAccessDeniedHandler;
 import mx.edu.utez.server.shared.context.RequestContext;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;

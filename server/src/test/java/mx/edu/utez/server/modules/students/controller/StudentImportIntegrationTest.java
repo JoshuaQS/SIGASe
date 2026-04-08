@@ -5,22 +5,28 @@ import mx.edu.utez.server.modules.admins.repository.AdminRepository;
 import mx.edu.utez.server.modules.auth.repository.AdminPasswordResetTokenRepository;
 import mx.edu.utez.server.modules.careers.entity.Career;
 import mx.edu.utez.server.modules.careers.repository.CareerRepository;
+import mx.edu.utez.server.modules.elibro.repository.ElibroAccessLogRepository;
 import mx.edu.utez.server.modules.elibro.repository.ElibroConfigRepository;
 import mx.edu.utez.server.modules.elibro.repository.ElibroValidationRunRepository;
-import mx.edu.utez.server.modules.logs.access.repository.AccessLogRepository;
+
 import mx.edu.utez.server.modules.logs.audit.repository.AuditLogRepository;
 import mx.edu.utez.server.modules.students.entity.Student;
+import mx.edu.utez.server.modules.students.repository.StudentAuthEventRepository;
 import mx.edu.utez.server.modules.students.repository.StudentRepository;
 import mx.edu.utez.server.security.RoleConstants;
 import mx.edu.utez.server.shared.enums.AdminRole;
+import mx.edu.utez.server.shared.enums.AdminStatus;
+import mx.edu.utez.server.shared.enums.CareerStatus;
 import mx.edu.utez.server.shared.enums.Sex;
 import mx.edu.utez.server.shared.enums.StudentStatus;
 import java.nio.charset.StandardCharsets;
+import java.io.ByteArrayOutputStream;
 import java.util.List;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -32,23 +38,28 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.containsString;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
 @ActiveProfiles("test")
+@AutoConfigureMockMvc
 class StudentImportIntegrationTest {
 
     @Autowired private MockMvc mockMvc;
     @Autowired private StudentRepository studentRepository;
     @Autowired private AdminRepository adminRepository;
     @Autowired private AdminPasswordResetTokenRepository passwordResetTokenRepository;
-    @Autowired private AccessLogRepository accessLogRepository;
     @Autowired private AuditLogRepository auditLogRepository;
+    @Autowired private ElibroAccessLogRepository accessLogRepository;
     @Autowired private ElibroConfigRepository elibroConfigRepository;
     @Autowired private ElibroValidationRunRepository validationRunRepository;
     @Autowired private CareerRepository careerRepository;
+    @Autowired private StudentAuthEventRepository studentAuthEventRepository;
 
     private Admin adminTi;
 
@@ -58,6 +69,7 @@ class StudentImportIntegrationTest {
         auditLogRepository.deleteAll();
         validationRunRepository.deleteAll();
         elibroConfigRepository.deleteAll();
+        studentAuthEventRepository.deleteAll();
         studentRepository.deleteAll();
         careerRepository.deleteAll();
         passwordResetTokenRepository.deleteAll();
@@ -87,6 +99,26 @@ class StudentImportIntegrationTest {
                 .andExpect(jsonPath("$.data.successCount", is(2)))
                 .andExpect(jsonPath("$.data.errorCount", is(0)))
                 .andExpect(jsonPath("$.data.errors", hasSize(0)));
+    }
+
+    @Test
+    void shouldImportValidXlsxSuccessfully() throws Exception {
+        MockMultipartFile file = xlsxFile(
+                List.of("enrollmentId", "name", "lastNamePaternal", "lastNameMaternal", "institutionalEmail", "careerCode", "quarter", "sex"),
+                List.of(
+                        List.of("2026A0091", "Alicia", "Paternal", "Maternal", "alicia91@utez.edu.mx", "DSM", "3", "FEMALE"),
+                        List.of("2026A0092", "Bruno", "Gomez", "", "bruno92@utez.edu.mx", "IRD", "5", "MALE")
+                )
+        );
+
+        mockMvc.perform(multipart("/api/v1/students/import")
+                        .file(file)
+                        .with(auth(adminTi, RoleConstants.ADMIN_TI)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success", is(true)))
+                .andExpect(jsonPath("$.data.totalRows", is(2)))
+                .andExpect(jsonPath("$.data.successCount", is(2)))
+                .andExpect(jsonPath("$.data.errorCount", is(0)));
     }
 
     // ── Row-level validation errors ────────────────────────────────────
@@ -213,6 +245,29 @@ class StudentImportIntegrationTest {
                 .andExpect(status().isForbidden());
     }
 
+    @Test
+    void shouldDownloadCsvTemplate() throws Exception {
+        mockMvc.perform(get("/api/v1/students/import-template")
+                        .param("format", "csv")
+                        .with(auth(adminTi, RoleConstants.ADMIN_TI)))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", containsString("text/csv")))
+                .andExpect(header().string("Content-Disposition", containsString("students-import-template.csv")));
+    }
+
+    @Test
+    void shouldDownloadXlsxTemplate() throws Exception {
+        mockMvc.perform(get("/api/v1/students/import-template")
+                        .param("format", "xlsx")
+                        .with(auth(adminTi, RoleConstants.ADMIN_TI)))
+                .andExpect(status().isOk())
+                .andExpect(header().string(
+                        "Content-Type",
+                        containsString("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                ))
+                .andExpect(header().string("Content-Disposition", containsString("students-import-template.xlsx")));
+    }
+
     // ── Helpers ────────────────────────────────────────────────────────
 
     private String csvHeader() {
@@ -224,6 +279,32 @@ class StudentImportIntegrationTest {
                 "file", "students.csv", "text/csv",
                 content.getBytes(StandardCharsets.UTF_8)
         );
+    }
+
+    private MockMultipartFile xlsxFile(List<String> headers, List<List<String>> rows) throws Exception {
+        try (XSSFWorkbook workbook = new XSSFWorkbook(); ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+            var sheet = workbook.createSheet("Students");
+            var headerRow = sheet.createRow(0);
+            for (int index = 0; index < headers.size(); index++) {
+                headerRow.createCell(index).setCellValue(headers.get(index));
+            }
+
+            for (int rowIndex = 0; rowIndex < rows.size(); rowIndex++) {
+                var workbookRow = sheet.createRow(rowIndex + 1);
+                List<String> values = rows.get(rowIndex);
+                for (int cellIndex = 0; cellIndex < values.size(); cellIndex++) {
+                    workbookRow.createCell(cellIndex).setCellValue(values.get(cellIndex));
+                }
+            }
+
+            workbook.write(outputStream);
+            return new MockMultipartFile(
+                    "file",
+                    "students.xlsx",
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    outputStream.toByteArray()
+            );
+        }
     }
 
     private RequestPostProcessor auth(Admin admin, String role) {
@@ -242,7 +323,7 @@ class StudentImportIntegrationTest {
         admin.setLastNameMaternal(null);
         admin.setPasswordHash("$2a$10$123456789012345678901u2sNfJ0wYl8Bv0p5Wn4eC6zYkM8d8vS.");
         admin.setRole(role);
-        admin.setActive(true);
+        admin.setStatus(AdminStatus.ACTIVE);
         return adminRepository.save(admin);
     }
 
@@ -267,7 +348,7 @@ class StudentImportIntegrationTest {
         Career career = new Career();
         career.setCode(code);
         career.setName(name);
-        career.setActive(true);
+        career.setStatus(CareerStatus.ACTIVE);
         return careerRepository.save(career);
     }
 

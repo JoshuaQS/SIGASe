@@ -15,9 +15,11 @@ import mx.edu.utez.server.shared.exception.BusinessException;
 import mx.edu.utez.server.shared.exception.ErrorCode;
 import mx.edu.utez.server.shared.util.EmailNormalizer;
 import jakarta.servlet.http.HttpServletRequest;
+import java.io.ByteArrayOutputStream;
 import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -28,6 +30,13 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.DataFormatter;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.usermodel.WorkbookFactory;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -50,6 +59,21 @@ public class StudentImportService {
             "enrollmentid", "name", "lastnamepaternal", "lastnamematernal",
             "institutionalemail", "careercode", "quarter", "sex", "status"
     ));
+    private static final List<String> TEMPLATE_HEADERS = List.of(
+            "enrollmentId",
+            "name",
+            "lastNamePaternal",
+            "lastNameMaternal",
+            "institutionalEmail",
+            "careerCode",
+            "quarter",
+            "sex",
+            "status"
+    );
+    private static final List<List<String>> TEMPLATE_ROWS = List.of(
+            List.of("2026A0001", "Alicia", "Torres", "Vega", "alicia.torres@utez.edu.mx", "DSM", "3", "FEMALE", "ACTIVE"),
+            List.of("2026A0002", "Bruno", "Lara", "", "bruno.lara@utez.edu.mx", "IRD", "5", "MALE", "ACTIVE")
+    );
 
     private static final Pattern EMAIL_PATTERN = Pattern.compile(
             "^[A-Za-z0-9._%+\\-]+@[A-Za-z0-9.\\-]+\\.[A-Za-z]{2,}$"
@@ -72,15 +96,16 @@ public class StudentImportService {
         this.auditTrailService = auditTrailService;
     }
 
-    public StudentImportResultResponse importCsv(
+    public StudentImportResultResponse importFile(
             InputStream inputStream,
+            String originalFilename,
             Admin actor,
             HttpServletRequest request
     ) {
-        List<String[]> allRows = parseCsv(inputStream);
+        List<String[]> allRows = parseRows(inputStream, originalFilename);
 
         if (allRows.isEmpty()) {
-            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "El archivo CSV está vacío o no contiene header.");
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "El archivo está vacío o no contiene header.");
         }
 
         String[] headerRow = allRows.get(0);
@@ -88,7 +113,7 @@ public class StudentImportService {
 
         List<String[]> dataRows = allRows.subList(1, allRows.size());
         if (dataRows.isEmpty()) {
-            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "El archivo CSV no contiene filas de datos.");
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "El archivo no contiene filas de datos.");
         }
         if (dataRows.size() > MAX_ROWS) {
             throw new BusinessException(ErrorCode.VALIDATION_ERROR,
@@ -152,6 +177,18 @@ public class StudentImportService {
         );
 
         return result;
+    }
+
+    public void writeTemplate(OutputStream outputStream, String format) {
+        String safeFormat = format == null ? "csv" : format.trim().toLowerCase(Locale.ROOT);
+        if ("xlsx".equals(safeFormat)) {
+            writeTemplateXlsx(outputStream);
+            return;
+        }
+        if (!"csv".equals(safeFormat)) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Formato inválido. Valores permitidos: csv, xlsx.");
+        }
+        writeTemplateCsv(outputStream);
     }
 
     private StudentImportRowError validateAndSaveRow(
@@ -333,6 +370,17 @@ public class StudentImportService {
         return headerIndex;
     }
 
+    private List<String[]> parseRows(InputStream inputStream, String originalFilename) {
+        String normalizedName = originalFilename == null ? "" : originalFilename.trim().toLowerCase(Locale.ROOT);
+        if (normalizedName.endsWith(".xlsx")) {
+            return parseXlsx(inputStream);
+        }
+        if (normalizedName.endsWith(".csv")) {
+            return parseCsv(inputStream);
+        }
+        throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Formato de archivo no soportado. Usa .csv o .xlsx.");
+    }
+
     private List<String[]> parseCsv(InputStream inputStream) {
         List<String[]> rows = new ArrayList<>();
         try (BufferedReader reader = new BufferedReader(
@@ -358,6 +406,49 @@ public class StudentImportService {
             throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Error al leer el archivo CSV.");
         }
         return rows;
+    }
+
+    private List<String[]> parseXlsx(InputStream inputStream) {
+        List<String[]> rows = new ArrayList<>();
+        DataFormatter formatter = new DataFormatter();
+        try (Workbook workbook = WorkbookFactory.create(inputStream)) {
+            Sheet sheet = workbook.getNumberOfSheets() > 0 ? workbook.getSheetAt(0) : null;
+            if (sheet == null) {
+                return rows;
+            }
+
+            int lastRowNum = sheet.getLastRowNum();
+            for (int rowIndex = 0; rowIndex <= lastRowNum; rowIndex++) {
+                Row row = sheet.getRow(rowIndex);
+                if (row == null || isRowEmpty(row, formatter)) {
+                    continue;
+                }
+
+                int lastCellNum = Math.max(row.getLastCellNum(), TEMPLATE_HEADERS.size());
+                String[] values = new String[lastCellNum];
+                for (int cellIndex = 0; cellIndex < lastCellNum; cellIndex++) {
+                    Cell cell = row.getCell(cellIndex, Row.MissingCellPolicy.RETURN_BLANK_AS_NULL);
+                    values[cellIndex] = cell == null ? "" : formatter.formatCellValue(cell).trim();
+                }
+                rows.add(values);
+            }
+        } catch (BusinessException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Error al leer el archivo XLSX.");
+        }
+        return rows;
+    }
+
+    private boolean isRowEmpty(Row row, DataFormatter formatter) {
+        int lastCellNum = Math.max(row.getLastCellNum(), 0);
+        for (int cellIndex = 0; cellIndex < lastCellNum; cellIndex++) {
+            Cell cell = row.getCell(cellIndex, Row.MissingCellPolicy.RETURN_BLANK_AS_NULL);
+            if (cell != null && StringUtils.hasText(formatter.formatCellValue(cell))) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private String[] parseCsvLine(String line) {
@@ -403,5 +494,45 @@ public class StudentImportService {
 
     private StudentImportRowError error(int row, String enrollmentId, String errorCode, String detail) {
         return new StudentImportRowError(row, enrollmentId != null ? enrollmentId : "", errorCode, detail);
+    }
+
+    private void writeTemplateCsv(OutputStream outputStream) {
+        try {
+            ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+            buffer.write(String.join(",", TEMPLATE_HEADERS).getBytes(StandardCharsets.UTF_8));
+            buffer.write('\n');
+            for (List<String> row : TEMPLATE_ROWS) {
+                buffer.write(String.join(",", row).getBytes(StandardCharsets.UTF_8));
+                buffer.write('\n');
+            }
+            outputStream.write(buffer.toByteArray());
+        } catch (Exception ex) {
+            throw new BusinessException(ErrorCode.INTERNAL_ERROR, "No se pudo generar la plantilla CSV.");
+        }
+    }
+
+    private void writeTemplateXlsx(OutputStream outputStream) {
+        try (XSSFWorkbook workbook = new XSSFWorkbook()) {
+            Sheet sheet = workbook.createSheet("Plantilla");
+            Row headerRow = sheet.createRow(0);
+            for (int index = 0; index < TEMPLATE_HEADERS.size(); index++) {
+                headerRow.createCell(index).setCellValue(TEMPLATE_HEADERS.get(index));
+            }
+
+            for (int rowIndex = 0; rowIndex < TEMPLATE_ROWS.size(); rowIndex++) {
+                Row row = sheet.createRow(rowIndex + 1);
+                List<String> values = TEMPLATE_ROWS.get(rowIndex);
+                for (int cellIndex = 0; cellIndex < values.size(); cellIndex++) {
+                    row.createCell(cellIndex).setCellValue(values.get(cellIndex));
+                }
+            }
+
+            for (int index = 0; index < TEMPLATE_HEADERS.size(); index++) {
+                sheet.autoSizeColumn(index);
+            }
+            workbook.write(outputStream);
+        } catch (Exception ex) {
+            throw new BusinessException(ErrorCode.INTERNAL_ERROR, "No se pudo generar la plantilla XLSX.");
+        }
     }
 }

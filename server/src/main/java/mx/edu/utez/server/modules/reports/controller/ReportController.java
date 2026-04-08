@@ -2,14 +2,18 @@ package mx.edu.utez.server.modules.reports.controller;
 
 import mx.edu.utez.server.modules.admins.entity.Admin;
 import mx.edu.utez.server.modules.admins.service.AdminContextService;
+import mx.edu.utez.server.modules.accesslogs.dto.AccessLogActorType;
+import mx.edu.utez.server.modules.accesslogs.dto.AccessLogQueryFilters;
+import mx.edu.utez.server.modules.accesslogs.dto.AccessLogScope;
 import mx.edu.utez.server.modules.reports.service.ReportService;
 import mx.edu.utez.server.modules.reports.service.ReportXlsxExportService;
 import mx.edu.utez.server.modules.reports.service.StudentXlsxExportService;
+import mx.edu.utez.server.modules.reports.service.UnifiedAccessLogExportService;
 import mx.edu.utez.server.shared.api.ApiRoutes;
 import mx.edu.utez.server.shared.enums.AuditActorType;
 import mx.edu.utez.server.shared.enums.AuditOutcome;
 import mx.edu.utez.server.shared.enums.AuditSeverity;
-import mx.edu.utez.server.shared.enums.ElibroAccessResult;
+import mx.edu.utez.server.shared.enums.Sex;
 import mx.edu.utez.server.shared.enums.StudentStatus;
 import mx.edu.utez.server.shared.exception.BusinessException;
 import mx.edu.utez.server.shared.exception.ErrorCode;
@@ -37,17 +41,20 @@ public class ReportController {
     private final ReportService reportService;
     private final StudentXlsxExportService studentXlsxExportService;
     private final ReportXlsxExportService reportXlsxExportService;
+    private final UnifiedAccessLogExportService unifiedAccessLogExportService;
     private final AdminContextService adminContextService;
 
     public ReportController(
             ReportService reportService,
             StudentXlsxExportService studentXlsxExportService,
             ReportXlsxExportService reportXlsxExportService,
+            UnifiedAccessLogExportService unifiedAccessLogExportService,
             AdminContextService adminContextService
     ) {
         this.reportService = reportService;
         this.studentXlsxExportService = studentXlsxExportService;
         this.reportXlsxExportService = reportXlsxExportService;
+        this.unifiedAccessLogExportService = unifiedAccessLogExportService;
         this.adminContextService = adminContextService;
     }
 
@@ -56,8 +63,13 @@ public class ReportController {
     @Operation(summary = "Exportar estudiantes a CSV o XLSX")
     public void exportStudents(
             @RequestParam(required = false) String q,
+            @RequestParam(required = false) String enrollmentId,
+            @RequestParam(required = false) String lastNamePaternal,
+            @RequestParam(required = false) String lastNameMaternal,
             @RequestParam(required = false) UUID careerId,
             @RequestParam(required = false) String careerCode,
+            @RequestParam(required = false) Sex sex,
+            @RequestParam(required = false) Integer quarter,
             @RequestParam(required = false) StudentStatus status,
             @RequestParam(defaultValue = "csv") String format,
             Authentication authentication,
@@ -66,18 +78,54 @@ public class ReportController {
     ) throws Exception {
         Admin actor = adminContextService.requireCurrentAdmin(authentication);
         String fmt = validateFormat(format);
-        reportService.validateStudentExport(q, careerId, careerCode, status);
+        reportService.validateStudentExport(
+                q,
+                enrollmentId,
+                lastNamePaternal,
+                lastNameMaternal,
+                careerId,
+                careerCode,
+                sex,
+                quarter,
+                status
+        );
 
         if ("xlsx".equals(fmt)) {
             String filename = ReportService.generateFilename("students", "xlsx");
             response.setContentType(CT_XLSX);
             response.setHeader("Content-Disposition", "attachment; filename=\"" + filename + "\"");
-            studentXlsxExportService.export(response.getOutputStream(), q, careerId, careerCode, status, actor, request);
+            studentXlsxExportService.export(
+                    response.getOutputStream(),
+                    q,
+                    enrollmentId,
+                    lastNamePaternal,
+                    lastNameMaternal,
+                    careerId,
+                    careerCode,
+                    sex,
+                    quarter,
+                    status,
+                    actor,
+                    request
+            );
         } else {
             String filename = ReportService.generateFilename("students", "csv");
             response.setContentType(CT_CSV);
             response.setHeader("Content-Disposition", "attachment; filename=\"" + filename + "\"");
-            reportService.exportStudents(response.getOutputStream(), q, careerId, careerCode, status, actor, request);
+            reportService.exportStudents(
+                    response.getOutputStream(),
+                    q,
+                    enrollmentId,
+                    lastNamePaternal,
+                    lastNameMaternal,
+                    careerId,
+                    careerCode,
+                    sex,
+                    quarter,
+                    status,
+                    actor,
+                    request
+            );
         }
     }
 
@@ -85,14 +133,16 @@ public class ReportController {
     @PreAuthorize("hasAnyAuthority('ROLE_ADMIN_TI','ROLE_ADMIN_BIBLIOTECA')")
     @Operation(summary = "Exportar access logs a CSV o XLSX")
     public void exportAccessLogs(
+            @RequestParam(required = false, defaultValue = "ALL") AccessLogActorType actorType,
+            @RequestParam(required = false, defaultValue = "ALL") AccessLogScope scope,
+            @RequestParam(required = false) String result,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant dateFrom,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant dateTo,
-            @RequestParam(required = false) ElibroAccessResult result,
-            @RequestParam(required = false) String normalizedEmail,
-            @RequestParam(required = false) String attemptedEmail,
             @RequestParam(required = false) UUID studentId,
-            @RequestParam(required = false) String ipAddress,
-            @RequestParam(required = false) String channelName,
+            @RequestParam(required = false) UUID adminId,
+            @RequestParam(required = false) UUID careerId,
+            @RequestParam(required = false) String search,
+            @RequestParam(defaultValue = "occurredAt,desc") String sort,
             @RequestParam(defaultValue = "csv") String format,
             Authentication authentication,
             HttpServletRequest request,
@@ -100,24 +150,31 @@ public class ReportController {
     ) throws Exception {
         Admin actor = adminContextService.requireCurrentAdmin(authentication);
         String fmt = validateFormat(format);
-        reportService.validateLogExport(dateFrom, dateTo);
+        AccessLogQueryFilters filters = new AccessLogQueryFilters(
+                actorType,
+                scope,
+                result,
+                dateFrom,
+                dateTo,
+                studentId,
+                adminId,
+                careerId,
+                search,
+                0,
+                1,
+                sort
+        );
 
         if ("xlsx".equals(fmt)) {
             String filename = ReportService.generateFilename("access-logs", "xlsx");
             response.setContentType(CT_XLSX);
             response.setHeader("Content-Disposition", "attachment; filename=\"" + filename + "\"");
-            reportXlsxExportService.exportAccessLogs(
-                    response.getOutputStream(), dateFrom, dateTo, result, normalizedEmail,
-                    attemptedEmail, studentId, ipAddress, channelName, actor, request
-            );
+            unifiedAccessLogExportService.exportXlsx(response.getOutputStream(), filters, actor, request);
         } else {
             String filename = ReportService.generateFilename("access-logs", "csv");
             response.setContentType(CT_CSV);
             response.setHeader("Content-Disposition", "attachment; filename=\"" + filename + "\"");
-            reportService.exportAccessLogs(
-                    response.getOutputStream(), dateFrom, dateTo, result, normalizedEmail,
-                    attemptedEmail, studentId, ipAddress, channelName, actor, request
-            );
+            unifiedAccessLogExportService.exportCsv(response.getOutputStream(), filters, actor, request);
         }
     }
 

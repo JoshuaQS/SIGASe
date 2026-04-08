@@ -1,6 +1,7 @@
 package mx.edu.utez.server.modules.admins.dto;
 
 import mx.edu.utez.server.shared.enums.AdminRole;
+import mx.edu.utez.server.shared.enums.AdminStatus;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -20,6 +21,6 @@ public record CreateAdminRequest(
         )
         String password,
         @NotNull AdminRole role,
-        boolean active
+        @NotNull AdminStatus status
 ) {
 }

@@ -17,6 +17,8 @@ import mx.edu.utez.server.modules.admins.entity.Admin;
 import mx.edu.utez.server.modules.elibro.dto.ElibroConfigResponse;
 import mx.edu.utez.server.modules.elibro.dto.ElibroConfigStatusChangeRequest;
 import mx.edu.utez.server.modules.elibro.dto.ElibroConfigValidationResponse;
+import mx.edu.utez.server.modules.elibro.dto.ElibroControlledValidationRequest;
+import mx.edu.utez.server.modules.elibro.dto.ElibroControlledValidationResponse;
 import mx.edu.utez.server.modules.elibro.dto.PatchElibroConfigRequest;
 import mx.edu.utez.server.modules.elibro.dto.UpsertElibroConfigRequest;
 import mx.edu.utez.server.modules.elibro.entity.ElibroConfig;
@@ -44,6 +46,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
+import org.springframework.web.util.UriComponentsBuilder;
 
 @Service
 public class ElibroConfigService {
@@ -330,6 +333,90 @@ public class ElibroConfigService {
     }
 
     @Transactional
+    public ElibroControlledValidationResponse validateControlled(
+            UUID configId,
+            ElibroControlledValidationRequest request,
+            Admin actorAdmin,
+            HttpServletRequest httpRequest
+    ) {
+        ElibroConfig config = findByIdOrThrow(configId);
+        String requestId = requestAttribute(httpRequest, RequestContext.REQUEST_ID_ATTR, "system");
+        String correlationId = requestAttribute(httpRequest, RequestContext.CORRELATION_ID_ATTR, "system");
+        Instant checkedAt = Instant.now();
+
+        StructuralValidationResult structural = evaluateStructure(config);
+        String normalizedTestUser = request.testUser().trim().toLowerCase(Locale.ROOT);
+        String normalizedNextUrl = normalizeNextUrl(request.nextUrl());
+
+        ControlledProbeResult result;
+        if (!structural.valid) {
+            String message = structural.message;
+            config.setValidationStatus(ElibroValidationStatus.INVALID);
+            config.setValidationMessage(message);
+            config.setLastValidatedAt(checkedAt);
+            result = new ControlledProbeResult(
+                    message,
+                    null,
+                    "STRUCTURAL_INVALID",
+                    null,
+                    requestId,
+                    correlationId,
+                    checkedAt,
+                    AuditOutcome.FAILURE
+            );
+        } else {
+            result = executeControlledProbe(config, structural, normalizedTestUser, normalizedNextUrl, requestId, correlationId, checkedAt, true);
+        }
+
+        config.setUpdatedByAdmin(actorAdmin);
+        elibroConfigRepository.save(config);
+        saveValidationRun(config, actorAdmin, new ValidationExecutionResult(
+                result.outcome == AuditOutcome.SUCCESS ? ElibroValidationRunStatus.SUCCESS : ElibroValidationRunStatus.FAILURE,
+                result.message,
+                result.latencyMs,
+                result.errorCode,
+                result.requestId,
+                result.correlationId,
+                result.checkedAt,
+                result.outcome
+        ));
+
+        Map<String, Object> metadata = new LinkedHashMap<>();
+        metadata.put("validationType", "CONTROLLED");
+        metadata.put("status", config.getValidationStatus().name());
+        metadata.put("message", result.message);
+        metadata.put("latencyMs", result.latencyMs);
+        metadata.put("errorCode", result.errorCode);
+        metadata.put("testUser", normalizedTestUser);
+        metadata.put("nextUrl", normalizedNextUrl);
+        metadata.put("hasRedirectUrl", StringUtils.hasText(result.redirectUrl));
+
+        auditTrailService.auditAdminAction(
+                actorAdmin,
+                "ELIBRO_CONFIG_VALIDATE_CONTROLLED",
+                "ELIBRO_CONFIG",
+                config.getId().toString(),
+                result.outcome,
+                metadata,
+                httpRequest
+        );
+
+        return new ElibroControlledValidationResponse(
+                config.getId(),
+                normalizedTestUser,
+                normalizedNextUrl,
+                result.redirectUrl,
+                config.getValidationStatus(),
+                result.message,
+                result.latencyMs,
+                result.errorCode,
+                result.requestId,
+                result.correlationId,
+                config.getLastValidatedAt()
+        );
+    }
+
+    @Transactional
     public void delete(
             UUID configId,
             Admin actorAdmin,
@@ -417,10 +504,42 @@ public class ElibroConfigService {
         }
 
         String probeUser = probeStudent.get().getInstitutionalEmailNormalized();
+        ControlledProbeResult probeResult = executeControlledProbe(
+                config,
+                structural,
+                probeUser,
+                null,
+                requestId,
+                correlationId,
+                checkedAt,
+                false
+        );
+        return new ValidationExecutionResult(
+                probeResult.outcome == AuditOutcome.SUCCESS ? ElibroValidationRunStatus.SUCCESS : ElibroValidationRunStatus.FAILURE,
+                probeResult.message,
+                probeResult.latencyMs,
+                probeResult.errorCode,
+                probeResult.requestId,
+                probeResult.correlationId,
+                probeResult.checkedAt,
+                probeResult.outcome
+        );
+    }
+
+    private ControlledProbeResult executeControlledProbe(
+            ElibroConfig config,
+            StructuralValidationResult structural,
+            String testUser,
+            String nextUrl,
+            String requestId,
+            String correlationId,
+            Instant checkedAt,
+            boolean controlled
+    ) {
         Map<String, String> payload = Map.of(
                 "secret", structural.channelSecret,
                 "channel_id", structural.channelId,
-                "user", probeUser
+                "user", testUser
         );
         String payloadJson = serializePayload(payload);
         byte[] payloadBytes = payloadJson.getBytes(java.nio.charset.StandardCharsets.UTF_8);
@@ -428,7 +547,7 @@ public class ElibroConfigService {
         long startedAt = System.nanoTime();
         try {
             Object responseBody = elibroRestClient.post()
-                    .uri(URI.create(appProperties.getElibro().getBaseUrl().trim()))
+                    .uri(buildValidationUri(nextUrl))
                     .header(HttpHeaders.AUTHORIZATION, "Token " + structural.authToken)
                     .header(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
                     .header(HttpHeaders.CONTENT_LENGTH, String.valueOf(payloadLength))
@@ -440,52 +559,29 @@ public class ElibroConfigService {
             long latencyMs = elapsedMillis(startedAt);
             String redirectUrl = extractRedirectUrl(responseBody);
             if (!StringUtils.hasText(redirectUrl)) {
-                String message = "Validación operativa falló: respuesta sin URL de redirección.";
+                String message = controlled
+                        ? "Prueba controlada falló: respuesta sin URL de redirección."
+                        : "Validación operativa falló: respuesta sin URL de redirección.";
                 config.setValidationStatus(ElibroValidationStatus.INVALID);
                 config.setValidationMessage(message);
                 config.setLastValidatedAt(checkedAt);
-                return new ValidationExecutionResult(
-                        ElibroValidationRunStatus.FAILURE,
-                        message,
-                        latencyMs,
-                        "MISSING_REDIRECT_URL",
-                        requestId,
-                        correlationId,
-                        checkedAt,
-                        AuditOutcome.FAILURE
-                );
+                return new ControlledProbeResult(message, latencyMs, "MISSING_REDIRECT_URL", null, requestId, correlationId, checkedAt, AuditOutcome.FAILURE);
             }
 
-            String message = "Validación operativa exitosa con " + PROVIDER_NAME + ".";
+            String message = controlled
+                    ? "Prueba controlada exitosa con " + PROVIDER_NAME + "."
+                    : "Validación operativa exitosa con " + PROVIDER_NAME + ".";
             config.setValidationStatus(ElibroValidationStatus.VALID);
             config.setValidationMessage(message);
             config.setLastValidatedAt(checkedAt);
-            return new ValidationExecutionResult(
-                    ElibroValidationRunStatus.SUCCESS,
-                    message,
-                    latencyMs,
-                    null,
-                    requestId,
-                    correlationId,
-                    checkedAt,
-                    AuditOutcome.SUCCESS
-            );
+            return new ControlledProbeResult(message, latencyMs, null, redirectUrl, requestId, correlationId, checkedAt, AuditOutcome.SUCCESS);
         } catch (Exception ex) {
             long latencyMs = elapsedMillis(startedAt);
-            String message = "Validación operativa falló: " + safeMessage(ex);
+            String message = (controlled ? "Prueba controlada falló: " : "Validación operativa falló: ") + safeMessage(ex);
             config.setValidationStatus(ElibroValidationStatus.INVALID);
             config.setValidationMessage(message);
             config.setLastValidatedAt(checkedAt);
-            return new ValidationExecutionResult(
-                    ElibroValidationRunStatus.FAILURE,
-                    message,
-                    latencyMs,
-                    "ELIBRO_API_ERROR",
-                    requestId,
-                    correlationId,
-                    checkedAt,
-                    AuditOutcome.FAILURE
-            );
+            return new ControlledProbeResult(message, latencyMs, "ELIBRO_API_ERROR", null, requestId, correlationId, checkedAt, AuditOutcome.FAILURE);
         }
     }
 
@@ -610,6 +706,14 @@ public class ElibroConfigService {
         return Math.max(0L, (System.nanoTime() - startedAtNanos) / 1_000_000L);
     }
 
+    private URI buildValidationUri(String nextUrl) {
+        UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(appProperties.getElibro().getBaseUrl());
+        if (StringUtils.hasText(nextUrl)) {
+            builder.queryParam("next", nextUrl);
+        }
+        return builder.build(true).toUri();
+    }
+
     private String stringValue(Object value) {
         return value == null ? null : value.toString();
     }
@@ -725,6 +829,37 @@ public class ElibroConfigService {
             this.message = message;
             this.latencyMs = latencyMs;
             this.errorCode = errorCode;
+            this.requestId = requestId;
+            this.correlationId = correlationId;
+            this.checkedAt = checkedAt;
+            this.outcome = outcome;
+        }
+    }
+
+    private static final class ControlledProbeResult {
+        private final String message;
+        private final Long latencyMs;
+        private final String errorCode;
+        private final String redirectUrl;
+        private final String requestId;
+        private final String correlationId;
+        private final Instant checkedAt;
+        private final AuditOutcome outcome;
+
+        private ControlledProbeResult(
+                String message,
+                Long latencyMs,
+                String errorCode,
+                String redirectUrl,
+                String requestId,
+                String correlationId,
+                Instant checkedAt,
+                AuditOutcome outcome
+        ) {
+            this.message = message;
+            this.latencyMs = latencyMs;
+            this.errorCode = errorCode;
+            this.redirectUrl = redirectUrl;
             this.requestId = requestId;
             this.correlationId = correlationId;
             this.checkedAt = checkedAt;

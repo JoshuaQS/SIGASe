@@ -2,24 +2,33 @@ package mx.edu.utez.server.modules.reports.controller;
 
 import mx.edu.utez.server.modules.admins.entity.Admin;
 import mx.edu.utez.server.modules.admins.repository.AdminRepository;
+import mx.edu.utez.server.modules.auth.entity.AdminAuthEvent;
+import mx.edu.utez.server.modules.auth.repository.AdminAuthEventRepository;
 import mx.edu.utez.server.modules.auth.repository.AdminPasswordResetTokenRepository;
 import mx.edu.utez.server.modules.careers.entity.Career;
 import mx.edu.utez.server.modules.careers.repository.CareerRepository;
+import mx.edu.utez.server.modules.elibro.entity.ElibroAccessLog;
+import mx.edu.utez.server.modules.elibro.repository.ElibroAccessLogRepository;
 import mx.edu.utez.server.modules.elibro.repository.ElibroConfigRepository;
 import mx.edu.utez.server.modules.elibro.repository.ElibroValidationRunRepository;
-import mx.edu.utez.server.modules.logs.access.entity.AccessLog;
-import mx.edu.utez.server.modules.logs.access.repository.AccessLogRepository;
 import mx.edu.utez.server.modules.logs.audit.entity.AuditLog;
 import mx.edu.utez.server.modules.logs.audit.repository.AuditLogRepository;
 import mx.edu.utez.server.modules.students.entity.Student;
+import mx.edu.utez.server.modules.students.entity.StudentAuthEvent;
+import mx.edu.utez.server.modules.students.repository.StudentAuthEventRepository;
 import mx.edu.utez.server.modules.students.repository.StudentRepository;
 import mx.edu.utez.server.security.RoleConstants;
-import mx.edu.utez.server.shared.enums.AccessResult;
 import mx.edu.utez.server.shared.enums.AdminRole;
+import mx.edu.utez.server.shared.enums.AdminStatus;
+import mx.edu.utez.server.shared.enums.AdminAuthResult;
 import mx.edu.utez.server.shared.enums.AuditActorType;
 import mx.edu.utez.server.shared.enums.AuditOutcome;
 import mx.edu.utez.server.shared.enums.AuditSeverity;
+import mx.edu.utez.server.shared.enums.CareerStatus;
+import mx.edu.utez.server.shared.enums.ElibroAccessResult;
 import mx.edu.utez.server.shared.enums.Sex;
+import mx.edu.utez.server.shared.enums.StudentAuthMethod;
+import mx.edu.utez.server.shared.enums.StudentAuthResult;
 import mx.edu.utez.server.shared.enums.StudentStatus;
 import java.io.ByteArrayInputStream;
 import java.time.Instant;
@@ -30,7 +39,7 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -40,7 +49,6 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
-import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -51,14 +59,17 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @ActiveProfiles("test")
+@AutoConfigureMockMvc
 class ReportXlsxExportIntegrationTest {
 
     private static final String CT_XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
     @Autowired private MockMvc mockMvc;
-    @Autowired private AccessLogRepository accessLogRepository;
+    @Autowired private ElibroAccessLogRepository accessLogRepository;
     @Autowired private AuditLogRepository auditLogRepository;
     @Autowired private StudentRepository studentRepository;
+    @Autowired private StudentAuthEventRepository studentAuthEventRepository;
+    @Autowired private AdminAuthEventRepository adminAuthEventRepository;
     @Autowired private CareerRepository careerRepository;
     @Autowired private AdminRepository adminRepository;
     @Autowired private AdminPasswordResetTokenRepository passwordResetTokenRepository;
@@ -75,6 +86,8 @@ class ReportXlsxExportIntegrationTest {
         auditLogRepository.deleteAll();
         validationRunRepository.deleteAll();
         elibroConfigRepository.deleteAll();
+        adminAuthEventRepository.deleteAll();
+        studentAuthEventRepository.deleteAll();
         studentRepository.deleteAll();
         careerRepository.deleteAll();
         passwordResetTokenRepository.deleteAll();
@@ -86,15 +99,9 @@ class ReportXlsxExportIntegrationTest {
         saveCareer("RED", "Redes");
         student = saveStudent(adminTi, "2026A0001", "alice@utez.edu.mx", "Sistemas", StudentStatus.ACTIVE);
 
-        saveAccessLog(student, "alice@utez.edu.mx", "alice@utez.edu.mx",
-                AccessResult.SUCCESS, "10.10.10.10", "req-1", "corr-1",
-                "ELIBRO", Instant.parse("2026-03-20T10:00:00Z"));
-        saveAccessLog(null, "bob@utez.edu.mx", "bob@utez.edu.mx",
-                AccessResult.FAILED_STUDENT_NOT_FOUND, "11.11.11.11", "req-2", "corr-2",
-                null, Instant.parse("2026-03-21T10:00:00Z"));
-
         saveAuditLog(adminTi, "STUDENT_CREATE", "STUDENT", student.getId().toString(),
                 AuditOutcome.SUCCESS, Instant.parse("2026-03-20T09:00:00Z"));
+        seedAccessLogs();
     }
 
     // ── 1. Students XLSX Export ────────────────────────────────────────
@@ -195,17 +202,10 @@ class ReportXlsxExportIntegrationTest {
                 .andReturn();
 
         try (XSSFWorkbook wb = new XSSFWorkbook(new ByteArrayInputStream(result.getResponse().getContentAsByteArray()))) {
-            // Should have 3 sheets: Resumen, Datos de soporte, Detalle
-            assertTrue(wb.getNumberOfSheets() >= 3,
-                    "Access-logs XLSX should have at least 3 sheets, found: " + wb.getNumberOfSheets());
-
+            assertTrue(wb.getNumberOfSheets() >= 2,
+                    "Access-logs XLSX should have at least 2 sheets, found: " + wb.getNumberOfSheets());
             assertNotNull(wb.getSheet("Resumen"), "Should have 'Resumen' sheet");
-            assertNotNull(wb.getSheet("Datos de soporte"), "Should have 'Datos de soporte' sheet");
             assertNotNull(wb.getSheet("Detalle"), "Should have 'Detalle' sheet");
-
-            // Support sheet should be hidden
-            int supportIdx = wb.getSheetIndex("Datos de soporte");
-            assertTrue(wb.isSheetHidden(supportIdx), "Support sheet should be hidden");
         }
     }
 
@@ -259,17 +259,17 @@ class ReportXlsxExportIntegrationTest {
 
         String csv = result.getResponse().getContentAsString();
         String[] lines = csv.split("\r\n");
-        assertTrue(lines.length >= 3, "Header + 2 data rows");
+        assertTrue(lines.length >= 4, "Header + registros unificados");
     }
 
     // ── 10. XLSX without date range should fail ────────────────────────
 
     @Test
-    void shouldRejectXlsxExportWithoutDateRange() throws Exception {
+    void shouldAllowXlsxExportWithoutDateRange() throws Exception {
         mockMvc.perform(get("/api/v1/reports/access-logs/export")
                         .param("format", "xlsx")
                         .with(auth(adminTi, RoleConstants.ADMIN_TI)))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isOk());
     }
 
     // ── Helpers ────────────────────────────────────────────────────────
@@ -290,7 +290,7 @@ class ReportXlsxExportIntegrationTest {
         admin.setLastNameMaternal(null);
         admin.setPasswordHash("$2a$10$123456789012345678901u2sNfJ0wYl8Bv0p5Wn4eC6zYkM8d8vS.");
         admin.setRole(role);
-        admin.setActive(true);
+        admin.setStatus(AdminStatus.ACTIVE);
         return adminRepository.save(admin);
     }
 
@@ -315,7 +315,7 @@ class ReportXlsxExportIntegrationTest {
         Career career = new Career();
         career.setCode(code);
         career.setName(name);
-        career.setActive(true);
+        career.setStatus(CareerStatus.ACTIVE);
         return careerRepository.save(career);
     }
 
@@ -324,30 +324,84 @@ class ReportXlsxExportIntegrationTest {
                 .orElseGet(() -> saveCareer(name.substring(0, Math.min(3, name.length())).toUpperCase(), name));
     }
 
-    private AccessLog saveAccessLog(
-            Student targetStudent, String attemptedEmail, String normalizedEmail,
-            AccessResult result, String ipAddress, String requestId,
-            String correlationId, String providerName, Instant occurredAt
-    ) {
-        AccessLog log = new AccessLog();
-        log.setStudent(targetStudent);
-        log.setAttemptedEmail(attemptedEmail);
-        log.setNormalizedEmail(normalizedEmail);
-        log.setResult(result);
-        log.setErrorCode(result == AccessResult.SUCCESS ? null : "ERR");
-        log.setErrorDetail(result == AccessResult.SUCCESS ? null : "detail");
-        log.setLatencyMs(120L);
-        log.setRequestId(requestId);
-        log.setCorrelationId(correlationId);
-        log.setIpAddress(ipAddress);
-        log.setUserAgent("JUnit");
-        log.setProviderName(providerName);
-        log.setNextUrl("https://elibro.net/home");
-        log.setRedirectUrl(result == AccessResult.SUCCESS ? "https://elibro.net/ticket" : null);
-        log.setOccurredAt(occurredAt);
-        return accessLogRepository.save(log);
+    private void seedAccessLogs() {
+        saveStudentAuthEvent(student, StudentAuthMethod.LOCAL, StudentAuthResult.SUCCESS, "Inicio local correcto", "2026-03-19T09:00:00Z");
+        saveAccessLog(student, ElibroAccessResult.SUCCESS, null, null, 120L, "2026-03-20T10:00:00Z");
+        saveAccessLog(student, ElibroAccessResult.FAILED_ELIBRO_API, "ELIBRO_TIMEOUT", "Detalle largo", 480L, "2026-03-21T11:00:00Z");
+        saveAdminAuthEvent(adminTi, AdminAuthResult.SUCCESS, "Login admin correcto", "2026-03-22T12:00:00Z");
     }
 
+    private void saveStudentAuthEvent(
+            Student targetStudent,
+            StudentAuthMethod method,
+            StudentAuthResult result,
+            String reason,
+            String occurredAt
+    ) {
+        StudentAuthEvent event = new StudentAuthEvent();
+        event.setStudent(targetStudent);
+        event.setAttemptedEmail("sha256:student");
+        event.setNormalizedEmail("sha256:student");
+        event.setAuthMethod(method);
+        event.setResult(result);
+        event.setErrorDetail(reason);
+        event.setRequestId("req-student");
+        event.setCorrelationId("corr-student");
+        event.setSessionId("session-student");
+        event.setIpAddressMasked("10.20.30.0");
+        event.setUserAgentSanitized("JUnit Student");
+        event.setOccurredAt(Instant.parse(occurredAt));
+        studentAuthEventRepository.save(event);
+    }
+
+    private void saveAccessLog(
+            Student targetStudent,
+            ElibroAccessResult result,
+            String errorCode,
+            String errorDetail,
+            Long latencyMs,
+            String occurredAt
+    ) {
+        ElibroAccessLog log = new ElibroAccessLog();
+        log.setStudent(targetStudent);
+        log.setAttemptedEmail(targetStudent.getInstitutionalEmail());
+        log.setNormalizedEmail(targetStudent.getInstitutionalEmailNormalized());
+        log.setResult(result);
+        log.setErrorCode(errorCode);
+        log.setErrorDetail(errorDetail);
+        log.setLatencyMs(latencyMs);
+        log.setIpAddressMasked("10.20.30.0");
+        log.setIpAddressHash("ip-hash");
+        log.setUserAgentSanitized("JUnit");
+        log.setChannelNameSnapshot("utez");
+        log.setNextUrl("https://elibro.net/next?token=***REDACTED***");
+        log.setRedirectUrl("https://elibro.net/redirect");
+        log.setRequestId("req-" + result.name());
+        log.setCorrelationId("corr-" + result.name());
+        log.setOccurredAt(Instant.parse(occurredAt));
+        accessLogRepository.save(log);
+    }
+
+    private void saveAdminAuthEvent(
+            Admin targetAdmin,
+            AdminAuthResult result,
+            String reason,
+            String occurredAt
+    ) {
+        AdminAuthEvent event = new AdminAuthEvent();
+        event.setAdmin(targetAdmin);
+        event.setAttemptedEmail("sha256:admin");
+        event.setNormalizedEmail("sha256:admin");
+        event.setResult(result);
+        event.setErrorDetail(reason);
+        event.setRequestId("req-admin");
+        event.setCorrelationId("corr-admin");
+        event.setSessionId("session-admin");
+        event.setIpAddressMasked("10.20.30.0");
+        event.setUserAgentSanitized("JUnit Admin");
+        event.setOccurredAt(Instant.parse(occurredAt));
+        adminAuthEventRepository.save(event);
+    }
     private AuditLog saveAuditLog(
             Admin actorAdmin, String action, String entityType,
             String entityId, AuditOutcome outcome, Instant occurredAt
@@ -364,7 +418,6 @@ class ReportXlsxExportIntegrationTest {
         log.setMetadataJson("{}");
         log.setRequestId("test-req");
         log.setCorrelationId("test-corr");
-        log.setIpAddress("127.0.0.1");
         log.setOccurredAt(occurredAt);
         return auditLogRepository.save(log);
     }

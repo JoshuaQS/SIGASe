@@ -18,6 +18,7 @@ import mx.edu.utez.server.modules.students.repository.StudentAuthEventRepository
 import mx.edu.utez.server.modules.students.repository.StudentRepository;
 import mx.edu.utez.server.shared.api.PageResponse;
 import mx.edu.utez.server.shared.enums.AuditOutcome;
+import mx.edu.utez.server.shared.enums.Sex;
 import mx.edu.utez.server.shared.enums.StudentStatus;
 import mx.edu.utez.server.shared.exception.BusinessException;
 import mx.edu.utez.server.shared.exception.ErrorCode;
@@ -163,8 +164,13 @@ public class StudentService {
     @Transactional(readOnly = true)
     public PageResponse<StudentResponse> list(
             String query,
+            String enrollmentId,
+            String lastNamePaternal,
+            String lastNameMaternal,
             UUID careerId,
             String careerCode,
+            Sex sex,
+            Integer quarter,
             StudentStatus status,
             int page,
             int size,
@@ -176,8 +182,21 @@ public class StudentService {
         if (page < 0 || size <= 0 || size > 500) {
             throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Parámetros de paginación inválidos.");
         }
+        if (quarter != null && (quarter < 1 || quarter > 12)) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "quarter debe estar entre 1 y 12.");
+        }
         Pageable pageable = PageRequest.of(page, size, buildSort(sortBy, sortDir));
-        Specification<Student> spec = buildSpecification(query, careerId, careerCode, status);
+        Specification<Student> spec = buildSpecification(
+                query,
+                enrollmentId,
+                lastNamePaternal,
+                lastNameMaternal,
+                careerId,
+                careerCode,
+                sex,
+                quarter,
+                status
+        );
         Page<StudentResponse> result = studentRepository.findAll(spec, pageable).map(studentMapper::toResponse);
 
         return new PageResponse<>(
@@ -271,7 +290,17 @@ public class StudentService {
         );
     }
 
-    private Specification<Student> buildSpecification(String query, UUID careerId, String careerCode, StudentStatus status) {
+    private Specification<Student> buildSpecification(
+            String query,
+            String enrollmentId,
+            String lastNamePaternal,
+            String lastNameMaternal,
+            UUID careerId,
+            String careerCode,
+            Sex sex,
+            Integer quarter,
+            StudentStatus status
+    ) {
         return (root, q, cb) -> {
             var predicate = cb.conjunction();
 
@@ -286,6 +315,36 @@ public class StudentService {
                 ));
             }
 
+            if (StringUtils.hasText(enrollmentId)) {
+                predicate = cb.and(
+                        predicate,
+                        cb.like(
+                                cb.lower(root.get("enrollmentId")),
+                                "%" + enrollmentId.trim().toLowerCase(Locale.ROOT) + "%"
+                        )
+                );
+            }
+
+            if (StringUtils.hasText(lastNamePaternal)) {
+                predicate = cb.and(
+                        predicate,
+                        cb.like(
+                                cb.lower(root.get("lastNamePaternal")),
+                                "%" + lastNamePaternal.trim().toLowerCase(Locale.ROOT) + "%"
+                        )
+                );
+            }
+
+            if (StringUtils.hasText(lastNameMaternal)) {
+                predicate = cb.and(
+                        predicate,
+                        cb.like(
+                                cb.lower(root.get("lastNameMaternal")),
+                                "%" + lastNameMaternal.trim().toLowerCase(Locale.ROOT) + "%"
+                        )
+                );
+            }
+
             if (careerId != null) {
                 predicate = cb.and(predicate, cb.equal(root.get("career").get("id"), careerId));
             } else if (StringUtils.hasText(careerCode)) {
@@ -296,6 +355,14 @@ public class StudentService {
                                 careerCode.trim().toLowerCase(Locale.ROOT)
                         )
                 );
+            }
+
+            if (sex != null) {
+                predicate = cb.and(predicate, cb.equal(root.get("sex"), sex));
+            }
+
+            if (quarter != null) {
+                predicate = cb.and(predicate, cb.equal(root.get("quarter"), quarter));
             }
 
             if (status != null) {

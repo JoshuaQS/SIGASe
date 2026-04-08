@@ -15,6 +15,7 @@ import mx.edu.utez.server.shared.enums.ElibroAccessResult;
 import mx.edu.utez.server.shared.enums.AuditActorType;
 import mx.edu.utez.server.shared.enums.AuditOutcome;
 import mx.edu.utez.server.shared.enums.AuditSeverity;
+import mx.edu.utez.server.shared.enums.Sex;
 import mx.edu.utez.server.shared.enums.StudentStatus;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
@@ -45,17 +46,55 @@ public class ReportService {
     public void exportStudents(
             OutputStream out,
             String q,
+            String enrollmentId,
+            String lastNamePaternal,
+            String lastNameMaternal,
             UUID careerId,
             String careerCode,
+            Sex sex,
+            Integer quarter,
             StudentStatus status,
             Admin actor,
             HttpServletRequest request
     ) {
-        studentReportService.export(out, q, careerId, careerCode, status, actor, request);
+        studentReportService.export(
+                out,
+                q,
+                enrollmentId,
+                lastNamePaternal,
+                lastNameMaternal,
+                careerId,
+                careerCode,
+                sex,
+                quarter,
+                status,
+                actor,
+                request
+        );
     }
 
-    Specification<Student> buildStudentSpec(String query, UUID careerId, String careerCode, StudentStatus status) {
-        return studentReportService.buildSpec(query, careerId, careerCode, status);
+    Specification<Student> buildStudentSpec(
+            String query,
+            String enrollmentId,
+            String lastNamePaternal,
+            String lastNameMaternal,
+            UUID careerId,
+            String careerCode,
+            Sex sex,
+            Integer quarter,
+            StudentStatus status
+    ) {
+        return studentReportService.buildSpec(
+                query,
+                enrollmentId,
+                lastNamePaternal,
+                lastNameMaternal,
+                careerId,
+                careerCode,
+                sex,
+                quarter,
+                status
+        );
     }
 
     public void exportAccessLogs(
@@ -149,8 +188,28 @@ public class ReportService {
         return auditLogReportService.buildSpec(dateFrom, dateTo, actorType, actorEmail, action, entityType, outcome, severity);
     }
 
-    public void validateStudentExport(String q, UUID careerId, String careerCode, StudentStatus status) {
-        studentReportService.validateExport(q, careerId, careerCode, status);
+    public void validateStudentExport(
+            String q,
+            String enrollmentId,
+            String lastNamePaternal,
+            String lastNameMaternal,
+            UUID careerId,
+            String careerCode,
+            Sex sex,
+            Integer quarter,
+            StudentStatus status
+    ) {
+        studentReportService.validateExport(
+                q,
+                enrollmentId,
+                lastNamePaternal,
+                lastNameMaternal,
+                careerId,
+                careerCode,
+                sex,
+                quarter,
+                status
+        );
     }
 
     public void validateLogExport(Instant dateFrom, Instant dateTo) {

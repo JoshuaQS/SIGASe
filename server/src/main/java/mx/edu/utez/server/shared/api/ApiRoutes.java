@@ -28,6 +28,7 @@ public final class ApiRoutes {
     public static final String ELIBRO_CONFIG = V1 + "/elibro/config";
     public static final String ACCESS_LOGS = V1 + "/access-logs";
     public static final String AUDIT_LOGS = V1 + "/audit-logs";
+    public static final String NOTIFICATIONS = V1 + "/notifications";
     public static final String DASHBOARD = V1 + "/dashboard";
     public static final String REPORTS = V1 + "/reports";
     public static final String CAREERS = V1 + "/careers";

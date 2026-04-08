@@ -2,14 +2,18 @@ package mx.edu.utez.server.modules.auth.controller;
 
 import mx.edu.utez.server.modules.admins.entity.Admin;
 import mx.edu.utez.server.modules.admins.repository.AdminRepository;
+import mx.edu.utez.server.modules.auth.repository.AdminAuthEventRepository;
 import mx.edu.utez.server.modules.auth.entity.StudentPasswordResetToken;
 import mx.edu.utez.server.modules.auth.repository.StudentPasswordResetTokenRepository;
 import mx.edu.utez.server.modules.careers.entity.Career;
 import mx.edu.utez.server.modules.careers.repository.CareerRepository;
 import mx.edu.utez.server.modules.students.entity.Student;
+import mx.edu.utez.server.modules.students.repository.StudentAuthEventRepository;
 import mx.edu.utez.server.modules.students.repository.StudentRepository;
 import mx.edu.utez.server.shared.api.ApiRoutes;
 import mx.edu.utez.server.shared.enums.AdminRole;
+import mx.edu.utez.server.shared.enums.AdminStatus;
+import mx.edu.utez.server.shared.enums.CareerStatus;
 import mx.edu.utez.server.shared.enums.Sex;
 import mx.edu.utez.server.shared.enums.StudentStatus;
 import mx.edu.utez.server.shared.validation.PasswordPolicy;
@@ -22,7 +26,7 @@ import java.util.HexFormat;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -30,16 +34,17 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
-import org.springframework.transaction.annotation.Transactional;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 @SpringBootTest
 @ActiveProfiles("test")
-@Transactional
+@AutoConfigureMockMvc
 class StudentAuthControllerIntegrationTest {
 
     private static final String BASE = "/api/v1/auth/student";
@@ -54,7 +59,13 @@ class StudentAuthControllerIntegrationTest {
     private StudentRepository studentRepository;
 
     @Autowired
+    private StudentAuthEventRepository studentAuthEventRepository;
+
+    @Autowired
     private AdminRepository adminRepository;
+
+    @Autowired
+    private AdminAuthEventRepository adminAuthEventRepository;
 
     @Autowired
     private CareerRepository careerRepository;
@@ -74,6 +85,8 @@ class StudentAuthControllerIntegrationTest {
     @BeforeEach
     void setup() {
         resetTokenRepository.deleteAll();
+        adminAuthEventRepository.deleteAll();
+        studentAuthEventRepository.deleteAll();
         studentRepository.deleteAll();
         careerRepository.deleteAll();
         adminRepository.deleteAll();
@@ -101,6 +114,7 @@ class StudentAuthControllerIntegrationTest {
     @Test
     void loginLocal_validCredentials_returns200WithToken() throws Exception {
         mockMvc.perform(post(BASE + "/login")
+                        .header(HttpHeaders.USER_AGENT, "SIGASe-Test-Agent/1.0")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"email":"test@utez.edu.mx","password":"password123"}
@@ -108,6 +122,18 @@ class StudentAuthControllerIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.token").isNotEmpty())
                 .andExpect(jsonPath("$.data.mustChangePassword").value(false));
+
+        var events = studentAuthEventRepository.findAll();
+        assertEquals(1, events.size());
+        var event = events.get(0);
+        assertEquals(activeStudent.getId(), event.getStudent().getId());
+        assertEquals("SUCCESS", event.getResult().name());
+        assertEquals("LOCAL", event.getAuthMethod().name());
+        assertNotNull(event.getRequestId());
+        assertNotNull(event.getCorrelationId());
+        assertNotNull(event.getIpAddressMasked());
+        assertNotNull(event.getUserAgentSanitized());
+        assertNotNull(event.getRequestPath());
     }
 
     @Test
@@ -429,7 +455,7 @@ class StudentAuthControllerIntegrationTest {
         a.setLastNameMaternal(null);
         a.setPasswordHash("$2a$10$123456789012345678901u2sNfJ0wYl8Bv0p5Wn4eC6zYkM8d8vS.");
         a.setRole(role);
-        a.setActive(true);
+        a.setStatus(AdminStatus.ACTIVE);
         return adminRepository.save(a);
     }
 
@@ -437,7 +463,7 @@ class StudentAuthControllerIntegrationTest {
         Career career = new Career();
         career.setCode(code);
         career.setName(name);
-        career.setActive(true);
+        career.setStatus(CareerStatus.ACTIVE);
         return careerRepository.save(career);
     }
 }

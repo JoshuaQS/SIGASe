@@ -175,7 +175,6 @@ public class DashboardExportService {
             autosize(students, 8);
 
             wb.write(out);
-            wb.dispose();
         }
     }
 

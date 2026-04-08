@@ -1,11 +1,13 @@
 package mx.edu.utez.server.modules.elibro.controller;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
@@ -14,29 +16,37 @@ import mx.edu.utez.server.modules.admins.entity.Admin;
 import mx.edu.utez.server.modules.admins.repository.AdminRepository;
 import mx.edu.utez.server.modules.auth.repository.AdminPasswordResetTokenRepository;
 import mx.edu.utez.server.modules.careers.repository.CareerRepository;
+import mx.edu.utez.server.modules.elibro.entity.ElibroAccessLog;
 import mx.edu.utez.server.modules.elibro.entity.ElibroConfig;
 import mx.edu.utez.server.modules.elibro.entity.ElibroValidationRun;
+import mx.edu.utez.server.modules.elibro.repository.ElibroAccessLogRepository;
 import mx.edu.utez.server.modules.elibro.repository.ElibroConfigRepository;
 import mx.edu.utez.server.modules.elibro.repository.ElibroValidationRunRepository;
-import mx.edu.utez.server.modules.logs.access.entity.AccessLog;
-import mx.edu.utez.server.modules.logs.access.repository.AccessLogRepository;
 import mx.edu.utez.server.modules.logs.audit.entity.AuditLog;
 import mx.edu.utez.server.modules.logs.audit.repository.AuditLogRepository;
+import mx.edu.utez.server.modules.notifications.entity.Notification;
+import mx.edu.utez.server.modules.notifications.entity.NotificationReferenceType;
+import mx.edu.utez.server.modules.notifications.entity.NotificationType;
+import mx.edu.utez.server.modules.notifications.repository.NotificationPreferenceRepository;
+import mx.edu.utez.server.modules.notifications.repository.NotificationRepository;
+import mx.edu.utez.server.modules.students.repository.StudentAuthEventRepository;
 import mx.edu.utez.server.modules.students.repository.StudentRepository;
 import mx.edu.utez.server.security.RoleConstants;
 import mx.edu.utez.server.shared.crypto.Aes256CryptoService;
-import mx.edu.utez.server.shared.enums.AccessResult;
 import mx.edu.utez.server.shared.enums.AdminRole;
+import mx.edu.utez.server.shared.enums.AdminStatus;
 import mx.edu.utez.server.shared.enums.AuditActorType;
 import mx.edu.utez.server.shared.enums.AuditOutcome;
 import mx.edu.utez.server.shared.enums.AuditSeverity;
+import mx.edu.utez.server.shared.enums.ElibroAccessResult;
+import mx.edu.utez.server.shared.enums.ElibroConfigStatus;
 import mx.edu.utez.server.shared.enums.ElibroValidationRunStatus;
 import mx.edu.utez.server.shared.enums.ElibroValidationStatus;
 import mx.edu.utez.server.shared.enums.ElibroValidationType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -47,6 +57,7 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 @SpringBootTest
 @ActiveProfiles("test")
+@AutoConfigureMockMvc
 class ElibroConfigControllerIntegrationTest {
 
     @Autowired
@@ -65,13 +76,16 @@ class ElibroConfigControllerIntegrationTest {
     private StudentRepository studentRepository;
 
     @Autowired
+    private StudentAuthEventRepository studentAuthEventRepository;
+
+    @Autowired
     private ElibroConfigRepository elibroConfigRepository;
 
     @Autowired
     private ElibroValidationRunRepository validationRunRepository;
 
     @Autowired
-    private AccessLogRepository accessLogRepository;
+    private ElibroAccessLogRepository accessLogRepository;
 
     @Autowired
     private AuditLogRepository auditLogRepository;
@@ -79,15 +93,27 @@ class ElibroConfigControllerIntegrationTest {
     @Autowired
     private Aes256CryptoService aes256CryptoService;
 
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @Autowired
+    private NotificationRepository notificationRepository;
+
+    @Autowired
+    private NotificationPreferenceRepository notificationPreferenceRepository;
+
     private Admin adminTi;
     private ElibroConfig config;
 
     @BeforeEach
     void setUp() {
+        notificationRepository.deleteAll();
+        notificationPreferenceRepository.deleteAll();
         accessLogRepository.deleteAll();
         auditLogRepository.deleteAll();
         validationRunRepository.deleteAll();
         elibroConfigRepository.deleteAll();
+        studentAuthEventRepository.deleteAll();
         studentRepository.deleteAll();
         careerRepository.deleteAll();
         passwordResetTokenRepository.deleteAll();
@@ -133,7 +159,7 @@ class ElibroConfigControllerIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.id").value(config.getId().toString()))
-                .andExpect(jsonPath("$.data.validationStatus").value("NOT_VALIDATED"))
+                .andExpect(jsonPath("$.data.validationStatus").value("INVALID"))
                 .andExpect(jsonPath("$.data.validationMessage").isNotEmpty());
 
         long after = validationRunRepository.count();
@@ -144,8 +170,31 @@ class ElibroConfigControllerIntegrationTest {
                 .orElseThrow();
 
         org.junit.jupiter.api.Assertions.assertEquals(ElibroValidationType.MANUAL, latestRun.getValidationType());
-        org.junit.jupiter.api.Assertions.assertEquals(ElibroValidationRunStatus.SUCCESS, latestRun.getStatus());
+        org.junit.jupiter.api.Assertions.assertEquals(ElibroValidationRunStatus.FAILURE, latestRun.getStatus());
         org.junit.jupiter.api.Assertions.assertEquals(config.getId(), latestRun.getConfig().getId());
+    }
+
+    @Test
+    void shouldExecuteControlledValidationUsingProvidedUserAndNextUrl() throws Exception {
+        long before = validationRunRepository.count();
+
+        mockMvc.perform(post("/api/v1/elibro/config/{configId}/validate-controlled", config.getId())
+                        .with(auth(adminTi.getId().toString(), RoleConstants.ADMIN_TI))
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(java.util.Map.of(
+                                "testUser", "probe.student@utez.edu.mx",
+                                "nextUrl", "https://elibro.net/es/lc/utez/inicio"
+                        ))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.id").value(config.getId().toString()))
+                .andExpect(jsonPath("$.data.testUser").value("probe.student@utez.edu.mx"))
+                .andExpect(jsonPath("$.data.nextUrl").value("https://elibro.net/es/lc/utez/inicio"))
+                .andExpect(jsonPath("$.data.validationStatus").isNotEmpty())
+                .andExpect(jsonPath("$.data.validationMessage").isNotEmpty());
+
+        long after = validationRunRepository.count();
+        org.junit.jupiter.api.Assertions.assertEquals(before + 1, after);
     }
 
     @Test
@@ -168,6 +217,23 @@ class ElibroConfigControllerIntegrationTest {
         org.junit.jupiter.api.Assertions.assertEquals(0, elibroConfigRepository.count());
     }
 
+    @Test
+    void shouldCreateNotificationWhenElibroConfigIsDeactivated() throws Exception {
+        mockMvc.perform(patch("/api/v1/elibro/config/{configId}/deactivate", config.getId())
+                        .with(auth(adminTi.getId().toString(), RoleConstants.ADMIN_TI))
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(java.util.Map.of("reason", "Cambio operativo"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.status").value("INACTIVE"));
+
+        org.junit.jupiter.api.Assertions.assertEquals(1, notificationRepository.count());
+        Notification notification = notificationRepository.findAll().get(0);
+        org.junit.jupiter.api.Assertions.assertEquals(NotificationType.AUDIT, notification.getType());
+        org.junit.jupiter.api.Assertions.assertEquals(NotificationReferenceType.AUDIT_LOG, notification.getReferenceType());
+        org.junit.jupiter.api.Assertions.assertEquals(adminTi.getId(), notification.getAdmin().getId());
+    }
+
     private Admin saveAdmin(String email, AdminRole role) {
         Admin admin = new Admin();
         admin.setEmail(email);
@@ -176,7 +242,7 @@ class ElibroConfigControllerIntegrationTest {
         admin.setLastNameMaternal("Config");
         admin.setPasswordHash("$2a$10$123456789012345678901u2sNfJ0wYl8Bv0p5Wn4eC6zYkM8d8vS.");
         admin.setRole(role);
-        admin.setActive(true);
+        admin.setStatus(AdminStatus.ACTIVE);
         return adminRepository.save(admin);
     }
 
@@ -187,8 +253,8 @@ class ElibroConfigControllerIntegrationTest {
         cfg.setChannelIdEncrypted(aes256CryptoService.encrypt("CH-UTEZ-001"));
         cfg.setChannelSecretEncrypted(aes256CryptoService.encrypt("channel-secret-001"));
         cfg.setChannelName("utez");
-        cfg.setAuthEndpoint("https://auth.elibro.net/auth/sso/");
-        cfg.setActive(true);
+        cfg.setNextUrl("https://elibro.net/es/lc/utez/inicio");
+        cfg.setStatus(ElibroConfigStatus.ACTIVE);
         cfg.setValidationStatus(ElibroValidationStatus.VALID);
         cfg.setValidationMessage("Configuración operativa válida.");
         cfg.setLastValidatedAt(Instant.now().minus(2, ChronoUnit.HOURS));
@@ -203,16 +269,17 @@ class ElibroConfigControllerIntegrationTest {
     }
 
     private void saveAccessLog(long latencyMs, Instant occurredAt) {
-        AccessLog log = new AccessLog();
+        ElibroAccessLog log = new ElibroAccessLog();
         log.setAttemptedEmail("student@utez.edu.mx");
         log.setNormalizedEmail("student@utez.edu.mx");
-        log.setResult(AccessResult.SUCCESS);
+        log.setResult(ElibroAccessResult.SUCCESS);
         log.setLatencyMs(latencyMs);
         log.setRequestId("req-" + occurredAt.toEpochMilli());
         log.setCorrelationId("corr-" + occurredAt.toEpochMilli());
-        log.setIpAddress("127.0.0.1");
-        log.setUserAgent("JUnit");
-        log.setProviderName("ELIBRO");
+        log.setIpAddressMasked("127.0.0.0");
+        log.setIpAddressHash("hash-127.0.0.1");
+        log.setUserAgentSanitized("JUnit");
+        log.setChannelNameSnapshot("ELIBRO");
         log.setOccurredAt(occurredAt);
         accessLogRepository.save(log);
     }
@@ -232,7 +299,7 @@ class ElibroConfigControllerIntegrationTest {
         ElibroValidationRun scheduledError = new ElibroValidationRun();
         scheduledError.setConfig(config);
         scheduledError.setExecutedByAdmin(adminTi);
-        scheduledError.setStatus(ElibroValidationRunStatus.ERROR);
+        scheduledError.setStatus(ElibroValidationRunStatus.FAILURE);
         scheduledError.setValidationType(ElibroValidationType.SCHEDULED);
         scheduledError.setMessage("Sonda con timeout");
         scheduledError.setLatencyMs(800L);
@@ -265,7 +332,9 @@ class ElibroConfigControllerIntegrationTest {
         audit.setMetadataJson("{}");
         audit.setRequestId("req-audit-" + occurredAt.toEpochMilli());
         audit.setCorrelationId("corr-audit-" + occurredAt.toEpochMilli());
-        audit.setIpAddress("127.0.0.1");
+        audit.setIpAddressMasked("127.0.0.0");
+        audit.setIpAddressHash("hash-127.0.0.1");
+        audit.setUserAgentSanitized("JUnit");
         audit.setOccurredAt(occurredAt);
         auditLogRepository.save(audit);
     }

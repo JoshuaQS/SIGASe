@@ -2,31 +2,40 @@ package mx.edu.utez.server.modules.reports.controller;
 
 import mx.edu.utez.server.modules.admins.entity.Admin;
 import mx.edu.utez.server.modules.admins.repository.AdminRepository;
+import mx.edu.utez.server.modules.auth.entity.AdminAuthEvent;
+import mx.edu.utez.server.modules.auth.repository.AdminAuthEventRepository;
 import mx.edu.utez.server.modules.auth.repository.AdminPasswordResetTokenRepository;
 import mx.edu.utez.server.modules.careers.entity.Career;
 import mx.edu.utez.server.modules.careers.repository.CareerRepository;
-import mx.edu.utez.server.modules.logs.access.entity.AccessLog;
-import mx.edu.utez.server.modules.logs.access.repository.AccessLogRepository;
+import mx.edu.utez.server.modules.elibro.entity.ElibroAccessLog;
+import mx.edu.utez.server.modules.elibro.repository.ElibroAccessLogRepository;
 import mx.edu.utez.server.modules.logs.audit.entity.AuditLog;
 import mx.edu.utez.server.modules.logs.audit.repository.AuditLogRepository;
 import mx.edu.utez.server.modules.elibro.repository.ElibroConfigRepository;
 import mx.edu.utez.server.modules.elibro.repository.ElibroValidationRunRepository;
 import mx.edu.utez.server.modules.students.entity.Student;
+import mx.edu.utez.server.modules.students.entity.StudentAuthEvent;
+import mx.edu.utez.server.modules.students.repository.StudentAuthEventRepository;
 import mx.edu.utez.server.modules.students.repository.StudentRepository;
 import mx.edu.utez.server.security.RoleConstants;
-import mx.edu.utez.server.shared.enums.AccessResult;
 import mx.edu.utez.server.shared.enums.AdminRole;
+import mx.edu.utez.server.shared.enums.AdminStatus;
+import mx.edu.utez.server.shared.enums.AdminAuthResult;
 import mx.edu.utez.server.shared.enums.AuditActorType;
 import mx.edu.utez.server.shared.enums.AuditOutcome;
 import mx.edu.utez.server.shared.enums.AuditSeverity;
+import mx.edu.utez.server.shared.enums.CareerStatus;
+import mx.edu.utez.server.shared.enums.ElibroAccessResult;
 import mx.edu.utez.server.shared.enums.Sex;
+import mx.edu.utez.server.shared.enums.StudentAuthMethod;
+import mx.edu.utez.server.shared.enums.StudentAuthResult;
 import mx.edu.utez.server.shared.enums.StudentStatus;
 import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -47,12 +56,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @ActiveProfiles("test")
+@AutoConfigureMockMvc
 class ReportExportIntegrationTest {
 
     @Autowired private MockMvc mockMvc;
-    @Autowired private AccessLogRepository accessLogRepository;
+    @Autowired private ElibroAccessLogRepository accessLogRepository;
     @Autowired private AuditLogRepository auditLogRepository;
     @Autowired private StudentRepository studentRepository;
+    @Autowired private StudentAuthEventRepository studentAuthEventRepository;
+    @Autowired private AdminAuthEventRepository adminAuthEventRepository;
     @Autowired private CareerRepository careerRepository;
     @Autowired private AdminRepository adminRepository;
     @Autowired private AdminPasswordResetTokenRepository passwordResetTokenRepository;
@@ -69,6 +81,8 @@ class ReportExportIntegrationTest {
         auditLogRepository.deleteAll();
         validationRunRepository.deleteAll();
         elibroConfigRepository.deleteAll();
+        adminAuthEventRepository.deleteAll();
+        studentAuthEventRepository.deleteAll();
         studentRepository.deleteAll();
         careerRepository.deleteAll();
         passwordResetTokenRepository.deleteAll();
@@ -80,15 +94,9 @@ class ReportExportIntegrationTest {
         saveCareer("RED", "Redes");
         student = saveStudent(adminTi, "2026A0001", "alice@utez.edu.mx", "Sistemas", StudentStatus.ACTIVE);
 
-        saveAccessLog(student, "alice@utez.edu.mx", "alice@utez.edu.mx",
-                AccessResult.SUCCESS, "10.10.10.10", "req-1", "corr-1",
-                "ELIBRO", Instant.parse("2026-03-20T10:00:00Z"));
-        saveAccessLog(null, "bob@utez.edu.mx", "bob@utez.edu.mx",
-                AccessResult.FAILED_STUDENT_NOT_FOUND, "11.11.11.11", "req-2", "corr-2",
-                null, Instant.parse("2026-03-21T10:00:00Z"));
-
         saveAuditLog(adminTi, "STUDENT_CREATE", "STUDENT", student.getId().toString(),
                 AuditOutcome.SUCCESS, Instant.parse("2026-03-20T09:00:00Z"));
+        seedAccessLogs();
     }
 
     // ── Students Export ────────────────────────────────────────────────
@@ -163,12 +171,12 @@ class ReportExportIntegrationTest {
 
         String csv = result.getResponse().getContentAsString();
         String[] lines = csv.split("\r\n");
-        assertTrue(lines.length >= 3, "Header + 2 data rows");
+        assertTrue(lines.length >= 4, "Header + registros de student auth, eLibro y admin auth");
 
         String headerLine = lines[0].replace("\uFEFF", "");
-        assertEquals("occurredAt,attemptedEmail,normalizedEmail,result,"
-                + "errorCode,errorDetail,latencyMs,ipAddress,userAgent,"
-                + "providerName,nextUrl,redirectUrl,requestId", headerLine);
+        assertEquals("occurredAt,actorType,scope,actorId,actorName,actorEmail,result,"
+                + "reason,requestId,correlationId,sessionId,ipAddressMasked,userAgentSanitized,"
+                + "latencyMs,nextUrl,redirectUrl,providerStatusCode,providerErrorCode,providerErrorMessage,channelName,metadata", headerLine);
     }
 
     @Test
@@ -193,33 +201,17 @@ class ReportExportIntegrationTest {
 
         String csv = result.getResponse().getContentAsString();
         String[] lines = csv.split("\r\n");
-        assertEquals(2, lines.length, "Header + 1 SUCCESS row");
-        assertThat(lines[1], containsString("SUCCESS"));
+        assertTrue(lines.length >= 2, "Header + filas SUCCESS");
+        for (int i = 1; i < lines.length; i++) {
+            assertThat(lines[i], containsString("SUCCESS"));
+        }
     }
 
     @Test
-    void shouldRejectAccessLogsExportWithoutDateRange() throws Exception {
+    void shouldExportAccessLogsWithoutDateRange() throws Exception {
         mockMvc.perform(get("/api/v1/reports/access-logs/export")
                         .with(auth(adminTi, RoleConstants.ADMIN_TI)))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    void shouldRejectAccessLogsExportWithInvertedDateRange() throws Exception {
-        mockMvc.perform(get("/api/v1/reports/access-logs/export")
-                        .param("dateFrom", "2026-03-22T00:00:00Z")
-                        .param("dateTo", "2026-03-20T00:00:00Z")
-                        .with(auth(adminTi, RoleConstants.ADMIN_TI)))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    void shouldRejectAccessLogsExportExceedingMaxRange() throws Exception {
-        mockMvc.perform(get("/api/v1/reports/access-logs/export")
-                        .param("dateFrom", "2024-01-01T00:00:00Z")
-                        .param("dateTo", "2026-03-22T00:00:00Z")
-                        .with(auth(adminTi, RoleConstants.ADMIN_TI)))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isOk());
     }
 
     @Test
@@ -251,7 +243,7 @@ class ReportExportIntegrationTest {
 
         String headerLine = lines[0].replace("\uFEFF", "");
         assertEquals("occurredAt,actorType,actorEmail,action,entityType,"
-                + "entityId,outcome,severity,ipAddress,requestId", headerLine);
+                + "entityId,outcome,severity,ipAddressMasked,ipAddressHash,userAgentSanitized,requestId", headerLine);
     }
 
     @Test
@@ -308,19 +300,6 @@ class ReportExportIntegrationTest {
 
     @Test
     void shouldTruncateErrorDetailInAccessLogExport() throws Exception {
-        String longDetail = "A".repeat(200);
-        AccessLog log = new AccessLog();
-        log.setAttemptedEmail("long@utez.edu.mx");
-        log.setNormalizedEmail("long@utez.edu.mx");
-        log.setResult(AccessResult.FAILED_INTERNAL_ERROR);
-        log.setErrorCode("INTERNAL");
-        log.setErrorDetail(longDetail);
-        log.setLatencyMs(50L);
-        log.setRequestId("req-long");
-        log.setCorrelationId("corr-long");
-        log.setIpAddress("1.2.3.4");
-        log.setOccurredAt(Instant.parse("2026-03-20T12:00:00Z"));
-        accessLogRepository.save(log);
 
         MvcResult result = mockMvc.perform(get("/api/v1/reports/access-logs/export")
                         .param("dateFrom", "2026-03-19T00:00:00Z")
@@ -355,7 +334,7 @@ class ReportExportIntegrationTest {
         admin.setLastNameMaternal(null);
         admin.setPasswordHash("$2a$10$123456789012345678901u2sNfJ0wYl8Bv0p5Wn4eC6zYkM8d8vS.");
         admin.setRole(role);
-        admin.setActive(true);
+        admin.setStatus(AdminStatus.ACTIVE);
         return adminRepository.save(admin);
     }
 
@@ -380,7 +359,7 @@ class ReportExportIntegrationTest {
         Career career = new Career();
         career.setCode(code);
         career.setName(name);
-        career.setActive(true);
+        career.setStatus(CareerStatus.ACTIVE);
         return careerRepository.save(career);
     }
 
@@ -389,30 +368,104 @@ class ReportExportIntegrationTest {
                 .orElseGet(() -> saveCareer(name.substring(0, Math.min(3, name.length())).toUpperCase(), name));
     }
 
-    private AccessLog saveAccessLog(
-            Student targetStudent, String attemptedEmail, String normalizedEmail,
-            AccessResult result, String ipAddress, String requestId,
-            String correlationId, String providerName, Instant occurredAt
+    private void seedAccessLogs() {
+        saveStudentAuthEvent(student, StudentAuthMethod.LOCAL, StudentAuthResult.SUCCESS, "Inicio local correcto", "2026-03-19T08:00:00Z");
+        saveAccessLog(
+                student,
+                "alice@utez.edu.mx",
+                "alice@utez.edu.mx",
+                ElibroAccessResult.SUCCESS,
+                null,
+                null,
+                120L,
+                "2026-03-20T10:00:00Z"
+        );
+        saveAccessLog(
+                student,
+                "long@utez.edu.mx",
+                "long@utez.edu.mx",
+                ElibroAccessResult.FAILED_ELIBRO_API,
+                "ELIBRO_TIMEOUT",
+                "A".repeat(200),
+                480L,
+                "2026-03-21T11:00:00Z"
+        );
+        saveAdminAuthEvent(adminTi, AdminAuthResult.SUCCESS, "Login admin correcto", "2026-03-22T12:00:00Z");
+    }
+
+    private void saveStudentAuthEvent(
+            Student targetStudent,
+            StudentAuthMethod method,
+            StudentAuthResult result,
+            String reason,
+            String occurredAt
     ) {
-        AccessLog log = new AccessLog();
+        StudentAuthEvent event = new StudentAuthEvent();
+        event.setStudent(targetStudent);
+        event.setAttemptedEmail("sha256:student");
+        event.setNormalizedEmail("sha256:student");
+        event.setAuthMethod(method);
+        event.setResult(result);
+        event.setErrorDetail(reason);
+        event.setRequestId("req-student-" + method.name());
+        event.setCorrelationId("corr-student-" + method.name());
+        event.setSessionId("session-student");
+        event.setIpAddressMasked("10.20.30.0");
+        event.setUserAgentSanitized("JUnit Student");
+        event.setOccurredAt(Instant.parse(occurredAt));
+        studentAuthEventRepository.save(event);
+    }
+
+    private void saveAccessLog(
+            Student targetStudent,
+            String attemptedEmail,
+            String normalizedEmail,
+            ElibroAccessResult result,
+            String errorCode,
+            String errorDetail,
+            Long latencyMs,
+            String occurredAt
+    ) {
+        ElibroAccessLog log = new ElibroAccessLog();
         log.setStudent(targetStudent);
         log.setAttemptedEmail(attemptedEmail);
         log.setNormalizedEmail(normalizedEmail);
         log.setResult(result);
-        log.setErrorCode(result == AccessResult.SUCCESS ? null : "ERR");
-        log.setErrorDetail(result == AccessResult.SUCCESS ? null : "detail");
-        log.setLatencyMs(120L);
-        log.setRequestId(requestId);
-        log.setCorrelationId(correlationId);
-        log.setIpAddress(ipAddress);
-        log.setUserAgent("JUnit");
-        log.setProviderName(providerName);
-        log.setNextUrl("https://elibro.net/home");
-        log.setRedirectUrl(result == AccessResult.SUCCESS ? "https://elibro.net/ticket" : null);
-        log.setOccurredAt(occurredAt);
-        return accessLogRepository.save(log);
+        log.setErrorCode(errorCode);
+        log.setErrorDetail(errorDetail);
+        log.setLatencyMs(latencyMs);
+        log.setIpAddressMasked("10.20.30.0");
+        log.setIpAddressHash("ip-hash");
+        log.setUserAgentSanitized("JUnit");
+        log.setChannelNameSnapshot("utez");
+        log.setNextUrl("https://elibro.net/next?token=***REDACTED***");
+        log.setRedirectUrl("https://elibro.net/redirect");
+        log.setRequestId("req-" + result.name());
+        log.setCorrelationId("corr-" + result.name());
+        log.setOccurredAt(Instant.parse(occurredAt));
+        accessLogRepository.save(log);
     }
 
+    private void saveAdminAuthEvent(
+            Admin targetAdmin,
+            AdminAuthResult result,
+            String reason,
+            String occurredAt
+    ) {
+        AdminAuthEvent event = new AdminAuthEvent();
+        event.setAdmin(targetAdmin);
+        event.setAttemptedEmail("sha256:admin");
+        event.setNormalizedEmail("sha256:admin");
+        event.setResult(result);
+        event.setErrorDetail(reason);
+        event.setRequestId("req-admin-login");
+        event.setCorrelationId("corr-admin-login");
+        event.setSessionId("session-admin");
+        event.setIpAddressMasked("10.20.30.0");
+        event.setUserAgentSanitized("JUnit Admin");
+        event.setOccurredAt(Instant.parse(occurredAt));
+        adminAuthEventRepository.save(event);
+    }
     private AuditLog saveAuditLog(
             Admin actorAdmin, String action, String entityType,
             String entityId, AuditOutcome outcome, Instant occurredAt
@@ -429,7 +482,6 @@ class ReportExportIntegrationTest {
         log.setMetadataJson("{}");
         log.setRequestId("test-req");
         log.setCorrelationId("test-corr");
-        log.setIpAddress("127.0.0.1");
         log.setOccurredAt(occurredAt);
         return auditLogRepository.save(log);
     }

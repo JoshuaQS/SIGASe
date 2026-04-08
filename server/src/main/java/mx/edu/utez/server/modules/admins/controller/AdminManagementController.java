@@ -1,5 +1,6 @@
 package mx.edu.utez.server.modules.admins.controller;
 
+import mx.edu.utez.server.modules.admins.dto.AdminDashboardMetricsResponse;
 import mx.edu.utez.server.modules.admins.dto.AdminResetPasswordRequest;
 import mx.edu.utez.server.modules.admins.dto.AdminResponse;
 import mx.edu.utez.server.modules.admins.dto.AdminStatusChangeRequest;
@@ -7,16 +8,19 @@ import mx.edu.utez.server.modules.admins.dto.CreateAdminRequest;
 import mx.edu.utez.server.modules.admins.dto.UpdateAdminRequest;
 import mx.edu.utez.server.modules.admins.entity.Admin;
 import mx.edu.utez.server.modules.admins.service.AdminContextService;
+import mx.edu.utez.server.modules.admins.service.AdminDashboardService;
 import mx.edu.utez.server.modules.admins.service.AdminManagementService;
 import mx.edu.utez.server.shared.api.ApiRoutes;
 import mx.edu.utez.server.shared.api.ApiResponse;
 import mx.edu.utez.server.shared.api.PageResponse;
 import mx.edu.utez.server.shared.enums.AdminRole;
+import mx.edu.utez.server.shared.enums.AdminStatus;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -36,25 +40,39 @@ public class AdminManagementController {
 
     private final AdminManagementService adminManagementService;
     private final AdminContextService adminContextService;
+    private final AdminDashboardService adminDashboardService;
 
     public AdminManagementController(
             AdminManagementService adminManagementService,
-            AdminContextService adminContextService
+            AdminContextService adminContextService,
+            AdminDashboardService adminDashboardService
     ) {
         this.adminManagementService = adminManagementService;
         this.adminContextService = adminContextService;
+        this.adminDashboardService = adminDashboardService;
+    }
+
+    @GetMapping("/dashboard-metrics")
+    @Operation(summary = "Métricas agregadas para el dashboard de administradores")
+    public ApiResponse<AdminDashboardMetricsResponse> dashboardMetrics(
+            Authentication authentication
+    ) {
+        adminContextService.requireCurrentAdmin(authentication);
+        AdminDashboardMetricsResponse response = adminDashboardService.getDashboardMetrics();
+        return new ApiResponse<>(true, "Métricas de dashboard obtenidas.", response, HttpStatus.OK.value());
     }
 
     @PostMapping
     @Operation(summary = "Crear administrador")
-    public ApiResponse<AdminResponse> create(
+    public ResponseEntity<ApiResponse<AdminResponse>> create(
             @Valid @RequestBody CreateAdminRequest request,
             Authentication authentication,
             HttpServletRequest httpRequest
     ) {
         Admin actor = adminContextService.requireCurrentAdmin(authentication);
         AdminResponse response = adminManagementService.create(request, actor, httpRequest);
-        return new ApiResponse<>(true, "Administrador creado.", response, HttpStatus.CREATED.value());
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(new ApiResponse<>(true, "Administrador creado.", response, HttpStatus.CREATED.value()));
     }
 
     @PutMapping("/{adminId}")
@@ -86,7 +104,7 @@ public class AdminManagementController {
     @Operation(summary = "Listar administradores")
     public ApiResponse<PageResponse<AdminResponse>> list(
             @RequestParam(required = false) String q,
-            @RequestParam(required = false) Boolean active,
+            @RequestParam(required = false) AdminStatus status,
             @RequestParam(required = false) AdminRole role,
             @RequestParam(defaultValue = "createdAt") String sortBy,
             @RequestParam(defaultValue = "desc") String sortDir,
@@ -97,7 +115,7 @@ public class AdminManagementController {
     ) {
         Admin actor = adminContextService.requireCurrentAdmin(authentication);
         PageResponse<AdminResponse> response = adminManagementService.list(
-                q, active, role, sortBy, sortDir, page, size, actor, httpRequest
+                q, status, role, sortBy, sortDir, page, size, actor, httpRequest
         );
         return new ApiResponse<>(true, "Listado de administradores.", response, HttpStatus.OK.value());
     }

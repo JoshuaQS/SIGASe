@@ -3,11 +3,15 @@ package mx.edu.utez.server.modules.auth.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import mx.edu.utez.server.modules.admins.entity.Admin;
 import mx.edu.utez.server.modules.admins.repository.AdminRepository;
+import mx.edu.utez.server.modules.auth.repository.AdminAuthEventRepository;
 import mx.edu.utez.server.modules.auth.entity.AdminPasswordResetToken;
 import mx.edu.utez.server.modules.auth.repository.AdminPasswordResetTokenRepository;
-import mx.edu.utez.server.modules.auth.service.PasswordResetService;
 import mx.edu.utez.server.modules.logs.audit.repository.AuditLogRepository;
+import mx.edu.utez.server.modules.auth.repository.StudentPasswordResetTokenRepository;
+import mx.edu.utez.server.modules.students.repository.StudentAuthEventRepository;
+import mx.edu.utez.server.modules.students.repository.StudentRepository;
 import mx.edu.utez.server.shared.enums.AdminRole;
+import mx.edu.utez.server.shared.enums.AdminStatus;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.Instant;
@@ -17,7 +21,7 @@ import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -29,27 +33,29 @@ import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
 @ActiveProfiles("test")
+@AutoConfigureMockMvc
 class PasswordResetIntegrationTest {
 
     private static final String REQUEST_URL = "/api/v1/auth/admin/reset-password/request";
     private static final String CONFIRM_URL = "/api/v1/auth/admin/reset-password/confirm";
     private static final String LOGIN_URL = "/api/v1/auth/admin/login";
-    private static final String ME_URL = "/api/v1/auth/admin/me";
     private static final String INITIAL_PASSWORD = "AdminPass.123";
     private static final String VALID_PASSWORD = "NuevaContraseña123!";
 
     @Autowired private MockMvc mockMvc;
     @Autowired private AdminRepository adminRepository;
     @Autowired private AdminPasswordResetTokenRepository tokenRepository;
+    @Autowired private AdminAuthEventRepository adminAuthEventRepository;
     @Autowired private AuditLogRepository auditLogRepository;
-    @Autowired private PasswordResetService passwordResetService;
+    @Autowired private StudentRepository studentRepository;
+    @Autowired private StudentAuthEventRepository studentAuthEventRepository;
+    @Autowired private StudentPasswordResetTokenRepository studentPasswordResetTokenRepository;
     @Autowired private PasswordEncoder passwordEncoder;
     @Autowired private ObjectMapper objectMapper;
 
@@ -58,7 +64,11 @@ class PasswordResetIntegrationTest {
     @BeforeEach
     void setUp() {
         tokenRepository.deleteAll();
+        adminAuthEventRepository.deleteAll();
         auditLogRepository.deleteAll();
+        studentPasswordResetTokenRepository.deleteAll();
+        studentAuthEventRepository.deleteAll();
+        studentRepository.deleteAll();
         adminRepository.deleteAll();
 
         activeAdmin = saveAdmin("admin.ti@utez.edu.mx", AdminRole.ADMIN_TI, true);
@@ -261,7 +271,7 @@ class PasswordResetIntegrationTest {
         admin.setLastNameMaternal(null);
         admin.setPasswordHash(passwordEncoder.encode(INITIAL_PASSWORD));
         admin.setRole(role);
-        admin.setActive(active);
+        admin.setStatus(active ? AdminStatus.ACTIVE : AdminStatus.INACTIVE);
         return adminRepository.save(admin);
     }
 

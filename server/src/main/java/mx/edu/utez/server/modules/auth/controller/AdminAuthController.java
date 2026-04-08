@@ -37,8 +37,11 @@ public class AdminAuthController {
 
     @PostMapping("/login")
     @Operation(summary = "Login administrador", description = "Autentica administrador y entrega JWT de corta duración.")
-    public ApiResponse<AuthTokenResponse> login(@Valid @RequestBody AdminLoginRequest request) {
-        AuthTokenResponse token = adminAuthService.login(request.email(), request.password());
+    public ApiResponse<AuthTokenResponse> login(
+            @Valid @RequestBody AdminLoginRequest request,
+            HttpServletRequest httpServletRequest
+    ) {
+        AuthTokenResponse token = adminAuthService.login(request.email(), request.password(), httpServletRequest);
         return new ApiResponse<>(true, "Login exitoso.", token, HttpStatus.OK.value());
     }
 

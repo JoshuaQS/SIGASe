@@ -4,6 +4,7 @@ import mx.edu.utez.server.modules.logs.audit.repository.AuditLogRepository;
 import mx.edu.utez.server.shared.enums.AuditActorType;
 import mx.edu.utez.server.shared.enums.AuditOutcome;
 import mx.edu.utez.server.shared.enums.AuditSeverity;
+import mx.edu.utez.server.shared.enums.AuditSourceModule;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -46,10 +47,16 @@ class AuditLogServiceTransactionIntegrationTest {
                             "entity-1",
                             AuditOutcome.SUCCESS,
                             AuditSeverity.INFO,
+                            AuditSourceModule.AUTH,
                             "{\"token\":\"raw-secret\"}",
                             "req-1",
                             "corr-1",
-                            "127.0.0.1"
+                            "127.0.0.1",
+                            "JUnit",
+                            "session-1",
+                            "https://admin.utez.edu.mx",
+                            "POST",
+                            "/api/v1/test"
                     ));
                     throw new RuntimeException("force rollback");
                 })

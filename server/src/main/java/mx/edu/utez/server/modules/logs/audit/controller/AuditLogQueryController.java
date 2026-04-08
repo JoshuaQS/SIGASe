@@ -24,7 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping(ApiRoutes.AUDIT_LOGS)
-@PreAuthorize("hasAnyAuthority('ROLE_ADMIN_TI','ROLE_ADMIN_BIBLIOTECA')")
+@PreAuthorize("hasAuthority('ROLE_ADMIN_TI')")
 public class AuditLogQueryController {
 
     private final AuditLogQueryService auditLogQueryService;

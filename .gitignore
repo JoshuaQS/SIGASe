@@ -13,10 +13,12 @@ tests/playwright/test-results/
 tests/playwright/storage-states/
 
 # Local tooling folders
-.agents/
 .claude/
-
+.codex/
 .env
 .env.*
+/get-shit-done/
+/oh-my-codex
+/AGENTS.md
 !.env.example
 !**/.env.example
