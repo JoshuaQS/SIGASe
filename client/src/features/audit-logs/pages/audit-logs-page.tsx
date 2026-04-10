@@ -19,6 +19,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui
 import { Button } from '@/shared/components/ui/button'
 import { Input } from '@/shared/components/ui/input'
 import { Badge } from '@/shared/components/ui/badge'
+import { DataTable } from '@/shared/components/ui/data-table'
+import { DataTableFiltersShell } from '@/shared/components/ui/data-table-filters-shell'
 import { ExportFormatDialog } from '@/shared/components/ui/export-format-dialog'
 import {
   Dialog,
@@ -31,6 +33,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { SectionHeader } from '@/shared/components/ui/section-header'
 import { useAppToast } from '@/shared/components/ui/app-toast-provider'
 import StatusCard from '@/shared/components/data-display/status-card'
+import { useTableFilterState } from '@/shared/hooks/use-table-filter-state'
 import { ROLE_ADMIN_TI } from '@/features/auth/types/auth-user'
 import { useAuthUser } from '@/features/auth/hooks/use-auth-user'
 import {
@@ -102,6 +105,7 @@ const outcomeLabels: Record<AuditOutcome, string> = {
 type FilterState = {
   dateFrom: string
   dateTo: string
+  search: string
   actorEmail: string
   action: string
   entityType: string
@@ -115,6 +119,7 @@ type FilterState = {
 const DEFAULT_FILTERS: FilterState = {
   dateFrom: '',
   dateTo: '',
+  search: '',
   actorEmail: '',
   action: '',
   entityType: '',
@@ -170,7 +175,6 @@ const AuditLogs = () => {
   const { showToast } = useAppToast()
   const authUser = useAuthUser()
   const canExport = authUser?.role === ROLE_ADMIN_TI
-  const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS)
   const [page, setPage] = useState(0)
   const [logs, setLogs] = useState<AuditLogDto[]>([])
   const [totalElements, setTotalElements] = useState(0)
@@ -179,23 +183,35 @@ const AuditLogs = () => {
   const [exporting, setExporting] = useState(false)
   const [selectedLog, setSelectedLog] = useState<AuditLogDto | null>(null)
   const [exportDialogOpen, setExportDialogOpen] = useState(false)
+  const {
+    filtersOpen,
+    setFiltersOpen,
+    draftFilters,
+    appliedFilters,
+    updateDraftFilter,
+    applyFilters,
+    resetDraftFilters,
+    clearFilters,
+    commitAppliedFilters,
+  } = useTableFilterState(DEFAULT_FILTERS)
 
   const queryParams = useMemo<AuditLogParams>(() => ({
     page,
     size: PAGE_SIZE,
     sortBy: 'occurredAt',
     sortDir: 'desc',
-    dateFrom: normalizeDateTimeFilter(filters.dateFrom),
-    dateTo: normalizeDateTimeFilter(filters.dateTo),
-    actorEmail: filters.actorEmail.trim() || undefined,
-    action: filters.action.trim() || undefined,
-    entityType: filters.entityType.trim() || undefined,
-    requestId: filters.requestId.trim() || undefined,
-    correlationId: filters.correlationId.trim() || undefined,
-    actorType: filters.actorType === 'ALL' ? undefined : filters.actorType,
-    outcome: filters.outcome === 'ALL' ? undefined : filters.outcome,
-    severity: filters.severity === 'ALL' ? undefined : filters.severity,
-  }), [filters, page])
+    dateFrom: normalizeDateTimeFilter(appliedFilters.dateFrom),
+    dateTo: normalizeDateTimeFilter(appliedFilters.dateTo),
+    search: appliedFilters.search.trim() || undefined,
+    actorEmail: appliedFilters.actorEmail.trim() || undefined,
+    action: appliedFilters.action.trim() || undefined,
+    entityType: appliedFilters.entityType.trim() || undefined,
+    requestId: appliedFilters.requestId.trim() || undefined,
+    correlationId: appliedFilters.correlationId.trim() || undefined,
+    actorType: appliedFilters.actorType === 'ALL' ? undefined : appliedFilters.actorType,
+    outcome: appliedFilters.outcome === 'ALL' ? undefined : appliedFilters.outcome,
+    severity: appliedFilters.severity === 'ALL' ? undefined : appliedFilters.severity,
+  }), [appliedFilters, page])
 
   const loadAuditLogs = useCallback(async (params: AuditLogParams) => {
     setLoading(true)
@@ -219,6 +235,10 @@ const AuditLogs = () => {
   useEffect(() => {
     void loadAuditLogs(queryParams)
   }, [loadAuditLogs, queryParams])
+
+  useEffect(() => {
+    setPage(0)
+  }, [appliedFilters])
 
   const actionDistribution = useMemo(() => {
     const counts = new Map<string, number>()
@@ -252,11 +272,6 @@ const AuditLogs = () => {
   const currentActors = new Set(logs.map((log) => formatActor(log))).size
   const visibleFrom = totalElements === 0 ? 0 : page * PAGE_SIZE + 1
   const visibleTo = totalElements === 0 ? 0 : Math.min((page + 1) * PAGE_SIZE, totalElements)
-
-  const updateFilter = <K extends keyof FilterState>(key: K, value: FilterState[K]) => {
-    setFilters((current) => ({ ...current, [key]: value }))
-    setPage(0)
-  }
 
   const handleRefresh = () => {
     void loadAuditLogs(queryParams)
@@ -300,6 +315,86 @@ const AuditLogs = () => {
       setExporting(false)
     }
   }
+
+  const activeFilterChips = useMemo(() => ([
+    ...(appliedFilters.search.trim()
+      ? [{
+          id: 'search',
+          label: `Búsqueda: ${appliedFilters.search.trim()}`,
+          onClear: () => commitAppliedFilters((current) => ({ ...current, search: '' })),
+        }]
+      : []),
+    ...(appliedFilters.actorEmail.trim()
+      ? [{
+          id: 'actorEmail',
+          label: `Correo: ${appliedFilters.actorEmail.trim()}`,
+          onClear: () => commitAppliedFilters((current) => ({ ...current, actorEmail: '' })),
+        }]
+      : []),
+    ...(appliedFilters.action.trim()
+      ? [{
+          id: 'action',
+          label: `Acción: ${appliedFilters.action.trim()}`,
+          onClear: () => commitAppliedFilters((current) => ({ ...current, action: '' })),
+        }]
+      : []),
+    ...(appliedFilters.entityType.trim()
+      ? [{
+          id: 'entityType',
+          label: `Entidad: ${appliedFilters.entityType.trim()}`,
+          onClear: () => commitAppliedFilters((current) => ({ ...current, entityType: '' })),
+        }]
+      : []),
+    ...(appliedFilters.requestId.trim()
+      ? [{
+          id: 'requestId',
+          label: `Request ID: ${appliedFilters.requestId.trim()}`,
+          onClear: () => commitAppliedFilters((current) => ({ ...current, requestId: '' })),
+        }]
+      : []),
+    ...(appliedFilters.correlationId.trim()
+      ? [{
+          id: 'correlationId',
+          label: `Correlation ID: ${appliedFilters.correlationId.trim()}`,
+          onClear: () => commitAppliedFilters((current) => ({ ...current, correlationId: '' })),
+        }]
+      : []),
+    ...(appliedFilters.actorType !== 'ALL'
+      ? [{
+          id: 'actorType',
+          label: `Actor: ${actorTypeLabels[appliedFilters.actorType]}`,
+          onClear: () => commitAppliedFilters((current) => ({ ...current, actorType: 'ALL' })),
+        }]
+      : []),
+    ...(appliedFilters.outcome !== 'ALL'
+      ? [{
+          id: 'outcome',
+          label: `Resultado: ${outcomeLabels[appliedFilters.outcome]}`,
+          onClear: () => commitAppliedFilters((current) => ({ ...current, outcome: 'ALL' })),
+        }]
+      : []),
+    ...(appliedFilters.severity !== 'ALL'
+      ? [{
+          id: 'severity',
+          label: `Severidad: ${appliedFilters.severity}`,
+          onClear: () => commitAppliedFilters((current) => ({ ...current, severity: 'ALL' })),
+        }]
+      : []),
+    ...(appliedFilters.dateFrom
+      ? [{
+          id: 'dateFrom',
+          label: 'Fecha inicial',
+          onClear: () => commitAppliedFilters((current) => ({ ...current, dateFrom: '' })),
+        }]
+      : []),
+    ...(appliedFilters.dateTo
+      ? [{
+          id: 'dateTo',
+          label: 'Fecha final',
+          onClear: () => commitAppliedFilters((current) => ({ ...current, dateTo: '' })),
+        }]
+      : []),
+  ]), [appliedFilters, commitAppliedFilters])
 
   return (
     <motion.div className="space-y-6" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}>
@@ -383,6 +478,33 @@ const AuditLogs = () => {
         />
       </div>
 
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-semibold">Leyenda de resultados</CardTitle>
+          <p className="text-xs text-muted-foreground">
+            Interpretación visible de todos los outcomes posibles del módulo de auditoría.
+          </p>
+        </CardHeader>
+        <CardContent className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+          {(['SUCCESS', 'FAILURE', 'DENIED', 'ERROR'] as const).map((outcome) => (
+            <div key={outcome} className="rounded-xl border border-border/70 bg-secondary/10 px-3 py-2">
+              <Badge variant="outlined" className="border-border/70 bg-background">
+                {outcomeLabels[outcome]}
+              </Badge>
+              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                {outcome === 'SUCCESS'
+                  ? 'La acción auditada se completó correctamente.'
+                  : outcome === 'FAILURE'
+                    ? 'La acción intentó ejecutarse, pero terminó con fallo de negocio o validación.'
+                    : outcome === 'DENIED'
+                      ? 'La acción fue bloqueada por permisos, política o restricción de seguridad.'
+                      : 'La acción terminó con error técnico o excepción del sistema.'}
+              </p>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card>
           <CardHeader className="pb-2">
@@ -461,111 +583,120 @@ const AuditLogs = () => {
         </Card>
       </div>
 
-      <Card>
-        <CardHeader className="pb-4">
-          <div className="flex items-start gap-3">
-            <Filter className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
-            <div className="space-y-3 flex-1">
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
-                <Input
-                  type="datetime-local"
-                  value={filters.dateFrom}
-                  onChange={(event) => updateFilter('dateFrom', event.target.value)}
-                  className="h-9 text-sm"
-                />
-                <Input
-                  type="datetime-local"
-                  value={filters.dateTo}
-                  onChange={(event) => updateFilter('dateTo', event.target.value)}
-                  className="h-9 text-sm"
-                />
-                <Input
-                  placeholder="Correo del actor"
-                  value={filters.actorEmail}
-                  onChange={(event) => updateFilter('actorEmail', event.target.value)}
-                  className="h-9 text-sm"
-                />
-                <Input
-                  placeholder="Acción exacta"
-                  value={filters.action}
-                  onChange={(event) => updateFilter('action', event.target.value)}
-                  className="h-9 text-sm"
-                />
-              </div>
+      <DataTable
+        title="Audit logs"
+        meta={`${totalElements.toLocaleString()} eventos · mostrando ${logs.length} en esta página`}
+        viewToggle={false}
+        toolbarRight={
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-8 gap-1.5 text-xs"
+            onClick={() => setFiltersOpen((current) => !current)}
+          >
+            <Filter className="h-3 w-3" />
+            Filtrar
+          </Button>
+        }
+        toolbarBelow={(
+          <DataTableFiltersShell
+            open={filtersOpen}
+            chips={activeFilterChips}
+            onApply={() => {
+              applyFilters()
+              setPage(0)
+            }}
+            onReset={resetDraftFilters}
+            onClear={() => {
+              clearFilters()
+              setPage(0)
+            }}
+          >
+            <div className="grid grid-cols-1 gap-3 xl:grid-cols-4">
+              <Input
+                placeholder="Búsqueda libre"
+                value={draftFilters.search}
+                onChange={(event) => updateDraftFilter('search', event.target.value)}
+                startAdornment={<Search className="h-4 w-4" />}
+              />
+              <Input
+                type="datetime-local"
+                value={draftFilters.dateFrom}
+                onChange={(event) => updateDraftFilter('dateFrom', event.target.value)}
+              />
+              <Input
+                type="datetime-local"
+                value={draftFilters.dateTo}
+                onChange={(event) => updateDraftFilter('dateTo', event.target.value)}
+              />
+              <Input
+                placeholder="Correo del actor"
+                value={draftFilters.actorEmail}
+                onChange={(event) => updateDraftFilter('actorEmail', event.target.value)}
+              />
 
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
-                <Input
-                  placeholder="Entidad exacta"
-                  value={filters.entityType}
-                  onChange={(event) => updateFilter('entityType', event.target.value)}
-                  className="h-9 text-sm"
-                />
-                <Input
-                  placeholder="requestId exacto"
-                  value={filters.requestId}
-                  onChange={(event) => updateFilter('requestId', event.target.value)}
-                  className="h-9 text-sm"
-                />
-                <Input
-                  placeholder="correlationId exacto"
-                  value={filters.correlationId}
-                  onChange={(event) => updateFilter('correlationId', event.target.value)}
-                  className="h-9 text-sm"
-                />
-                <Select value={filters.actorType} onValueChange={(value) => updateFilter('actorType', value as FilterState['actorType'])}>
-                  <SelectTrigger className="h-9 text-sm">
-                    <SelectValue placeholder="Tipo de actor" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ALL">Todos los actores</SelectItem>
-                    <SelectItem value="ADMIN">Admin</SelectItem>
-                    <SelectItem value="SYSTEM">Sistema</SelectItem>
-                    <SelectItem value="INTEGRATION">Integración</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              <Input
+                placeholder="Acción exacta"
+                value={draftFilters.action}
+                onChange={(event) => updateDraftFilter('action', event.target.value)}
+              />
+              <Input
+                placeholder="Entidad exacta"
+                value={draftFilters.entityType}
+                onChange={(event) => updateDraftFilter('entityType', event.target.value)}
+              />
+              <Input
+                placeholder="requestId exacto"
+                value={draftFilters.requestId}
+                onChange={(event) => updateDraftFilter('requestId', event.target.value)}
+              />
+              <Input
+                placeholder="correlationId exacto"
+                value={draftFilters.correlationId}
+                onChange={(event) => updateDraftFilter('correlationId', event.target.value)}
+              />
 
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-2 gap-3">
-                <Select value={filters.outcome} onValueChange={(value) => updateFilter('outcome', value as FilterState['outcome'])}>
-                  <SelectTrigger className="h-9 text-sm">
-                    <SelectValue placeholder="Resultado" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ALL">Todos los resultados</SelectItem>
-                    <SelectItem value="SUCCESS">Exitoso</SelectItem>
-                    <SelectItem value="FAILURE">Fallo</SelectItem>
-                    <SelectItem value="DENIED">Denegado</SelectItem>
-                    <SelectItem value="ERROR">Error</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Select value={filters.severity} onValueChange={(value) => updateFilter('severity', value as FilterState['severity'])}>
-                  <SelectTrigger className="h-9 text-sm">
-                    <SelectValue placeholder="Severidad" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ALL">Todas las severidades</SelectItem>
-                    <SelectItem value="INFO">Info</SelectItem>
-                    <SelectItem value="NOTICE">Notice</SelectItem>
-                    <SelectItem value="WARNING">Warning</SelectItem>
-                    <SelectItem value="SECURITY">Security</SelectItem>
-                    <SelectItem value="CRITICAL">Critical</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="flex items-center justify-between gap-2 flex-wrap">
-                <p className="text-xs text-muted-foreground flex items-center gap-2">
-                  <Search className="w-3.5 h-3.5" />
-                  Filtros alineados al backend real y reutilizados por la exportación.
-                </p>
-                <Badge variant="secondary" className="text-xs">
-                  {totalElements.toLocaleString()} eventos
-                </Badge>
-              </div>
+              <Select value={draftFilters.actorType} onValueChange={(value) => updateDraftFilter('actorType', value as FilterState['actorType'])}>
+                <SelectTrigger className="h-9 text-sm">
+                  <SelectValue placeholder="Tipo de actor" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">Todos los actores</SelectItem>
+                  <SelectItem value="ADMIN">Admin</SelectItem>
+                  <SelectItem value="SYSTEM">Sistema</SelectItem>
+                  <SelectItem value="INTEGRATION">Integración</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={draftFilters.outcome} onValueChange={(value) => updateDraftFilter('outcome', value as FilterState['outcome'])}>
+                <SelectTrigger className="h-9 text-sm">
+                  <SelectValue placeholder="Resultado" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">Todos los resultados</SelectItem>
+                  <SelectItem value="SUCCESS">Exitoso</SelectItem>
+                  <SelectItem value="FAILURE">Fallo</SelectItem>
+                  <SelectItem value="DENIED">Denegado</SelectItem>
+                  <SelectItem value="ERROR">Error</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={draftFilters.severity} onValueChange={(value) => updateDraftFilter('severity', value as FilterState['severity'])}>
+                <SelectTrigger className="h-9 text-sm">
+                  <SelectValue placeholder="Severidad" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">Todas las severidades</SelectItem>
+                  <SelectItem value="INFO">Info</SelectItem>
+                  <SelectItem value="NOTICE">Notice</SelectItem>
+                  <SelectItem value="WARNING">Warning</SelectItem>
+                  <SelectItem value="SECURITY">Security</SelectItem>
+                  <SelectItem value="CRITICAL">Critical</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-          </div>
-        </CardHeader>
-        <CardContent className="p-0">
+          </DataTableFiltersShell>
+        )}
+        renderTable={() => (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -642,33 +773,17 @@ const AuditLogs = () => {
               </tbody>
             </table>
           </div>
-          <div className="flex items-center justify-between px-4 py-3 border-t border-border">
-            <span className="text-xs text-muted-foreground">
-              Mostrando {visibleFrom}–{visibleTo} de {totalElements}
-            </span>
-            <div className="flex gap-1.5">
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-7 text-xs"
-                disabled={loading || page === 0}
-                onClick={() => setPage((current) => current - 1)}
-              >
-                Anterior
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-7 text-xs"
-                disabled={loading || totalPages === 0 || page >= totalPages - 1}
-                onClick={() => setPage((current) => current + 1)}
-              >
-                Siguiente
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+        )}
+        pagination={{
+          summary: `Mostrando ${visibleFrom}–${visibleTo} de ${totalElements}`,
+          pageIndex: page,
+          pageCount: Math.max(totalPages, 1),
+          canPreviousPage: !loading && page > 0,
+          canNextPage: !loading && page < totalPages - 1,
+          onPreviousPage: () => setPage((current) => Math.max(0, current - 1)),
+          onNextPage: () => setPage((current) => Math.min(Math.max(totalPages - 1, 0), current + 1)),
+        }}
+      />
 
       <Dialog open={Boolean(selectedLog)} onOpenChange={(open) => !open && setSelectedLog(null)}>
         <DialogContent size="3">

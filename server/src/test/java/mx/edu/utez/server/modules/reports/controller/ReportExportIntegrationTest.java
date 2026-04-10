@@ -265,10 +265,11 @@ class ReportExportIntegrationTest {
     }
 
     @Test
-    void shouldRejectAuditLogsExportWithoutDateRange() throws Exception {
+    void shouldAllowAuditLogsExportWithoutDateRange() throws Exception {
         mockMvc.perform(get("/api/v1/reports/audit-logs/export")
                         .with(auth(adminTi, RoleConstants.ADMIN_TI)))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", containsString("text/csv")));
     }
 
     @Test

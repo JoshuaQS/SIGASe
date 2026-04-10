@@ -3,12 +3,12 @@ package mx.edu.utez.server.modules.reports.service;
 import mx.edu.utez.server.modules.admins.entity.Admin;
 import mx.edu.utez.server.modules.elibro.entity.ElibroAccessLog;
 import mx.edu.utez.server.modules.elibro.repository.ElibroAccessLogRepository;
+import mx.edu.utez.server.modules.logs.audit.dto.AuditLogFilterRequest;
 import mx.edu.utez.server.modules.logs.audit.entity.AuditLog;
 import mx.edu.utez.server.modules.logs.audit.repository.AuditLogRepository;
+import mx.edu.utez.server.modules.logs.audit.service.AuditLogQueryService;
 import mx.edu.utez.server.modules.logs.audit.service.AuditTrailService;
-import mx.edu.utez.server.shared.enums.AuditActorType;
 import mx.edu.utez.server.shared.enums.AuditOutcome;
-import mx.edu.utez.server.shared.enums.AuditSeverity;
 import mx.edu.utez.server.shared.enums.ElibroAccessResult;
 import mx.edu.utez.server.shared.enums.StudentStatus;
 import mx.edu.utez.server.shared.exception.BusinessException;
@@ -42,6 +42,7 @@ public class ReportXlsxExportService {
 
     private final ElibroAccessLogRepository accessLogRepository;
     private final AuditLogRepository auditLogRepository;
+    private final AuditLogQueryService auditLogQueryService;
     private final ReportService reportService;
     private final ReportDataCollector reportDataCollector;
     private final AuditTrailService auditTrailService;
@@ -49,12 +50,14 @@ public class ReportXlsxExportService {
     public ReportXlsxExportService(
             ElibroAccessLogRepository accessLogRepository,
             AuditLogRepository auditLogRepository,
+            AuditLogQueryService auditLogQueryService,
             ReportService reportService,
             ReportDataCollector reportDataCollector,
             AuditTrailService auditTrailService
     ) {
         this.accessLogRepository = accessLogRepository;
         this.auditLogRepository = auditLogRepository;
+        this.auditLogQueryService = auditLogQueryService;
         this.reportService = reportService;
         this.reportDataCollector = reportDataCollector;
         this.auditTrailService = auditTrailService;
@@ -257,15 +260,13 @@ public class ReportXlsxExportService {
     @Transactional(readOnly = true)
     public void exportAuditLogs(
             OutputStream out,
-            Instant dateFrom, Instant dateTo,
-            AuditActorType actorType, String actorEmail,
-            String action, String entityType,
-            AuditOutcome outcome, AuditSeverity severity,
+            AuditLogFilterRequest filters,
             Admin actor, HttpServletRequest request
     ) {
-        Specification<AuditLog> spec = reportService.buildAuditLogSpec(
-                dateFrom, dateTo, actorType, actorEmail, action, entityType, outcome, severity
-        );
+        AuditLogFilterRequest exportFilters = filters.withoutPagination();
+        auditLogQueryService.validateForExport(exportFilters);
+        Specification<AuditLog> spec = auditLogQueryService.buildSpecification(exportFilters);
+        Sort sort = auditLogQueryService.buildSort(exportFilters);
         long total = auditLogRepository.count(spec);
         if (total > 50_000) {
             throw new BusinessException(ErrorCode.VALIDATION_ERROR,
@@ -277,11 +278,11 @@ public class ReportXlsxExportService {
 
             // Sheet 1: Summary (XSSF for simple metadata)
             XSSFSheet summarySheet = xssfWb.createSheet("Resumen");
-            writeAuditSummary(summarySheet, xssfWb, dateFrom, dateTo, total);
+            writeAuditSummary(summarySheet, xssfWb, exportFilters.dateFrom(), exportFilters.dateTo(), total);
 
             // Sheet 2: Detail (SXSSF streaming)
             SXSSFSheet detailSheet = wb.createSheet("Detalle");
-            writeAuditLogDetail(detailSheet, wb, spec);
+            writeAuditLogDetail(detailSheet, wb, spec, sort);
 
             wb.write(out);
         } catch (BusinessException e) {
@@ -313,7 +314,8 @@ public class ReportXlsxExportService {
     }
 
     private void writeAuditLogDetail(SXSSFSheet sheet, SXSSFWorkbook wb,
-                                     Specification<AuditLog> spec) {
+                                     Specification<AuditLog> spec,
+                                     Sort sort) {
         CellStyle headerStyle = XlsxExportService.createHeaderStyle(wb);
         String[] headers = ReportService.AUDIT_LOG_HEADERS;
 
@@ -326,7 +328,7 @@ public class ReportXlsxExportService {
         int rowIdx = 1;
         int page = 0;
         while (true) {
-            PageRequest pr = PageRequest.of(page, CHUNK_SIZE, Sort.by(Sort.Direction.DESC, "occurredAt"));
+            PageRequest pr = PageRequest.of(page, CHUNK_SIZE, sort);
             Page<AuditLog> result = auditLogRepository.findAll(spec, pr);
             if (result.isEmpty()) break;
             for (AuditLog a : result.getContent()) {

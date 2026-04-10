@@ -24,6 +24,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.http.MediaType;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -33,6 +34,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -181,6 +183,27 @@ class AuditLogQueryControllerIntegrationTest {
                         .with(auth(adminTi, RoleConstants.ADMIN_TI)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errorCode").value("VALIDATION_ERROR"));
+    }
+
+    @Test
+    void shouldExportAuditLogsWithSameBodyFiltersViaPost() throws Exception {
+        mockMvc.perform(post("/api/v1/audit-logs/export?format=csv")
+                        .with(auth(adminTi, RoleConstants.ADMIN_TI))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "requestId": "req-a-1",
+                                  "correlationId": "corr-a-1",
+                                  "sortBy": "occurredAt",
+                                  "sortDir": "asc"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(result -> {
+                    String csv = result.getResponse().getContentAsString();
+                    org.junit.jupiter.api.Assertions.assertTrue(csv.contains("req-a-1"));
+                    org.junit.jupiter.api.Assertions.assertFalse(csv.contains("req-a-3"));
+                });
     }
 
     private RequestPostProcessor auth(Admin admin, String role) {

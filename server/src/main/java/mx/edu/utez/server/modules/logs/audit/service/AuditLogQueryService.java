@@ -1,6 +1,10 @@
 package mx.edu.utez.server.modules.logs.audit.service;
 
+import jakarta.persistence.criteria.JoinType;
+import jakarta.persistence.criteria.Predicate;
+import java.util.ArrayList;
 import mx.edu.utez.server.modules.logs.audit.dto.AuditLogResponse;
+import mx.edu.utez.server.modules.logs.audit.dto.AuditLogFilterRequest;
 import mx.edu.utez.server.modules.logs.audit.entity.AuditLog;
 import mx.edu.utez.server.modules.logs.audit.mapper.AuditLogMapper;
 import mx.edu.utez.server.modules.logs.audit.repository.AuditLogRepository;
@@ -44,36 +48,14 @@ public class AuditLogQueryService {
     }
 
     @Transactional(readOnly = true)
-    public PageResponse<AuditLogResponse> list(
-            Instant dateFrom,
-            Instant dateTo,
-            AuditActorType actorType,
-            String actorEmail,
-            String action,
-            String entityType,
-            AuditOutcome outcome,
-            String requestId,
-            String correlationId,
-            AuditSeverity severity,
-            int page,
-            int size,
-            String sortBy,
-            String sortDir
-    ) {
-        validate(page, size, dateFrom, dateTo);
-        Pageable pageable = PageRequest.of(page, size, buildSort(sortBy, sortDir));
-        Specification<AuditLog> specification = buildSpecification(
-                dateFrom,
-                dateTo,
-                actorType,
-                actorEmail,
-                action,
-                entityType,
-                outcome,
-                requestId,
-                correlationId,
-                severity
+    public PageResponse<AuditLogResponse> list(AuditLogFilterRequest filters) {
+        validateForList(filters);
+        Pageable pageable = PageRequest.of(
+                filters.resolvedPage(0),
+                filters.resolvedSize(20),
+                buildSort(filters)
         );
+        Specification<AuditLog> specification = buildSpecification(filters);
         Page<AuditLogResponse> resultPage = auditLogRepository.findAll(specification, pageable).map(auditLogMapper::toResponse);
         return new PageResponse<>(
                 resultPage.getContent(),
@@ -91,78 +73,97 @@ public class AuditLogQueryService {
         return auditLogMapper.toResponse(auditLog);
     }
 
-    private void validate(int page, int size, Instant dateFrom, Instant dateTo) {
+    public void validateForList(AuditLogFilterRequest filters) {
+        int page = filters.resolvedPage(0);
+        int size = filters.resolvedSize(20);
         if (page < 0 || size <= 0 || size > MAX_PAGE_SIZE) {
             throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Parámetros de paginación inválidos.");
         }
+        validateDateRange(filters.dateFrom(), filters.dateTo());
+    }
+
+    public void validateForExport(AuditLogFilterRequest filters) {
+        validateDateRange(filters.dateFrom(), filters.dateTo());
+    }
+
+    private void validateDateRange(Instant dateFrom, Instant dateTo) {
         if (dateFrom != null && dateTo != null && dateFrom.isAfter(dateTo)) {
             throw new BusinessException(ErrorCode.VALIDATION_ERROR, "dateFrom debe ser menor o igual a dateTo.");
         }
     }
 
-    private Sort buildSort(String sortBy, String sortDir) {
-        String safeSortBy = StringUtils.hasText(sortBy) ? sortBy.trim() : "occurredAt";
+    public Sort buildSort(AuditLogFilterRequest filters) {
+        String safeSortBy = StringUtils.hasText(filters.resolvedSortBy("occurredAt"))
+                ? filters.resolvedSortBy("occurredAt").trim()
+                : "occurredAt";
         if (!ALLOWED_SORT_FIELDS.contains(safeSortBy)) {
             throw new BusinessException(ErrorCode.VALIDATION_ERROR, "sortBy no permitido.");
         }
-        Sort.Direction direction = "asc".equalsIgnoreCase(sortDir) ? Sort.Direction.ASC : Sort.Direction.DESC;
+        Sort.Direction direction = "asc".equalsIgnoreCase(filters.resolvedSortDir("desc"))
+                ? Sort.Direction.ASC
+                : Sort.Direction.DESC;
         return Sort.by(direction, safeSortBy);
     }
 
-    private Specification<AuditLog> buildSpecification(
-            Instant dateFrom,
-            Instant dateTo,
-            AuditActorType actorType,
-            String actorEmail,
-            String action,
-            String entityType,
-            AuditOutcome outcome,
-            String requestId,
-            String correlationId,
-            AuditSeverity severity
-    ) {
+    public Specification<AuditLog> buildSpecification(AuditLogFilterRequest filters) {
         return (root, query, cb) -> {
             var predicate = cb.conjunction();
+            AuditOutcome outcome = filters.resolvedOutcome();
 
-            if (dateFrom != null) {
-                predicate = cb.and(predicate, cb.greaterThanOrEqualTo(root.get("occurredAt"), dateFrom));
+            if (filters.dateFrom() != null) {
+                predicate = cb.and(predicate, cb.greaterThanOrEqualTo(root.get("occurredAt"), filters.dateFrom()));
             }
-            if (dateTo != null) {
-                predicate = cb.and(predicate, cb.lessThanOrEqualTo(root.get("occurredAt"), dateTo));
+            if (filters.dateTo() != null) {
+                predicate = cb.and(predicate, cb.lessThanOrEqualTo(root.get("occurredAt"), filters.dateTo()));
             }
-            if (actorType != null) {
-                predicate = cb.and(predicate, cb.equal(root.get("actorType"), actorType));
+            if (filters.actorType() != null) {
+                predicate = cb.and(predicate, cb.equal(root.get("actorType"), filters.actorType()));
             }
-            if (StringUtils.hasText(actorEmail)) {
-                var actorAdminJoin = root.join("actorAdmin", jakarta.persistence.criteria.JoinType.LEFT);
+            if (StringUtils.hasText(filters.actorEmail())) {
+                var actorAdminJoin = root.join("actorAdmin", JoinType.LEFT);
                 predicate = cb.and(predicate, cb.equal(
                         cb.lower(actorAdminJoin.get("email")),
-                        actorEmail.trim().toLowerCase(Locale.ROOT)
+                        filters.actorEmail().trim().toLowerCase(Locale.ROOT)
                 ));
             }
-            if (StringUtils.hasText(action)) {
+            if (StringUtils.hasText(filters.action())) {
                 predicate = cb.and(predicate, cb.equal(
                         cb.lower(root.get("action")),
-                        action.trim().toLowerCase(Locale.ROOT)
+                        filters.action().trim().toLowerCase(Locale.ROOT)
                 ));
             }
-            if (StringUtils.hasText(entityType)) {
+            if (StringUtils.hasText(filters.entityType())) {
                 predicate = cb.and(predicate, cb.equal(
                         cb.lower(root.get("entityType")),
-                        entityType.trim().toLowerCase(Locale.ROOT)
+                        filters.entityType().trim().toLowerCase(Locale.ROOT)
                 ));
             }
             if (outcome != null) {
                 predicate = cb.and(predicate, cb.equal(root.get("outcome"), outcome));
             }
-            if (StringUtils.hasText(requestId)) {
-                predicate = cb.and(predicate, cb.equal(root.get("requestId"), requestId.trim()));
+            if (StringUtils.hasText(filters.requestId())) {
+                predicate = cb.and(predicate, cb.equal(root.get("requestId"), filters.requestId().trim()));
             }
-            if (StringUtils.hasText(correlationId)) {
-                predicate = cb.and(predicate, cb.equal(root.get("correlationId"), correlationId.trim()));
+            if (StringUtils.hasText(filters.correlationId())) {
+                predicate = cb.and(predicate, cb.equal(root.get("correlationId"), filters.correlationId().trim()));
             }
-            if (severity != null) {
-                predicate = cb.and(predicate, cb.equal(root.get("severity"), severity));
+            if (filters.severity() != null) {
+                predicate = cb.and(predicate, cb.equal(root.get("severity"), filters.severity()));
+            }
+            if (StringUtils.hasText(filters.search())) {
+                String normalizedSearch = "%" + filters.search().trim().toLowerCase(Locale.ROOT) + "%";
+                var actorAdminJoin = root.join("actorAdmin", JoinType.LEFT);
+                ArrayList<Predicate> searchPredicates = new ArrayList<>();
+                searchPredicates.add(cb.like(cb.lower(root.get("action")), normalizedSearch));
+                searchPredicates.add(cb.like(cb.lower(root.get("entityType")), normalizedSearch));
+                searchPredicates.add(cb.like(cb.lower(root.get("entityId")), normalizedSearch));
+                searchPredicates.add(cb.like(cb.lower(root.get("description")), normalizedSearch));
+                searchPredicates.add(cb.like(cb.lower(root.get("targetLabel")), normalizedSearch));
+                searchPredicates.add(cb.like(cb.lower(root.get("actorReference")), normalizedSearch));
+                searchPredicates.add(cb.like(cb.lower(actorAdminJoin.get("email")), normalizedSearch));
+                searchPredicates.add(cb.like(cb.lower(root.get("requestId")), normalizedSearch));
+                searchPredicates.add(cb.like(cb.lower(root.get("correlationId")), normalizedSearch));
+                predicate = cb.and(predicate, cb.or(searchPredicates.toArray(Predicate[]::new)));
             }
             return predicate;
         };

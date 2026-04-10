@@ -140,7 +140,7 @@ export function ElibroServiceStatusPanel({
           <div className="flex items-start gap-4">
             <div
               className={[
-                'relative mt-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-full ring-8',
+                'relative mt-1 ml-1 flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full ring-6',
                 cfg.ring,
               ].join(' ')}
             >
@@ -148,7 +148,7 @@ export function ElibroServiceStatusPanel({
                 <>
                   <motion.div
                     initial={{ scale: 0.8, opacity: 0.5 }}
-                    animate={{ scale: 2, opacity: 0 }}
+                    animate={{ scale: 1.8, opacity: 0 }}
                     transition={{
                       repeat: Infinity,
                       duration: 2,
@@ -161,7 +161,7 @@ export function ElibroServiceStatusPanel({
                   />
                   <motion.div
                     initial={{ scale: 0.8, opacity: 0.3 }}
-                    animate={{ scale: 1.6, opacity: 0 }}
+                    animate={{ scale: 1.4, opacity: 0 }}
                     transition={{
                       repeat: Infinity,
                       duration: 2,

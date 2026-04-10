@@ -8,6 +8,15 @@ import org.springframework.stereotype.Component;
 public class StudentMapper {
 
     public StudentResponse toResponse(Student student) {
+        return toResponse(student, 0L, 0L, 0L);
+    }
+
+    public StudentResponse toResponse(
+            Student student,
+            long totalAccesses,
+            long successfulAccesses,
+            long failedAccesses
+    ) {
         return new StudentResponse(
                 student.getId(),
                 student.getEnrollmentId(),
@@ -27,6 +36,9 @@ public class StudentMapper {
                 student.getStatus(),
                 student.isMustChangePassword(),
                 student.getLastLoginAt(),
+                totalAccesses,
+                successfulAccesses,
+                failedAccesses,
                 student.getCreatedByAdmin() == null ? null : student.getCreatedByAdmin().getId(),
                 student.getUpdatedByAdmin() == null ? null : student.getUpdatedByAdmin().getId(),
                 student.getCreatedAt(),

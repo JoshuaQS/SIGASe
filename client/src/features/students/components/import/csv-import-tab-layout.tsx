@@ -196,7 +196,7 @@ export function CsvImportTabLayout({
   return (
     <div
       className={cn(
-        "grid h-full min-h-0 w-full flex-1 grid-cols-1 gap-4 md:grid-rows-[auto_minmax(0,1fr)] md:items-stretch md:gap-4 lg:gap-5",
+        "grid h-full min-h-0 w-full flex-1 grid-cols-1 gap-4 md:grid-rows-[minmax(0,1fr)_minmax(0,1fr)] md:items-stretch md:gap-4 lg:gap-5",
         /* Columna estrecha: plantilla CSV + info; ancha: carga + historial */
         invertedOrder
           ? "md:grid-cols-[minmax(0,1fr)_minmax(0,17.5rem)]"

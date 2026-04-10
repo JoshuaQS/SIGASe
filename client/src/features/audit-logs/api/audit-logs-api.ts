@@ -34,10 +34,12 @@ export type AuditLogParams = {
   actorEmail?: string;
   action?: string;
   entityType?: string;
+  result?: AuditOutcome;
   outcome?: AuditOutcome;
   requestId?: string;
   correlationId?: string;
   severity?: AuditSeverity;
+  search?: string;
   page?: number;
   size?: number;
   sortBy?:
@@ -68,6 +70,10 @@ function clean(value?: string | null) {
   return next ? next : undefined;
 }
 
+function resolveAuditResult(params: AuditLogParams) {
+  return params.result ?? params.outcome;
+}
+
 function buildQuery(params: AuditLogParams) {
   const qs = new URLSearchParams();
   if (clean(params.dateFrom)) qs.set('dateFrom', clean(params.dateFrom)!);
@@ -76,10 +82,11 @@ function buildQuery(params: AuditLogParams) {
   if (clean(params.actorEmail)) qs.set('actorEmail', clean(params.actorEmail)!);
   if (params.action) qs.set('action', params.action);
   if (params.entityType) qs.set('entityType', params.entityType);
-  if (params.outcome) qs.set('outcome', params.outcome);
+  if (resolveAuditResult(params)) qs.set('result', resolveAuditResult(params)!);
   if (clean(params.requestId)) qs.set('requestId', clean(params.requestId)!);
   if (clean(params.correlationId)) qs.set('correlationId', clean(params.correlationId)!);
   if (params.severity) qs.set('severity', params.severity);
+  if (clean(params.search)) qs.set('search', clean(params.search)!);
   if (params.page !== undefined) qs.set('page', String(params.page));
   if (params.size !== undefined) qs.set('size', String(params.size));
   if (params.sortBy && AUDIT_ALLOWED_SORT_BY.has(params.sortBy)) qs.set('sortBy', params.sortBy);
@@ -110,21 +117,28 @@ export async function exportAuditLogsReport(
   params: AuditLogParams = {},
   format: AuditLogExportFormat = 'csv',
 ) {
-  const query = new URLSearchParams();
+  const payload = {
+    dateFrom: clean(params.dateFrom),
+    dateTo: clean(params.dateTo),
+    actorType: params.actorType,
+    actorEmail: clean(params.actorEmail),
+    action: clean(params.action),
+    entityType: clean(params.entityType),
+    result: resolveAuditResult(params),
+    requestId: clean(params.requestId),
+    correlationId: clean(params.correlationId),
+    severity: params.severity,
+    search: clean(params.search),
+    page: params.page,
+    size: params.size,
+    sortBy: params.sortBy,
+    sortDir: params.sortDir,
+  };
 
-  if (clean(params.dateFrom)) query.set('dateFrom', clean(params.dateFrom)!);
-  if (clean(params.dateTo)) query.set('dateTo', clean(params.dateTo)!);
-  if (params.actorType) query.set('actorType', params.actorType);
-  if (clean(params.actorEmail)) query.set('actorEmail', clean(params.actorEmail)!);
-  if (clean(params.action)) query.set('action', clean(params.action)!);
-  if (clean(params.entityType)) query.set('entityType', clean(params.entityType)!);
-  if (params.outcome) query.set('outcome', params.outcome);
-  if (clean(params.requestId)) query.set('requestId', clean(params.requestId)!);
-  if (clean(params.correlationId)) query.set('correlationId', clean(params.correlationId)!);
-  if (params.severity) query.set('severity', params.severity);
-  query.set('format', format);
-
-  const { blob, headers } = await api.download(`/reports/audit-logs/export?${query.toString()}`);
+  const { blob, headers } = await api.download(`/audit-logs/export?format=${format}`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
   const filename = extractFilenameFromContentDisposition(
     headers.get('Content-Disposition'),
     `audit-logs-export.${format}`,

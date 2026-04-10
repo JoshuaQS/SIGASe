@@ -565,12 +565,6 @@ public class DashboardService {
                     "topN es inválido cuando topEnabled=false."
             );
         }
-        if (topEnabled && topN == null) {
-            throw new BusinessException(
-                    ErrorCode.VALIDATION_ERROR,
-                    "topN es obligatorio cuando topEnabled=true."
-            );
-        }
 
         if (analysisType == DashboardAnalysisType.STUDENTS_INDIVIDUAL && studentId == null) {
             throw new BusinessException(

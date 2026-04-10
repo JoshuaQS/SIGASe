@@ -210,7 +210,13 @@ export function CsvImport({
     const rest = Math.max(0, parsed.rows.length - previewRowCount);
 
     return (
-      <div className={cn(shellW(fullWidth), "border border-border rounded-2xl bg-card overflow-hidden shadow-sm")}>
+      <div
+        className={cn(
+          shellW(fullWidth),
+          "overflow-hidden rounded-2xl border border-border bg-card shadow-sm",
+          fullWidth ? "flex h-full min-h-0 flex-col" : ""
+        )}
+      >
         <div className="flex items-center gap-4 p-5 border-b border-border">
           <div className="h-10 w-10 rounded-xl bg-[hsl(142_72%_42%/0.1)] flex items-center justify-center flex-shrink-0">
             {isXlsx ? (
@@ -234,9 +240,9 @@ export function CsvImport({
             <X className="h-4 w-4" />
           </button>
         </div>
-        <div className="p-5">
+        <div className={cn("p-5", fullWidth ? "flex min-h-0 flex-1 flex-col" : "")}>
           {isXlsx ? (
-            <div className="rounded-lg border border-border bg-muted/20 p-4">
+            <div className={cn("rounded-lg border border-border bg-muted/20 p-4", fullWidth ? "flex min-h-0 flex-1 flex-col justify-center" : "")}>
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                 Archivo listo para importación
               </p>
@@ -252,7 +258,7 @@ export function CsvImport({
               <p className="text-xs font-semibold text-muted-foreground mb-3 uppercase tracking-wider">
                 Vista previa — primeras {Math.min(previewRowCount, parsed.rows.length)} filas
               </p>
-              <div className="rounded-lg border border-border overflow-x-auto text-xs">
+              <div className={cn("rounded-lg border border-border overflow-x-auto text-xs", fullWidth ? "min-h-0 flex-1" : "")}>
                 <table className="w-full min-w-[280px]">
                   <thead className="bg-secondary">
                     <tr>
@@ -318,7 +324,13 @@ export function CsvImport({
 
   if (state === "error") {
     return (
-      <div className={cn(shellW(fullWidth), "border border-destructive/40 rounded-2xl bg-destructive/5 p-8 text-center")}>
+      <div
+        className={cn(
+          shellW(fullWidth),
+          "rounded-2xl border border-destructive/40 bg-destructive/5 p-8 text-center",
+          fullWidth ? "flex h-full min-h-0 flex-col items-center justify-center" : ""
+        )}
+      >
         <div className="h-12 w-12 rounded-full bg-destructive/10 flex items-center justify-center mx-auto mb-4">
           <AlertCircle className="h-6 w-6 text-destructive" />
         </div>

@@ -8,6 +8,7 @@ import {
   Download,
   Eye,
   FileText,
+  Filter,
   RefreshCw,
   Search,
   ServerCrash,
@@ -16,6 +17,9 @@ import { Card, CardContent, CardHeader } from '@/shared/components/ui/card'
 import { Button } from '@/shared/components/ui/button'
 import { Input } from '@/shared/components/ui/input'
 import { Badge } from '@/shared/components/ui/badge'
+import { DataTable } from '@/shared/components/ui/data-table'
+import { DataTableFiltersShell } from '@/shared/components/ui/data-table-filters-shell'
+import { ExportFormatDialog } from '@/shared/components/ui/export-format-dialog'
 import {
   Dialog,
   DialogContent,
@@ -27,6 +31,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import StatusCard from '@/shared/components/data-display/status-card'
 import { SectionHeader } from '@/shared/components/ui/section-header'
 import { useAppToast } from '@/shared/components/ui/app-toast-provider'
+import { useTableFilterState } from '@/shared/hooks/use-table-filter-state'
 import {
   exportAccessLogsReport,
   getAccessLogs,
@@ -48,6 +53,9 @@ type FilterState = {
   result: AccessLogResult | ''
   dateFrom: string
   dateTo: string
+  studentId: string
+  adminId: string
+  careerId: string
   search: string
   sort: AccessLogQueryParams['sort']
 }
@@ -58,6 +66,9 @@ const DEFAULT_FILTERS: FilterState = {
   result: '',
   dateFrom: '',
   dateTo: '',
+  studentId: '',
+  adminId: '',
+  careerId: '',
   search: '',
   sort: 'occurredAt,desc',
 }
@@ -80,6 +91,25 @@ const RESULT_OPTIONS = [
   'FAILED_ELIBRO_TIMEOUT',
   'FAILED_INTERNAL_ERROR',
 ] as const satisfies readonly AccessLogResult[]
+
+const resultDescriptions: Record<AccessLogResult, string> = {
+  SUCCESS: 'Acceso completado correctamente.',
+  FAILED_INVALID_CREDENTIALS: 'Las credenciales capturadas no fueron válidas.',
+  FAILED_STUDENT_NOT_FOUND: 'No se encontró al estudiante solicitado.',
+  FAILED_STUDENT_INACTIVE: 'El estudiante existe, pero está inactivo.',
+  FAILED_ADMIN_INACTIVE: 'La cuenta administrativa está inactiva.',
+  FAILED_ACCOUNT_LOCKED: 'La cuenta está bloqueada temporalmente.',
+  FAILED_INVALID_GOOGLE_TOKEN: 'El token recibido desde Google es inválido.',
+  FAILED_GOOGLE_PROVIDER_UNAVAILABLE: 'El proveedor de Google no respondió.',
+  FAILED_GOOGLE_PROVIDER_ERROR: 'Google respondió con error en la autenticación.',
+  FAILED_GOOGLE_SUBJECT_MISMATCH: 'El sujeto autenticado no coincide con la cuenta esperada.',
+  FAILED_INSTITUTIONAL_DOMAIN: 'El correo no pertenece al dominio institucional permitido.',
+  FAILED_ELIBRO_CONFIG: 'La configuración activa de eLibro no permite completar el acceso.',
+  FAILED_NEXT_URL_VALIDATION: 'La URL de redirección fue rechazada por validación.',
+  FAILED_ELIBRO_API: 'eLibro respondió con error de proveedor.',
+  FAILED_ELIBRO_TIMEOUT: 'La llamada al proveedor de eLibro agotó el tiempo de espera.',
+  FAILED_INTERNAL_ERROR: 'Ocurrió un error interno durante el acceso.',
+}
 
 const scopeLabels: Record<Exclude<AccessLogScope, 'ALL'>, string> = {
   SIGASE_LOCAL: 'SIGASe Local',
@@ -153,7 +183,6 @@ function renderMetadata(metadata: unknown) {
 
 const AccessLogs = () => {
   const { showToast } = useAppToast()
-  const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS)
   const [page, setPage] = useState(0)
   const [logs, setLogs] = useState<UnifiedAccessLogRecord[]>([])
   const [totalElements, setTotalElements] = useState(0)
@@ -161,19 +190,34 @@ const AccessLogs = () => {
   const [loading, setLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [exporting, setExporting] = useState(false)
+  const [exportDialogOpen, setExportDialogOpen] = useState(false)
   const [selectedLog, setSelectedLog] = useState<UnifiedAccessLogRecord | null>(null)
+  const {
+    filtersOpen,
+    setFiltersOpen,
+    draftFilters,
+    appliedFilters,
+    updateDraftFilter,
+    applyFilters,
+    resetDraftFilters,
+    clearFilters,
+    commitAppliedFilters,
+  } = useTableFilterState(DEFAULT_FILTERS)
 
   const queryParams = useMemo<AccessLogQueryParams>(() => ({
-    actorType: filters.actorType,
-    scope: filters.scope,
-    result: filters.result || undefined,
-    dateFrom: normalizeDateTimeFilter(filters.dateFrom),
-    dateTo: normalizeDateTimeFilter(filters.dateTo),
-    search: filters.search.trim() || undefined,
+    actorType: appliedFilters.actorType,
+    scope: appliedFilters.scope,
+    result: appliedFilters.result || undefined,
+    dateFrom: normalizeDateTimeFilter(appliedFilters.dateFrom),
+    dateTo: normalizeDateTimeFilter(appliedFilters.dateTo),
+    studentId: appliedFilters.studentId.trim() || undefined,
+    adminId: appliedFilters.adminId.trim() || undefined,
+    careerId: appliedFilters.careerId.trim() || undefined,
+    search: appliedFilters.search.trim() || undefined,
     page,
     size: PAGE_SIZE,
-    sort: filters.sort,
-  }), [filters, page])
+    sort: appliedFilters.sort,
+  }), [appliedFilters, page])
 
   const loadAccessLogs = useCallback(async (params: AccessLogQueryParams) => {
     setLoading(true)
@@ -201,16 +245,15 @@ const AccessLogs = () => {
     void loadAccessLogs(queryParams)
   }, [loadAccessLogs, queryParams])
 
+  useEffect(() => {
+    setPage(0)
+  }, [appliedFilters])
+
   const successesOnPage = logs.filter((log) => log.result === 'SUCCESS').length
   const failuresOnPage = logs.length - successesOnPage
   const actorsOnPage = new Set(logs.map((log) => `${log.actorType}:${log.actorId ?? log.actorEmail ?? log.id}`)).size
   const visibleFrom = totalElements === 0 ? 0 : page * PAGE_SIZE + 1
   const visibleTo = totalElements === 0 ? 0 : Math.min((page + 1) * PAGE_SIZE, totalElements)
-
-  const updateFilter = <K extends keyof FilterState>(key: K, value: FilterState[K]) => {
-    setFilters((current) => ({ ...current, [key]: value }))
-    setPage(0)
-  }
 
   const handleRefresh = () => {
     void loadAccessLogs(queryParams)
@@ -223,11 +266,78 @@ const AccessLogs = () => {
       })
   }
 
+  const activeFilterChips = useMemo(() => ([
+    ...(appliedFilters.search.trim()
+      ? [{
+          id: 'search',
+          label: `Búsqueda: ${appliedFilters.search.trim()}`,
+          onClear: () => commitAppliedFilters((current) => ({ ...current, search: '' })),
+        }]
+      : []),
+    ...(appliedFilters.actorType !== 'ALL'
+      ? [{
+          id: 'actorType',
+          label: `Actor: ${actorLabels[appliedFilters.actorType]}`,
+          onClear: () => commitAppliedFilters((current) => ({ ...current, actorType: 'ALL' })),
+        }]
+      : []),
+    ...(appliedFilters.scope !== 'ALL'
+      ? [{
+          id: 'scope',
+          label: `Scope: ${scopeLabels[appliedFilters.scope]}`,
+          onClear: () => commitAppliedFilters((current) => ({ ...current, scope: 'ALL' })),
+        }]
+      : []),
+    ...(appliedFilters.result
+      ? [{
+          id: 'result',
+          label: `Resultado: ${appliedFilters.result}`,
+          onClear: () => commitAppliedFilters((current) => ({ ...current, result: '' })),
+        }]
+      : []),
+    ...(appliedFilters.studentId.trim()
+      ? [{
+          id: 'studentId',
+          label: `Student ID: ${appliedFilters.studentId.trim()}`,
+          onClear: () => commitAppliedFilters((current) => ({ ...current, studentId: '' })),
+        }]
+      : []),
+    ...(appliedFilters.adminId.trim()
+      ? [{
+          id: 'adminId',
+          label: `Admin ID: ${appliedFilters.adminId.trim()}`,
+          onClear: () => commitAppliedFilters((current) => ({ ...current, adminId: '' })),
+        }]
+      : []),
+    ...(appliedFilters.careerId.trim()
+      ? [{
+          id: 'careerId',
+          label: `Career ID: ${appliedFilters.careerId.trim()}`,
+          onClear: () => commitAppliedFilters((current) => ({ ...current, careerId: '' })),
+        }]
+      : []),
+    ...(appliedFilters.dateFrom
+      ? [{
+          id: 'dateFrom',
+          label: 'Fecha inicial',
+          onClear: () => commitAppliedFilters((current) => ({ ...current, dateFrom: '' })),
+        }]
+      : []),
+    ...(appliedFilters.dateTo
+      ? [{
+          id: 'dateTo',
+          label: 'Fecha final',
+          onClear: () => commitAppliedFilters((current) => ({ ...current, dateTo: '' })),
+        }]
+      : []),
+  ]), [appliedFilters, commitAppliedFilters])
+
   const handleExport = (format: AccessLogExportFormat) => {
     setExporting(true)
     void exportAccessLogsReport(queryParams, format)
       .then(({ blob, filename }) => {
         downloadBlob(blob, filename)
+        setExportDialogOpen(false)
         showToast({
           severity: 'success',
           title: 'Exportación completada',
@@ -257,16 +367,23 @@ const AccessLogs = () => {
               <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
               Actualizar
             </Button>
-            <Button variant="outline" size="md" className="gap-2" disabled={exporting} onClick={() => handleExport('csv')}>
+            <Button variant="outline" size="md" className="gap-2" disabled={exporting} onClick={() => setExportDialogOpen(true)}>
               <Download className={`w-3.5 h-3.5 ${exporting ? 'animate-pulse' : ''}`} />
-              Exportar CSV
-            </Button>
-            <Button variant="outline" size="md" className="gap-2" disabled={exporting} onClick={() => handleExport('xlsx')}>
-              <Download className={`w-3.5 h-3.5 ${exporting ? 'animate-pulse' : ''}`} />
-              Exportar XLSX
+              Exportar
             </Button>
           </>
         }
+      />
+
+      <ExportFormatDialog
+        open={exportDialogOpen}
+        title="Exportar access logs"
+        description="Selecciona el formato de descarga para la consulta actual de access logs."
+        loading={exporting}
+        onClose={() => !exporting && setExportDialogOpen(false)}
+        onSelect={(format) => {
+          handleExport(format as AccessLogExportFormat)
+        }}
       />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -309,86 +426,151 @@ const AccessLogs = () => {
       </div>
 
       <Card>
-        <CardHeader className="pb-4">
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="relative flex-1 min-w-[220px]">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <CardHeader className="pb-3">
+          <p className="text-sm font-semibold text-foreground">Leyenda de resultados</p>
+          <p className="text-xs text-muted-foreground">Referencia rápida de todos los outcomes posibles que puede devolver el log unificado.</p>
+        </CardHeader>
+        <CardContent className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+          {RESULT_OPTIONS.map((result) => {
+            const badge = formatResultBadge(result)
+            const Icon = badge.icon
+            return (
+              <div key={result} className="rounded-xl border border-border/70 bg-secondary/10 px-3 py-2">
+                <div className="flex items-center gap-2">
+                  <Badge variant="outlined" className={badge.className}>
+                    <Icon className="mr-1 h-3 w-3" />
+                    {result === 'SUCCESS' ? 'SUCCESS' : result}
+                  </Badge>
+                </div>
+                <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                  {resultDescriptions[result]}
+                </p>
+              </div>
+            )
+          })}
+        </CardContent>
+      </Card>
+
+      <DataTable
+        title="Access logs"
+        meta={`${totalElements.toLocaleString()} registros · mostrando ${logs.length} en esta página`}
+        viewToggle={false}
+        toolbarRight={
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-8 gap-1.5 text-xs"
+            onClick={() => setFiltersOpen((current) => !current)}
+          >
+            <Filter className="h-3 w-3" />
+            Filtrar
+          </Button>
+        }
+        toolbarBelow={(
+          <DataTableFiltersShell
+            open={filtersOpen}
+            chips={activeFilterChips}
+            onApply={() => {
+              applyFilters()
+              setPage(0)
+            }}
+            onReset={resetDraftFilters}
+            onClear={() => {
+              clearFilters()
+              setPage(0)
+            }}
+          >
+            <div className="grid grid-cols-1 gap-3 xl:grid-cols-4">
               <Input
-                value={filters.search}
-                onChange={(event) => updateFilter('search', event.target.value)}
+                value={draftFilters.search}
+                onChange={(event) => updateDraftFilter('search', event.target.value)}
                 placeholder="Buscar por actor, correo, requestId o correlationId"
-                className="pl-10"
+                startAdornment={<Search className="h-4 w-4" />}
+              />
+
+              <Select value={draftFilters.actorType} onValueChange={(value) => updateDraftFilter('actorType', value as AccessLogActorType)}>
+                <SelectTrigger className="h-9 w-full">
+                  <SelectValue placeholder="Tipo de actor" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">Todos los actores</SelectItem>
+                  <SelectItem value="STUDENT">Estudiante</SelectItem>
+                  <SelectItem value="ADMIN">Administrador</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={draftFilters.scope} onValueChange={(value) => updateDraftFilter('scope', value as AccessLogScope)}>
+                <SelectTrigger className="h-9 w-full">
+                  <SelectValue placeholder="Scope" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">Todos los scopes</SelectItem>
+                  <SelectItem value="SIGASE_LOCAL">SIGASe local</SelectItem>
+                  <SelectItem value="SIGASE_GOOGLE">SIGASe Google</SelectItem>
+                  <SelectItem value="ELIBRO">eLibro</SelectItem>
+                  <SelectItem value="ADMIN_LOGIN">Login admin</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select
+                value={draftFilters.result || '__ALL__'}
+                onValueChange={(value) => updateDraftFilter('result', value === '__ALL__' ? '' : isAccessLogResult(value) ? value : '')}
+              >
+                <SelectTrigger className="h-9 w-full">
+                  <SelectValue placeholder="Resultado" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__ALL__">Todos los resultados</SelectItem>
+                  {RESULT_OPTIONS.map((result) => (
+                    <SelectItem key={result} value={result}>{result}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={draftFilters.sort ?? 'occurredAt,desc'} onValueChange={(value) => updateDraftFilter('sort', value as FilterState['sort'])}>
+                <SelectTrigger className="h-9 w-full">
+                  <SelectValue placeholder="Orden" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="occurredAt,desc">Fecha: más reciente</SelectItem>
+                  <SelectItem value="occurredAt,asc">Fecha: más antigua</SelectItem>
+                  <SelectItem value="result,asc">Resultado A-Z</SelectItem>
+                  <SelectItem value="scope,asc">Scope A-Z</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Input
+                type="datetime-local"
+                value={draftFilters.dateFrom}
+                onChange={(event) => updateDraftFilter('dateFrom', event.target.value)}
+              />
+              <Input
+                type="datetime-local"
+                value={draftFilters.dateTo}
+                onChange={(event) => updateDraftFilter('dateTo', event.target.value)}
+              />
+              <Input
+                value={draftFilters.studentId}
+                onChange={(event) => updateDraftFilter('studentId', event.target.value)}
+                placeholder="Student ID"
+              />
+              <Input
+                value={draftFilters.adminId}
+                onChange={(event) => updateDraftFilter('adminId', event.target.value)}
+                placeholder="Admin ID"
+              />
+              <Input
+                value={draftFilters.careerId}
+                onChange={(event) => updateDraftFilter('careerId', event.target.value)}
+                placeholder="Career ID"
+                className="xl:col-span-2"
               />
             </div>
-
-            <Select value={filters.actorType} onValueChange={(value) => updateFilter('actorType', value as AccessLogActorType)}>
-              <SelectTrigger className="w-[170px]">
-                <SelectValue placeholder="Tipo de actor" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">Todos los actores</SelectItem>
-                <SelectItem value="STUDENT">Estudiante</SelectItem>
-                <SelectItem value="ADMIN">Administrador</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Select value={filters.scope} onValueChange={(value) => updateFilter('scope', value as AccessLogScope)}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Scope" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">Todos los scopes</SelectItem>
-                <SelectItem value="SIGASE_LOCAL">SIGASe local</SelectItem>
-                <SelectItem value="SIGASE_GOOGLE">SIGASe Google</SelectItem>
-                <SelectItem value="ELIBRO">eLibro</SelectItem>
-                <SelectItem value="ADMIN_LOGIN">Login admin</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Select
-              value={filters.result || '__ALL__'}
-              onValueChange={(value) => updateFilter('result', value === '__ALL__' ? '' : isAccessLogResult(value) ? value : '')}
-            >
-              <SelectTrigger className="w-[220px]">
-                <SelectValue placeholder="Resultado" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__ALL__">Todos los resultados</SelectItem>
-                {RESULT_OPTIONS.map((result) => (
-                  <SelectItem key={result} value={result}>{result}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select value={filters.sort ?? 'occurredAt,desc'} onValueChange={(value) => updateFilter('sort', value as FilterState['sort'])}>
-              <SelectTrigger className="w-[190px]">
-                <SelectValue placeholder="Orden" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="occurredAt,desc">Fecha: más reciente</SelectItem>
-                <SelectItem value="occurredAt,asc">Fecha: más antigua</SelectItem>
-                <SelectItem value="result,asc">Resultado A-Z</SelectItem>
-                <SelectItem value="scope,asc">Scope A-Z</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Input
-              type="datetime-local"
-              value={filters.dateFrom}
-              onChange={(event) => updateFilter('dateFrom', event.target.value)}
-              className="w-[210px]"
-            />
-            <Input
-              type="datetime-local"
-              value={filters.dateTo}
-              onChange={(event) => updateFilter('dateTo', event.target.value)}
-              className="w-[210px]"
-            />
-          </div>
-        </CardHeader>
-
-        <CardContent className="p-0">
-          {loading ? (
+          </DataTableFiltersShell>
+        )}
+        renderTable={() => (
+          loading ? (
             <div className="flex items-center justify-center gap-3 px-6 py-16 text-sm text-muted-foreground">
               <RefreshCw className="h-4 w-4 animate-spin" />
               Cargando access logs...
@@ -462,30 +644,19 @@ const AccessLogs = () => {
                 </table>
               </div>
 
-              <div className="flex items-center justify-between border-t border-border px-4 py-3">
-                <span className="text-xs text-muted-foreground">
-                  Mostrando {visibleFrom}–{visibleTo} de {totalElements}
-                </span>
-                <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm" className="h-8" disabled={page === 0} onClick={() => setPage((current) => current - 1)}>
-                    Anterior
-                  </Button>
-                  <Badge variant="secondary">Página {page + 1} de {Math.max(totalPages, 1)}</Badge>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8"
-                    disabled={page >= totalPages - 1 || totalPages === 0}
-                    onClick={() => setPage((current) => current + 1)}
-                  >
-                    Siguiente
-                  </Button>
-                </div>
-              </div>
             </>
-          )}
-        </CardContent>
-      </Card>
+          )
+        )}
+        pagination={{
+          summary: `Mostrando ${visibleFrom}–${visibleTo} de ${totalElements}`,
+          pageIndex: page,
+          pageCount: Math.max(totalPages, 1),
+          canPreviousPage: page > 0,
+          canNextPage: page < totalPages - 1,
+          onPreviousPage: () => setPage((current) => Math.max(0, current - 1)),
+          onNextPage: () => setPage((current) => Math.min(Math.max(totalPages - 1, 0), current + 1)),
+        }}
+      />
 
       <Dialog open={Boolean(selectedLog)} onOpenChange={(open) => { if (!open) setSelectedLog(null) }}>
         <DialogContent size="3">

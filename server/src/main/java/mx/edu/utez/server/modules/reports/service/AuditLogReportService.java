@@ -2,18 +2,15 @@ package mx.edu.utez.server.modules.reports.service;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.io.OutputStream;
-import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.function.Function;
 import mx.edu.utez.server.modules.admins.entity.Admin;
+import mx.edu.utez.server.modules.logs.audit.dto.AuditLogFilterRequest;
 import mx.edu.utez.server.modules.logs.audit.entity.AuditLog;
 import mx.edu.utez.server.modules.logs.audit.repository.AuditLogRepository;
-import mx.edu.utez.server.shared.enums.AuditActorType;
 import mx.edu.utez.server.shared.enums.AuditOutcome;
-import mx.edu.utez.server.shared.enums.AuditSeverity;
 import mx.edu.utez.server.shared.exception.BusinessException;
 import mx.edu.utez.server.shared.exception.ErrorCode;
 import org.springframework.data.domain.Page;
@@ -51,38 +48,33 @@ public class AuditLogReportService {
     );
 
     private final AuditLogRepository auditLogRepository;
+    private final mx.edu.utez.server.modules.logs.audit.service.AuditLogQueryService auditLogQueryService;
     private final CsvExportService csvExportService;
-    private final ReportRangeValidator reportRangeValidator;
     private final ReportExportAuditService reportExportAuditService;
 
     public AuditLogReportService(
             AuditLogRepository auditLogRepository,
+            mx.edu.utez.server.modules.logs.audit.service.AuditLogQueryService auditLogQueryService,
             CsvExportService csvExportService,
-            ReportRangeValidator reportRangeValidator,
             ReportExportAuditService reportExportAuditService
     ) {
         this.auditLogRepository = auditLogRepository;
+        this.auditLogQueryService = auditLogQueryService;
         this.csvExportService = csvExportService;
-        this.reportRangeValidator = reportRangeValidator;
         this.reportExportAuditService = reportExportAuditService;
     }
 
     @Transactional(readOnly = true)
     public void export(
             OutputStream out,
-            Instant dateFrom,
-            Instant dateTo,
-            AuditActorType actorType,
-            String actorEmail,
-            String action,
-            String entityType,
-            AuditOutcome outcome,
-            AuditSeverity severity,
+            AuditLogFilterRequest filters,
             Admin actor,
             HttpServletRequest request
     ) {
-        reportRangeValidator.validateDateRange(dateFrom, dateTo, AccessLogReportService.MAX_RANGE_DAYS);
-        Specification<AuditLog> spec = buildSpec(dateFrom, dateTo, actorType, actorEmail, action, entityType, outcome, severity);
+        AuditLogFilterRequest exportFilters = filters.withoutPagination();
+        auditLogQueryService.validateForExport(exportFilters);
+        Specification<AuditLog> spec = auditLogQueryService.buildSpecification(exportFilters);
+        Sort sort = auditLogQueryService.buildSort(exportFilters);
         long total = auditLogRepository.count(spec);
         if (total > MAX_LOGS_EXPORT) {
             throw new BusinessException(
@@ -92,11 +84,11 @@ public class AuditLogReportService {
             );
         }
 
-        Map<String, Object> filterMeta = buildFilterMeta(dateFrom, dateTo, actorType, actorEmail, action, entityType, outcome, severity);
+        Map<String, Object> filterMeta = buildFilterMeta(exportFilters);
 
         try {
             csvExportService.write(out, AUDIT_LOG_HEADERS, AUDIT_LOG_EXTRACTORS, page -> {
-                PageRequest pageRequest = PageRequest.of(page, CHUNK_SIZE, Sort.by(Sort.Direction.DESC, "occurredAt"));
+                PageRequest pageRequest = PageRequest.of(page, CHUNK_SIZE, sort);
                 Page<AuditLog> resultPage = auditLogRepository.findAll(spec, pageRequest);
                 return resultPage.getContent();
             });
@@ -108,83 +100,41 @@ public class AuditLogReportService {
         reportExportAuditService.auditCsvExport(actor, "AUDIT_LOGS", filterMeta, total, AuditOutcome.SUCCESS, request);
     }
 
-    public Specification<AuditLog> buildSpec(
-            Instant dateFrom,
-            Instant dateTo,
-            AuditActorType actorType,
-            String actorEmail,
-            String action,
-            String entityType,
-            AuditOutcome outcome,
-            AuditSeverity severity
-    ) {
-        return (root, query, cb) -> {
-            var predicate = cb.conjunction();
-            predicate = cb.and(predicate, cb.greaterThanOrEqualTo(root.get("occurredAt"), dateFrom));
-            predicate = cb.and(predicate, cb.lessThanOrEqualTo(root.get("occurredAt"), dateTo));
-            if (actorType != null) {
-                predicate = cb.and(predicate, cb.equal(root.get("actorType"), actorType));
-            }
-            if (StringUtils.hasText(actorEmail)) {
-                var adminJoin = root.join("actorAdmin", jakarta.persistence.criteria.JoinType.LEFT);
-                predicate = cb.and(predicate, cb.equal(
-                        cb.lower(adminJoin.get("email")),
-                        actorEmail.trim().toLowerCase(Locale.ROOT)
-                ));
-            }
-            if (StringUtils.hasText(action)) {
-                predicate = cb.and(predicate, cb.equal(
-                        cb.lower(root.get("action")),
-                        action.trim().toLowerCase(Locale.ROOT)
-                ));
-            }
-            if (StringUtils.hasText(entityType)) {
-                predicate = cb.and(predicate, cb.equal(
-                        cb.lower(root.get("entityType")),
-                        entityType.trim().toLowerCase(Locale.ROOT)
-                ));
-            }
-            if (outcome != null) {
-                predicate = cb.and(predicate, cb.equal(root.get("outcome"), outcome));
-            }
-            if (severity != null) {
-                predicate = cb.and(predicate, cb.equal(root.get("severity"), severity));
-            }
-            return predicate;
-        };
-    }
-
-    private Map<String, Object> buildFilterMeta(
-            Instant dateFrom,
-            Instant dateTo,
-            AuditActorType actorType,
-            String actorEmail,
-            String action,
-            String entityType,
-            AuditOutcome outcome,
-            AuditSeverity severity
-    ) {
-        Map<String, Object> filters = new LinkedHashMap<>();
-        filters.put("dateFrom", dateFrom.toString());
-        filters.put("dateTo", dateTo.toString());
-        if (actorType != null) {
-            filters.put("actorType", actorType.name());
+    private Map<String, Object> buildFilterMeta(AuditLogFilterRequest filters) {
+        Map<String, Object> filterMeta = new LinkedHashMap<>();
+        if (filters.dateFrom() != null) {
+            filterMeta.put("dateFrom", filters.dateFrom().toString());
         }
-        if (StringUtils.hasText(actorEmail)) {
-            filters.put("actorEmail", actorEmail);
+        if (filters.dateTo() != null) {
+            filterMeta.put("dateTo", filters.dateTo().toString());
         }
-        if (StringUtils.hasText(action)) {
-            filters.put("action", action);
+        if (filters.actorType() != null) {
+            filterMeta.put("actorType", filters.actorType().name());
         }
-        if (StringUtils.hasText(entityType)) {
-            filters.put("entityType", entityType);
+        if (StringUtils.hasText(filters.actorEmail())) {
+            filterMeta.put("actorEmail", filters.actorEmail());
         }
-        if (outcome != null) {
-            filters.put("outcome", outcome.name());
+        if (StringUtils.hasText(filters.action())) {
+            filterMeta.put("action", filters.action());
         }
-        if (severity != null) {
-            filters.put("severity", severity.name());
+        if (StringUtils.hasText(filters.entityType())) {
+            filterMeta.put("entityType", filters.entityType());
         }
-        return filters;
+        if (filters.resolvedOutcome() != null) {
+            filterMeta.put("result", filters.resolvedOutcome().name());
+        }
+        if (StringUtils.hasText(filters.requestId())) {
+            filterMeta.put("requestId", filters.requestId());
+        }
+        if (StringUtils.hasText(filters.correlationId())) {
+            filterMeta.put("correlationId", filters.correlationId());
+        }
+        if (filters.severity() != null) {
+            filterMeta.put("severity", filters.severity().name());
+        }
+        if (StringUtils.hasText(filters.search())) {
+            filterMeta.put("search", filters.search());
+        }
+        return filterMeta;
     }
 }

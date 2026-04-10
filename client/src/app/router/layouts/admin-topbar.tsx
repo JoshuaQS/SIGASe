@@ -43,7 +43,7 @@ export function AdminTopbar() {
     : 'Sistema Integral de Gestión y Acceso SSO eLibro';
 
   return (
-    <header className="border-b border-border bg-topbar sticky top-0 z-50 shadow-md">
+    <header className="sticky top-0 z-50 border-b border-border/70 bg-topbar/85 shadow-lg shadow-black/5 backdrop-blur supports-[backdrop-filter]:bg-topbar/75">
       <div className="flex items-center justify-between px-6 py-5">
         {/* Logo y Branding */}
         <div className="flex items-center gap-4">

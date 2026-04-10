@@ -27,7 +27,7 @@ import java.time.Instant;
 })
 public class Student extends BaseAuditableEntity {
 
-    @Column(name = "enrollment_id", nullable = false, length = 10, unique = true)
+    @Column(name = "enrollment_id", nullable = false, length = 11, unique = true)
     private String enrollmentId;
 
     @Column(name = "name", nullable = false, length = 100)

@@ -54,6 +54,17 @@
   outline: none;
 }
 
+.elibro-cta-card.portal-cta-lg .button {
+  min-height: 92px;
+  padding: 1.45rem 2.6rem;
+  font-size: 1.35rem;
+}
+
+.elibro-cta-card.portal-cta-lg .icon svg {
+  width: 1.4em;
+  height: 1.4em;
+}
+
 .button::after {
   content: '';
   position: absolute;

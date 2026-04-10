@@ -7,7 +7,7 @@ import {
 
 import { authSession } from '@/features/auth/store/auth-session-store';
 import { useAuthUser } from '@/features/auth/hooks/use-auth-user';
-import { AdminProfileModal } from '@/features/admins/components/modals/admin-profile-modal';
+import { AdminProfileModal } from '@/modalsfinal/AdminProfileModal';
 import { useAppToast } from '@/shared/components/ui/app-toast-provider';
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
 import { cn } from '@/shared/lib/utils';
@@ -22,6 +22,13 @@ export function AdminProfileMenu() {
   const [profileOpen, setProfileOpen] = useState(false);
   const displayName = user?.displayName || 'Administrador UTEZ';
   const email = user?.email || 'admin@utez.edu.mx';
+  const shortTopbarName = (() => {
+    const parts = displayName.split(' ').map((p) => p.trim()).filter(Boolean);
+    const first = parts[0] ?? displayName;
+    const last = parts.length >= 2 ? parts[parts.length - 1] : '';
+    const lastInitial = last ? last.charAt(0).toUpperCase() : '';
+    return lastInitial ? `${first} ${lastInitial}.` : first;
+  })();
   const initials = displayName
     .split(' ')
     .filter(Boolean)
@@ -57,15 +64,18 @@ export function AdminProfileMenu() {
         <button
           type="button"
           className={cn(
-            'inline-flex rounded-full outline-none',
+            'inline-flex items-center gap-2 rounded-full outline-none',
             'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background',
           )}
           aria-label="Abrir menú de perfil"
         >
-          <Avatar className="size-10 cursor-pointer border border-border/70 bg-card ring-1 ring-foreground/5">
+          <Avatar className="size-9 cursor-pointer border border-border/70 bg-card ring-1 ring-foreground/5">
             <AvatarImage alt={displayName} />
             <AvatarFallback className="bg-card font-semibold text-foreground">{initials}</AvatarFallback>
           </Avatar>
+          <span className="hidden sm:block text-sm font-semibold text-foreground max-w-[220px] truncate">
+            {shortTopbarName}
+          </span>
         </button>
 
         <div

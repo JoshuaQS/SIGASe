@@ -3,6 +3,7 @@ package mx.edu.utez.server.modules.students.controller;
 import mx.edu.utez.server.modules.admins.entity.Admin;
 import mx.edu.utez.server.modules.admins.service.AdminContextService;
 import mx.edu.utez.server.modules.students.dto.CreateStudentRequest;
+import mx.edu.utez.server.modules.students.dto.StudentMetricsResponse;
 import mx.edu.utez.server.modules.students.dto.StudentResponse;
 import mx.edu.utez.server.modules.students.dto.StudentStatusChangeRequest;
 import mx.edu.utez.server.modules.students.dto.UpdateStudentRequest;
@@ -15,7 +16,9 @@ import mx.edu.utez.server.shared.enums.StudentStatus;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import java.time.Instant;
 import java.util.UUID;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -118,6 +121,18 @@ public class StudentController {
                 httpRequest
         );
         return new ApiResponse<>(true, "Listado de estudiantes.", response, HttpStatus.OK.value());
+    }
+
+    @GetMapping("/metrics")
+    @Operation(summary = "Obtener métricas administrativas reales de estudiantes")
+    public ApiResponse<StudentMetricsResponse> metrics(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant dateFrom,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant dateTo,
+            Authentication authentication
+    ) {
+        adminContextService.requireCurrentAdmin(authentication);
+        StudentMetricsResponse response = studentService.getMetrics(dateFrom, dateTo);
+        return new ApiResponse<>(true, "Métricas de estudiantes obtenidas.", response, HttpStatus.OK.value());
     }
 
     @PatchMapping("/{studentId}/deactivate")

@@ -164,6 +164,18 @@ class DashboardControllerIntegrationTest {
     }
 
     @Test
+    void shouldUseBackendDefaultTopNWhenEnabledWithoutExplicitLimit() throws Exception {
+        mockMvc.perform(get("/api/v1/dashboard/top-students")
+                        .param("dateFrom", "2026-03-20T00:00:00Z")
+                        .param("dateTo", "2026-03-22T23:59:59Z")
+                        .param("topEnabled", "true")
+                        .with(auth(adminTi.getId().toString(), RoleConstants.ADMIN_TI)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.limit").exists())
+                .andExpect(jsonPath("$.data.students.length()").value(3));
+    }
+
+    @Test
     void shouldRejectDashboardForStudentRole() throws Exception {
         mockMvc.perform(get("/api/v1/dashboard/summary")
                         .with(auth(adminTi.getId().toString(), RoleConstants.STUDENT)))

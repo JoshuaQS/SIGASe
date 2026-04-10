@@ -19,5 +19,6 @@ public interface StudentRepository extends JpaRepository<Student, UUID>, JpaSpec
     boolean existsByInstitutionalEmailNormalizedAndIdNot(String institutionalEmailNormalized, UUID id);
     boolean existsByEnrollmentId(String enrollmentId);
     boolean existsByEnrollmentIdAndIdNot(String enrollmentId, UUID id);
+    long countByStatus(StudentStatus status);
     Optional<Student> findFirstByStatusAndInstitutionalEmailNormalizedIsNotNullOrderByUpdatedAtDesc(StudentStatus status);
 }

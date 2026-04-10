@@ -5,6 +5,7 @@ import mx.edu.utez.server.modules.admins.service.AdminContextService;
 import mx.edu.utez.server.modules.accesslogs.dto.AccessLogActorType;
 import mx.edu.utez.server.modules.accesslogs.dto.AccessLogQueryFilters;
 import mx.edu.utez.server.modules.accesslogs.dto.AccessLogScope;
+import mx.edu.utez.server.modules.logs.audit.dto.AuditLogFilterRequest;
 import mx.edu.utez.server.modules.reports.service.ReportService;
 import mx.edu.utez.server.modules.reports.service.ReportXlsxExportService;
 import mx.edu.utez.server.modules.reports.service.StudentXlsxExportService;
@@ -189,7 +190,11 @@ public class ReportController {
             @RequestParam(required = false) String action,
             @RequestParam(required = false) String entityType,
             @RequestParam(required = false) AuditOutcome outcome,
+            @RequestParam(required = false) AuditOutcome result,
+            @RequestParam(required = false) String requestId,
+            @RequestParam(required = false) String correlationId,
             @RequestParam(required = false) AuditSeverity severity,
+            @RequestParam(required = false) String search,
             @RequestParam(defaultValue = "csv") String format,
             Authentication authentication,
             HttpServletRequest request,
@@ -197,23 +202,39 @@ public class ReportController {
     ) throws Exception {
         Admin actor = adminContextService.requireCurrentAdmin(authentication);
         String fmt = validateFormat(format);
-        reportService.validateLogExport(dateFrom, dateTo);
+        AuditLogFilterRequest filters = new AuditLogFilterRequest(
+                dateFrom,
+                dateTo,
+                actorType,
+                actorEmail,
+                action,
+                entityType,
+                outcome,
+                result,
+                requestId,
+                correlationId,
+                severity,
+                search,
+                null,
+                null,
+                "occurredAt",
+                "desc"
+        );
+        reportService.validateAuditLogExport(filters);
 
         if ("xlsx".equals(fmt)) {
             String filename = ReportService.generateFilename("audit-logs", "xlsx");
             response.setContentType(CT_XLSX);
             response.setHeader("Content-Disposition", "attachment; filename=\"" + filename + "\"");
             reportXlsxExportService.exportAuditLogs(
-                    response.getOutputStream(), dateFrom, dateTo, actorType, actorEmail,
-                    action, entityType, outcome, severity, actor, request
+                    response.getOutputStream(), filters, actor, request
             );
         } else {
             String filename = ReportService.generateFilename("audit-logs", "csv");
             response.setContentType(CT_CSV);
             response.setHeader("Content-Disposition", "attachment; filename=\"" + filename + "\"");
             reportService.exportAuditLogs(
-                    response.getOutputStream(), dateFrom, dateTo, actorType, actorEmail,
-                    action, entityType, outcome, severity, actor, request
+                    response.getOutputStream(), filters, actor, request
             );
         }
     }

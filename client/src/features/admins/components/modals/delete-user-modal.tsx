@@ -58,7 +58,7 @@ export function DeleteUserModal({
           <ModalFormBody>
             <div className="rounded-xl border border-destructive/20 bg-destructive/10 px-4 py-3">
               <div className="flex items-start gap-3">
-                <div className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+                <div className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-xl bg-destructive/10 text-destructive">
                   {targetName
                     .split(' ')
                     .filter(Boolean)

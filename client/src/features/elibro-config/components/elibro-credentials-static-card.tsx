@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { CheckCircle2, Settings, Cable, Save, Loader2, AlertTriangle, Trash2 } from 'lucide-react'
+import { CheckCircle2, Settings, Cable, Save, Loader2, AlertTriangle, Trash2, Info, Lock } from 'lucide-react'
 import { Button } from '@/shared/components/ui/button'
 import { Input } from '@/shared/components/ui/input'
 import { ProtectedField } from '@/shared/components/ui/forms/protected-field'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/components/ui/tooltip'
 import { useAppToast } from '@/shared/components/ui/app-toast-provider'
 import { AppConfirmDialog } from '@/shared/components/ui/confirmation-dialog'
 import { ApiClientError } from '@/shared/lib/http/api-client'
@@ -223,7 +224,7 @@ export function ElibroCredentialsStaticCard({
     if (!hasConfigs) {
       syncForm(null)
       syncValidationPanel(null)
-      setMode('create')
+      setMode('view')
       onSelectedConfigChange?.(null)
       return
     }
@@ -458,15 +459,17 @@ export function ElibroCredentialsStaticCard({
             </div>
           </div>
           {!hasConfigs ? (
-            <Button
-              variant="outline"
-              size="md"
-              className={secondaryActionButtonClass}
-              onClick={startCreateMode}
-              disabled={isLoadingConfigs || isSaving}
-            >
-              <Settings className="w-3.5 h-3.5" /> Agregar configuración
-            </Button>
+            mode !== 'create' ? (
+              <Button
+                variant="outline"
+                size="md"
+                className={secondaryActionButtonClass}
+                onClick={startCreateMode}
+                disabled={isLoadingConfigs || isSaving}
+              >
+                <Settings className="w-3.5 h-3.5" /> Configurar
+              </Button>
+            ) : null
           ) : isFormEditable ? (
             <Button
               variant="outline"
@@ -522,7 +525,21 @@ export function ElibroCredentialsStaticCard({
             />
           </div>
           <div className="space-y-1.5">
-            <p className="text-xs font-medium text-muted-foreground">Next URL permitida</p>
+            <div className="flex items-center gap-1.5">
+              <p className="text-xs font-medium text-muted-foreground">Next URL permitida</p>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button type="button" className="text-muted-foreground transition-colors hover:text-foreground" aria-label="Información sobre next">
+                      <Info className="h-3.5 w-3.5" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" sideOffset={6}>
+                    next es opcional; permite redirigir a un recurso específico dentro de eLibro después del SSO y no cambia el endpoint principal.
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
             <Input
               value={form.nextUrl}
               readOnly={!isFormEditable}
@@ -573,11 +590,15 @@ export function ElibroCredentialsStaticCard({
             />
           </div>
           <div className="space-y-1.5">
-            <p className="text-xs font-medium text-muted-foreground">Endpoint SSO</p>
+            <div className="flex items-center gap-1.5">
+              <p className="text-xs font-medium text-muted-foreground">Endpoint SSO</p>
+              <Lock className="h-3.5 w-3.5 text-muted-foreground" />
+            </div>
             <Input
               value={endpoint}
               readOnly
               className="font-mono text-xs"
+              endAdornment={<Lock className="h-4 w-4" />}
             />
           </div>
         </div>
@@ -601,16 +622,26 @@ export function ElibroCredentialsStaticCard({
               </Button>
             ) : null}
             {isFormEditable ? (
-              <Button
-                size="md"
-                className="gap-2"
-                onClick={() => void handleSave()}
-                disabled={isSaving || isLoadingConfigs}
-                isLoading={isSaving}
-              >
-                {!isSaving ? <Save className="w-3.5 h-3.5" /> : null}
-                {isSaving ? 'Configurando…' : 'Guardar configuración'}
-              </Button>
+              <>
+                <Button
+                  variant="outline"
+                  size="md"
+                  onClick={handleCancelEditing}
+                  disabled={isSaving || isLoadingConfigs || isValidationLoading}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  size="md"
+                  className="gap-2"
+                  onClick={() => void handleSave()}
+                  disabled={isSaving || isLoadingConfigs}
+                  isLoading={isSaving}
+                >
+                  {!isSaving ? <Save className="w-3.5 h-3.5" /> : null}
+                  {isSaving ? 'Configurando…' : 'Guardar'}
+                </Button>
+              </>
             ) : null}
           </div>
         </div>

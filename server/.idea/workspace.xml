@@ -5,275 +5,69 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="5ddae72a-7e26-41dc-8744-da8fff9ed1e9" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/../.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/../.gitignore" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/components.json" beforeDir="false" afterPath="$PROJECT_DIR$/../client/components.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/app/App.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/app/App.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/app/providers/AppProviders.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/auth/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/auth/auth-session-store.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/auth/auth-user.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/components/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/components/session-expired-dialog.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/components/student-card/StudentCard.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/components/ui/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/components/ui/CareerCombobox.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/components/ui/InputWithIcon.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/components/ui/StatusCard.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/components/ui/app-toast-provider.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/components/ui/avatar.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/components/ui/badge.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/components/ui/breadcrumb.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/components/ui/button.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/components/ui/calendar.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/components/ui/calendarrange.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/components/ui/card.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/components/ui/combobox.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/components/ui/command.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/components/ui/confirmation-dialog.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/components/ui/data-table-shell.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/components/ui/data-table.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/components/ui/dialog.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/components/ui/dropdown-menu.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/components/ui/energy-elibro-cta-button.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/components/ui/filters-panel.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/components/ui/forms/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/components/ui/forms/field-message.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/components/ui/forms/form-control-contract.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/components/ui/forms/form-control-styles.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/components/ui/forms/form-field-a11y.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/components/ui/forms/form-field.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/components/ui/forms/form-section.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/components/ui/forms/modalFormPrimitives.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/components/ui/forms/password-field.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/components/ui/forms/password-input.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/components/ui/forms/protected-field.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/components/ui/input-group.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/components/ui/input.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/components/ui/label.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/components/ui/popover.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/components/ui/scroll-area.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/components/ui/section-header.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/components/ui/segmented-control.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/components/ui/select.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/components/ui/separator.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/components/ui/sheet.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/components/ui/skeleton.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/components/ui/textarea.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/components/ui/theme-toggle.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/components/ui/tooltip.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/config/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/config/admin-navigation.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/hooks/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/hooks/use-auth-user.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/hooks/use-caps-lock.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/hooks/use-mobile.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/hooks/use-session-expired-dialog.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/hooks/use-theme.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/lib/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/lib/api/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/lib/api/access-logs-api.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/lib/api/admins-api.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/lib/api/api-client.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/lib/api/audit-logs-api.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/lib/api/auth-api.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/lib/api/careers-api.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/lib/api/dashboard-api.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/lib/api/elibro-config-api.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/lib/api/student-portal-api.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/lib/api/students-api.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/lib/debug/logger.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/lib/theme.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/lib/utils.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/main.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/main.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/components/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/components/StatusChangeModal.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/components/elibro-sso/ElibroCredentialsStaticCard.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/components/elibro-sso/ElibroServiceStatusPanel.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/components/elibro-sso/ElibroTestCard.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/components/monitoring/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/components/monitoring/components/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/components/monitoring/components/date-range/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/components/monitoring/components/date-range/date-range-calendar.module.css" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/components/monitoring/components/date-range/date-range-calendar.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/components/monitoring/components/date-range/date-range-presets.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/components/monitoring/components/date-range/date-range-selector.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/components/monitoring/components/date-range/date-range-slider.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/components/monitoring/components/date-range/date-range.types.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/components/monitoring/components/date-range/date-range.utils.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/components/monitoring/components/monitoring-composer/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/components/monitoring/components/monitoring-composer/access-status-field.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/components/monitoring/components/monitoring-composer/analysis-mode-selector.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/components/monitoring/components/monitoring-composer/career-multi-combobox-field.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/components/monitoring/components/monitoring-composer/career-select-field.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/components/monitoring/components/monitoring-composer/composer-actions.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/components/monitoring/components/monitoring-composer/composer.config.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/components/monitoring/components/monitoring-composer/composer.types.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/components/monitoring/components/monitoring-composer/composer.utils.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/components/monitoring/components/monitoring-composer/date-range-field.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/components/monitoring/components/monitoring-composer/monitoring-composer-bar.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/components/monitoring/components/monitoring-composer/monitoring-filters-card.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/components/monitoring/components/monitoring-composer/sort-direction-field.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/components/monitoring/components/monitoring-composer/student-lookup-field.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/components/monitoring/components/monitoring-composer/top-n-field.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/components/student/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/components/student/DetailModal.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/components/student/creation/StudentsCreateModal.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/components/student/creation/schema.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/components/student/csv-importer/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/components/student/csv-importer/CsvImport.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/components/student/csv-importer/CsvImportModal.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/components/student/csv-importer/CsvImportTabLayout.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/components/student/csv-importer/FileImportForm.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/layout/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/layout/admin-profile-menu.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/layout/admin-topbar.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/layout/profile-form.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/pages/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/pages/AccessLogs.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/pages/AdminsManagement.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/pages/AuditLogs.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/pages/CustomButtonsShowcase.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/pages/ElibroSsoConfig.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/pages/MonitoringAndReports.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/admin/pages/StudentsManagment.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/auth/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/auth/components/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/auth/components/AdminLoginCard.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/auth/components/AuthBrand.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/auth/components/AuthDivider.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/auth/components/AuthHeader.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/auth/components/GoogleLoginPlaceholder.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/auth/components/RecoveryCard.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/auth/components/StudentsAccessAlternate.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/auth/components/StudentsLoginCard.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/auth/components/ambient-auth-background.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/auth/lib/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/auth/lib/auth-schemas.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/auth/pages/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/auth/pages/ForgotPasswordPage.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/auth/pages/LoginPage.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/auth/pages/ResetPasswordPage.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/auth/pages/StudentOnboardingPasswordPage.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/student/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/student/components/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/student/components/ForcePasswordChangeForm.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/student/components/cta-card/elibro-cta-card.css" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/student/components/cta-card/elibro-cta-card.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/student/components/layout/BubbleBackground.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/student/components/layout/portal-top-bar.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/student/components/layout/student-profile-menu.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/student/pages/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/student/pages/ForcePasswordChange.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/student/pages/Portal.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/student/pages/portal-effects.module.css" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/system/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/system/pages/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/system/pages/ForbiddenPage.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/modules/system/pages/NotFoundPage.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/router/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/router/guards/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/router/guards/GuestGuard.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/router/guards/RoleGuard.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/router/guards/SessionGuard.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/router/guards/StudentPasswordGuard.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/router/index.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/router/layouts/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/router/layouts/AdminLayout.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/router/layouts/AuthLayout.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/router/layouts/StudentLayout.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/router/route-config.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/styles/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/styles/energy-elibro-cta-button.module.css" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/styles/global.css" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/types/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/types/api.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/vite-env.d.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/vite-env.d.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.env.example" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/compiler.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/compiler.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/app/router/layouts/admin-profile-menu.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/app/router/layouts/admin-profile-menu.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/app/router/layouts/admin-topbar.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/app/router/layouts/admin-topbar.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/features/access-logs/pages/access-logs-page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/features/access-logs/pages/access-logs-page.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/features/admins/components/admin-data-table.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/features/admins/components/index.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/features/admins/components/index.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/features/admins/components/modals/delete-user-modal.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/features/admins/components/modals/delete-user-modal.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/features/admins/components/modals/index.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/features/admins/components/modals/index.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/features/admins/pages/admins-management-page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/features/admins/pages/admins-management-page.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/features/audit-logs/api/audit-logs-api.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/features/audit-logs/api/audit-logs-api.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/features/audit-logs/pages/audit-logs-page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/features/audit-logs/pages/audit-logs-page.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/features/dashboard/components/date-range/date-range.types.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/features/dashboard/components/date-range/date-range.types.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/features/dashboard/components/monitoring-composer/.gitkeep" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/features/dashboard/components/monitoring-composer/access-status-field.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/features/dashboard/components/monitoring-composer/analysis-mode-selector.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/features/dashboard/components/monitoring-composer/career-multi-combobox-field.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/features/dashboard/components/monitoring-composer/career-select-field.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/features/dashboard/components/monitoring-composer/composer-actions.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/features/dashboard/components/monitoring-composer/composer.config.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/features/dashboard/components/monitoring-composer/composer.schema.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/features/dashboard/components/monitoring-composer/composer.types.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/features/dashboard/components/monitoring-composer/composer.utils.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/features/dashboard/components/monitoring-composer/date-range-field.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/features/dashboard/components/monitoring-composer/monitoring-composer-bar.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/features/dashboard/components/monitoring-composer/monitoring-filters-card.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/features/dashboard/components/monitoring-composer/sort-direction-field.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/features/dashboard/components/monitoring-composer/student-lookup-field.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/features/dashboard/components/monitoring-composer/top-n-field.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/features/dashboard/pages/monitoring-and-reports-page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/features/dashboard/pages/monitoring-and-reports-page.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/features/elibro-config/components/elibro-credentials-static-card.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/features/elibro-config/components/elibro-credentials-static-card.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/features/elibro-config/components/elibro-service-status-panel.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/features/elibro-config/components/elibro-service-status-panel.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/features/student-portal/components/cta-card/elibro-cta-card.css" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/features/student-portal/components/cta-card/elibro-cta-card.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/features/student-portal/components/layout/portal-top-bar.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/features/student-portal/components/layout/portal-top-bar.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/features/student-portal/components/layout/student-profile-menu.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/features/student-portal/components/layout/student-profile-menu.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/features/student-portal/pages/portal-page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/features/student-portal/pages/portal-page.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/features/students/api/students-api.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/features/students/api/students-api.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/features/students/components/import/csv-import-modal.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/features/students/components/import/csv-import-modal.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/features/students/components/import/csv-import-tab-layout.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/features/students/components/import/csv-import-tab-layout.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/features/students/components/import/csv-import.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/features/students/components/import/csv-import.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/features/students/components/modals/student-status-change-modal.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/features/students/components/modals/student-status-change-modal.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/features/students/components/student-data-table.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/features/students/pages/students-management-page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/features/students/pages/students-management-page.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/shared/components/ui/combobox.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/shared/components/ui/combobox.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/shared/components/ui/forms/modal-form-primitives.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/shared/components/ui/forms/modal-form-primitives.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/access-log-result-codes.md" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/architecture/package-base-migration-plan.md" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/auth-session-contract.md" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/db/elibro-config-overview-migration.md" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/db/migrations/2026-04-02_add_elibro_config_name_and_validation_runs_mysql.sql" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/db/migrations/2026-04-02_add_token_version_columns_mysql.sql" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/db/migrations/2026-04-02_drop_students_legacy_career_column_mysql.sql" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/db/migrations/2026-04-05_model_refactor_mysql.sql" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/db/token-version-migration.md" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/pom.xml" beforeDir="false" afterPath="$PROJECT_DIR$/pom.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/mx/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/ServerApplication.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/ServerApplication.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/admins/controller/AdminManagementController.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/admins/controller/AdminManagementController.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/admins/dto/CreateAdminRequest.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/admins/dto/CreateAdminRequest.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/admins/service/AdminManagementService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/admins/service/AdminManagementService.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/auth/controller/AdminAuthController.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/auth/controller/AdminAuthController.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/auth/service/AdminAuthService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/auth/service/AdminAuthService.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/auth/service/StudentGoogleLoginService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/auth/service/StudentGoogleLoginService.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/auth/service/StudentLocalLoginService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/auth/service/StudentLocalLoginService.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/auth/service/StudentPasswordResetNotifier.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/auth/service/StudentPasswordResetNotifier.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/dashboard/service/DashboardExportService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/dashboard/service/DashboardExportService.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/elibro/controller/ElibroConfigController.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/elibro/controller/ElibroConfigController.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/elibro/service/ElibroConfigOverviewService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/elibro/service/ElibroConfigOverviewService.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/elibro/service/ElibroConfigService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/elibro/service/ElibroConfigService.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/logs/.gitkeep" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/dashboard/service/DashboardService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/dashboard/service/DashboardService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/elibro/repository/ElibroAccessLogRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/elibro/repository/ElibroAccessLogRepository.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/logs/audit/controller/AuditLogQueryController.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/logs/audit/controller/AuditLogQueryController.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/logs/audit/dto/AuditLogResponse.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/logs/audit/dto/AuditLogResponse.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/logs/audit/mapper/AuditLogMapper.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/logs/audit/mapper/AuditLogMapper.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/logs/audit/service/AuditLogQueryService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/logs/audit/service/AuditLogQueryService.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/reports/controller/ReportController.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/reports/controller/ReportController.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/reports/service/ReportExportAuditService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/reports/service/ReportExportAuditService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/reports/service/AuditLogReportService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/reports/service/AuditLogReportService.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/reports/service/ReportService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/reports/service/ReportService.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/reports/service/ReportXlsxExportService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/reports/service/ReportXlsxExportService.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/reports/service/StudentReportService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/reports/service/StudentReportService.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/reports/service/StudentXlsxExportService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/reports/service/StudentXlsxExportService.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/reports/service/XlsxExportService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/reports/service/XlsxExportService.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/students/controller/StudentController.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/students/controller/StudentController.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/students/controller/StudentImportController.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/students/controller/StudentImportController.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/students/service/StudentImportService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/students/service/StudentImportService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/students/dto/StudentResponse.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/students/dto/StudentResponse.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/students/entity/Student.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/students/entity/Student.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/students/mapper/StudentMapper.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/students/mapper/StudentMapper.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/students/repository/StudentRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/students/repository/StudentRepository.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/students/service/StudentService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/students/service/StudentService.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/security/JwtAuthenticationFilter.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/security/JwtAuthenticationFilter.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/security/SecurityPublicRoutes.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/security/SecurityPublicRoutes.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/shared/enums/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/shared/util/SecurityLogSanitizer.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/shared/util/SecurityLogSanitizer.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/resources/.gitkeep" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/resources/application.properties" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/application.properties" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/test/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/test/java/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/test/java/mx/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/test/java/mx/edu/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/test/java/mx/edu/utez/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/test/java/mx/edu/utez/server/config/AdminSeedRunnerIntegrationTest.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/test/java/mx/edu/utez/server/config/AdminSeedRunnerIntegrationTest.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/test/java/mx/edu/utez/server/modules/auth/controller/AuthJwtFilterPublicRoutesIntegrationTest.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/test/java/mx/edu/utez/server/modules/auth/controller/AuthJwtFilterPublicRoutesIntegrationTest.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/test/java/mx/edu/utez/server/modules/auth/controller/PasswordResetIntegrationTest.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/test/java/mx/edu/utez/server/modules/auth/controller/PasswordResetIntegrationTest.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/test/java/mx/edu/utez/server/modules/auth/controller/StudentAuthControllerIntegrationTest.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/test/java/mx/edu/utez/server/modules/auth/controller/StudentAuthControllerIntegrationTest.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/test/java/mx/edu/utez/server/modules/auth/service/StudentGoogleLoginServiceTest.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/test/java/mx/edu/utez/server/modules/auth/service/StudentGoogleLoginServiceTest.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/test/java/mx/edu/utez/server/modules/dashboard/controller/DashboardControllerIntegrationTest.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/test/java/mx/edu/utez/server/modules/dashboard/controller/DashboardControllerIntegrationTest.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/test/java/mx/edu/utez/server/modules/elibro/controller/ElibroConfigControllerIntegrationTest.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/test/java/mx/edu/utez/server/modules/elibro/controller/ElibroConfigControllerIntegrationTest.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/test/java/mx/edu/utez/server/modules/elibro/controller/StudentPortalSummaryIntegrationTest.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/test/java/mx/edu/utez/server/modules/elibro/controller/StudentPortalSummaryIntegrationTest.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/test/java/mx/edu/utez/server/modules/logs/LogSecurityIntegrationTest.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/test/java/mx/edu/utez/server/modules/logs/LogSecurityIntegrationTest.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/test/java/mx/edu/utez/server/modules/logs/access/controller/AccessLogQueryControllerIntegrationTest.java" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/src/test/java/mx/edu/utez/server/modules/logs/audit/controller/AuditLogQueryControllerIntegrationTest.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/test/java/mx/edu/utez/server/modules/logs/audit/controller/AuditLogQueryControllerIntegrationTest.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/test/java/mx/edu/utez/server/modules/logs/audit/service/AuditLogServiceTransactionIntegrationTest.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/test/java/mx/edu/utez/server/modules/logs/audit/service/AuditLogServiceTransactionIntegrationTest.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/test/java/mx/edu/utez/server/modules/reports/controller/ReportExportIntegrationTest.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/test/java/mx/edu/utez/server/modules/reports/controller/ReportExportIntegrationTest.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/test/java/mx/edu/utez/server/modules/reports/controller/ReportXlsxExportIntegrationTest.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/test/java/mx/edu/utez/server/modules/reports/controller/ReportXlsxExportIntegrationTest.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/test/java/mx/edu/utez/server/modules/students/controller/StudentImportIntegrationTest.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/test/java/mx/edu/utez/server/modules/students/controller/StudentImportIntegrationTest.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/test/java/mx/edu/utez/server/security/JwtAccessDeniedHandlerTest.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/test/java/mx/edu/utez/server/security/JwtAccessDeniedHandlerTest.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/test/java/mx/edu/utez/server/security/JwtAuthenticationEntryPointTest.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/test/java/mx/edu/utez/server/security/JwtAuthenticationEntryPointTest.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/test/java/mx/edu/utez/server/security/JwtTokenProviderTest.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/test/java/mx/edu/utez/server/security/JwtTokenProviderTest.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/test/resources/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/test/resources/application-test.properties" beforeDir="false" afterPath="$PROJECT_DIR$/src/test/resources/application-test.properties" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/test/java/mx/edu/utez/server/modules/students/controller/StudentControllerIntegrationTest.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/test/java/mx/edu/utez/server/modules/students/controller/StudentControllerIntegrationTest.java" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -324,37 +118,37 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "Maven.server [clean,compile].executor": "Run",
-    "Maven.server [clean].executor": "Run",
-    "Maven.server [compile].executor": "Run",
-    "ModuleVcsDetector.initialDetectionPerformed": "true",
-    "RequestMappingsPanelOrder0": "0",
-    "RequestMappingsPanelOrder1": "1",
-    "RequestMappingsPanelWidth0": "75",
-    "RequestMappingsPanelWidth1": "75",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
-    "Spring Boot.ServerApplication.executor": "Run",
-    "git-widget-placeholder": "develop",
-    "kotlin-language-version-configured": "true",
-    "last_directory_selection": "/Users/joshqs/Documents/refactor/sigase/src/test/java",
-    "last_opened_file_path": "/Users/joshqs/Desktop/SIGASe/server",
-    "node.js.detected.package.eslint": "true",
-    "node.js.detected.package.tslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "node.js.selected.package.tslint": "(autodetect)",
-    "nodejs_package_manager_path": "npm",
-    "project.structure.last.edited": "Project",
-    "project.structure.proportion": "0.15",
-    "project.structure.side.proportion": "0.0",
-    "settings.editor.selected.configurable": "preferences.pluginManager",
-    "vue.rearranger.settings.migration": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;Maven.server [clean,compile].executor&quot;: &quot;Run&quot;,
+    &quot;Maven.server [clean].executor&quot;: &quot;Run&quot;,
+    &quot;Maven.server [compile].executor&quot;: &quot;Run&quot;,
+    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
+    &quot;RequestMappingsPanelOrder0&quot;: &quot;0&quot;,
+    &quot;RequestMappingsPanelOrder1&quot;: &quot;1&quot;,
+    &quot;RequestMappingsPanelWidth0&quot;: &quot;75&quot;,
+    &quot;RequestMappingsPanelWidth1&quot;: &quot;75&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,
+    &quot;Spring Boot.ServerApplication.executor&quot;: &quot;Run&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;develop&quot;,
+    &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
+    &quot;last_directory_selection&quot;: &quot;/Users/joshqs/Documents/refactor/sigase/src/test/java&quot;,
+    &quot;last_opened_file_path&quot;: &quot;/Users/joshqs/Desktop/SIGASe/server&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;project.structure.last.edited&quot;: &quot;Project&quot;,
+    &quot;project.structure.proportion&quot;: &quot;0.15&quot;,
+    &quot;project.structure.side.proportion&quot;: &quot;0.0&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.pluginManager&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
-}]]></component>
+}</component>
   <component name="RecentsManager">
     <key name="MoveClassesOrPackagesDialog.RECENTS_KEY">
       <recent name="mx.edu.utez.server" />
@@ -396,12 +190,26 @@
       <workItem from="1775569041983" duration="6809000" />
       <workItem from="1775609202621" duration="28000" />
       <workItem from="1775609351721" duration="112000" />
-      <workItem from="1775609524246" duration="3783000" />
+      <workItem from="1775609524246" duration="7006000" />
+      <workItem from="1775687930555" duration="44000" />
+      <workItem from="1775689911214" duration="919000" />
+      <workItem from="1775693953365" duration="13536000" />
     </task>
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="3" />
+  </component>
+  <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint enabled="true" type="java-line">
+          <url>file://$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/accesslogs/controller/AccessLogQueryController.java</url>
+          <line>45</line>
+          <option name="timeStamp" value="1" />
+        </line-breakpoint>
+      </breakpoints>
+    </breakpoint-manager>
   </component>
   <component name="github-copilot-workspace">
     <instructionFileLocations>

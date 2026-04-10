@@ -1,2 +1,2 @@
 export * from './modals'
-export * from './admin-data-table'
+export * from './AdminsTable'

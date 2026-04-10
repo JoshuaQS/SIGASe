@@ -293,7 +293,7 @@ const Portal = () => {
         <div className="grid w-full grid-cols-1 gap-2.5 xl:grid-cols-12 xl:grid-rows-none xl:items-start xl:gap-x-4 xl:gap-y-2.5">
           <section className="xl:col-span-12">
             <ElibroCtaCard
-              className={cardHoverClass}
+              className={cn(cardHoverClass, 'portal-cta-lg')}
               onTrigger={handleElibroAccess}
               busy={isOpeningElibro}
               disabled={ctaDisabled}
@@ -412,7 +412,7 @@ const Portal = () => {
                     </span>
 
                     <div className="flex items-end gap-2">
-                      <span className="bg-gradient-to-br from-foreground to-muted-foreground bg-clip-text text-3xl font-extrabold text-transparent lg:text-[2rem]">
+                      <span className="bg-gradient-to-br from-foreground to-muted-foreground bg-clip-text text-4xl font-extrabold text-transparent lg:text-[2.5rem]">
                         {streakDays}
                       </span>
                       <span className="pb-0.5 text-sm font-medium text-muted-foreground">días</span>

@@ -9,12 +9,12 @@ import java.time.format.DateTimeFormatter;
 import java.util.UUID;
 import mx.edu.utez.server.modules.admins.entity.Admin;
 import mx.edu.utez.server.modules.elibro.entity.ElibroAccessLog;
+import mx.edu.utez.server.modules.logs.audit.dto.AuditLogFilterRequest;
 import mx.edu.utez.server.modules.logs.audit.entity.AuditLog;
+import mx.edu.utez.server.modules.logs.audit.service.AuditLogQueryService;
 import mx.edu.utez.server.modules.students.entity.Student;
 import mx.edu.utez.server.shared.enums.ElibroAccessResult;
-import mx.edu.utez.server.shared.enums.AuditActorType;
 import mx.edu.utez.server.shared.enums.AuditOutcome;
-import mx.edu.utez.server.shared.enums.AuditSeverity;
 import mx.edu.utez.server.shared.enums.Sex;
 import mx.edu.utez.server.shared.enums.StudentStatus;
 import org.springframework.data.jpa.domain.Specification;
@@ -32,15 +32,18 @@ public class ReportService {
     private final StudentReportService studentReportService;
     private final AccessLogReportService accessLogReportService;
     private final AuditLogReportService auditLogReportService;
+    private final AuditLogQueryService auditLogQueryService;
 
     public ReportService(
             StudentReportService studentReportService,
             AccessLogReportService accessLogReportService,
-            AuditLogReportService auditLogReportService
+            AuditLogReportService auditLogReportService,
+            AuditLogQueryService auditLogQueryService
     ) {
         this.studentReportService = studentReportService;
         this.accessLogReportService = accessLogReportService;
         this.auditLogReportService = auditLogReportService;
+        this.auditLogQueryService = auditLogQueryService;
     }
 
     public void exportStudents(
@@ -149,43 +152,16 @@ public class ReportService {
 
     public void exportAuditLogs(
             OutputStream out,
-            Instant dateFrom,
-            Instant dateTo,
-            AuditActorType actorType,
-            String actorEmail,
-            String action,
-            String entityType,
-            AuditOutcome outcome,
-            AuditSeverity severity,
+            AuditLogFilterRequest filters,
             Admin actor,
             HttpServletRequest request
     ) {
         auditLogReportService.export(
                 out,
-                dateFrom,
-                dateTo,
-                actorType,
-                actorEmail,
-                action,
-                entityType,
-                outcome,
-                severity,
+                filters,
                 actor,
                 request
         );
-    }
-
-    Specification<AuditLog> buildAuditLogSpec(
-            Instant dateFrom,
-            Instant dateTo,
-            AuditActorType actorType,
-            String actorEmail,
-            String action,
-            String entityType,
-            AuditOutcome outcome,
-            AuditSeverity severity
-    ) {
-        return auditLogReportService.buildSpec(dateFrom, dateTo, actorType, actorEmail, action, entityType, outcome, severity);
     }
 
     public void validateStudentExport(
@@ -214,6 +190,10 @@ public class ReportService {
 
     public void validateLogExport(Instant dateFrom, Instant dateTo) {
         accessLogReportService.validateRange(dateFrom, dateTo);
+    }
+
+    public void validateAuditLogExport(AuditLogFilterRequest filters) {
+        auditLogQueryService.validateForExport(filters);
     }
 
     static String truncateErrorDetail(String errorDetail) {

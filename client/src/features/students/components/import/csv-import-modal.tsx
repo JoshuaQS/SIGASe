@@ -19,9 +19,6 @@ export type CsvImportModalProps = {
   onDownloadTemplate?: () => void;
 };
 
-/**
- * Modal de importación CSV con `DialogContent` estilo Radix Themes `size="4"` (ancho responsivo sm→xl).
- */
 export function CsvImportModal({
   open,
   onOpenChange,
@@ -33,9 +30,9 @@ export function CsvImportModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-      size="4"
+        size="4"
         showCloseButton={false}
-        className="flex max-h-[min(94vh,980px)] max-w-6xl flex-col gap-0 overflow-hidden rounded-2xl border-border bg-background p-0 shadow-2xl"
+        className="flex h-[94vh] max-h-[94vh] w-[96vw] max-w-[min(96vw,1600px)] flex-col gap-0 overflow-hidden rounded-[28px] border-border bg-background p-0 shadow-2xl"
       >
         <DialogHeader className="flex shrink-0 flex-row items-center justify-between gap-3 space-y-0 border-b border-border bg-card px-5 py-3.5 text-left">
           <DialogTitle
@@ -56,8 +53,8 @@ export function CsvImportModal({
           Importa estudiantes desde un archivo CSV: carga el archivo, revisa la plantilla y el historial de cargas.
         </DialogDescription>
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-4 sm:px-6 sm:py-5">
-            <div className="flex min-h-[min(52vh,560px)] flex-1 flex-col">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-4 sm:px-8 sm:py-6">
+            <div className="flex h-full min-h-0 flex-1 flex-col">
               <CsvImportTabLayout
                 invertedOrder
                 fullWidth

@@ -4,6 +4,7 @@ import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -16,6 +17,7 @@ import mx.edu.utez.server.modules.auth.repository.StudentPasswordResetTokenRepos
 import mx.edu.utez.server.modules.auth.service.StudentPasswordResetNotifier;
 import mx.edu.utez.server.modules.careers.entity.Career;
 import mx.edu.utez.server.modules.careers.repository.CareerRepository;
+import mx.edu.utez.server.modules.elibro.entity.ElibroAccessLog;
 import mx.edu.utez.server.modules.elibro.repository.ElibroAccessLogRepository;
 import mx.edu.utez.server.modules.logs.audit.repository.AuditLogRepository;
 import mx.edu.utez.server.modules.notifications.entity.Notification;
@@ -31,6 +33,7 @@ import mx.edu.utez.server.shared.api.ApiRoutes;
 import mx.edu.utez.server.shared.enums.AdminRole;
 import mx.edu.utez.server.shared.enums.AdminStatus;
 import mx.edu.utez.server.shared.enums.CareerStatus;
+import mx.edu.utez.server.shared.enums.ElibroAccessResult;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -181,6 +184,35 @@ class StudentControllerIntegrationTest {
                 .andExpect(jsonPath("$.errorCode", is("SERVICE_UNAVAILABLE")));
     }
 
+    @Test
+    void shouldReturnRealStudentMetricsWithoutUsingPagination() throws Exception {
+        Career career = careerRepository.findByCodeIgnoreCase(CAREER_DSM_CODE).orElseThrow();
+        var activeStudent = saveStudent("2026A0102", "activa@utez.edu.mx", career, mx.edu.utez.server.shared.enums.StudentStatus.ACTIVE);
+        var inactiveStudent = saveStudent("2026A0103", "inactiva@utez.edu.mx", career, mx.edu.utez.server.shared.enums.StudentStatus.INACTIVE);
+
+        saveAccessLog(activeStudent, ElibroAccessResult.SUCCESS, "2026-04-01T10:00:00Z");
+        saveAccessLog(activeStudent, ElibroAccessResult.FAILED_ELIBRO_API, "2026-04-01T12:00:00Z");
+        saveAccessLog(inactiveStudent, ElibroAccessResult.SUCCESS, "2026-04-02T08:00:00Z");
+
+        mockMvc.perform(get(ApiRoutes.httpPath(ApiRoutes.STUDENTS) + "/metrics")
+                        .param("dateFrom", "2026-04-01T00:00:00Z")
+                        .param("dateTo", "2026-04-02T23:59:59Z")
+                        .with(authAdminTi(adminTi)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.totalStudents", is(2)))
+                .andExpect(jsonPath("$.data.activeStudents", is(1)))
+                .andExpect(jsonPath("$.data.disabledStudents", is(1)))
+                .andExpect(jsonPath("$.data.totalAccesses", is(3)))
+                .andExpect(jsonPath("$.data.successfulAccesses", is(2)))
+                .andExpect(jsonPath("$.data.failedAccesses", is(1)))
+                .andExpect(jsonPath("$.data.successRate", is(66.67)))
+                .andExpect(jsonPath("$.data.activityByDate.length()", is(2)))
+                .andExpect(jsonPath("$.data.activityByDate[0].date", is("2026-04-01")))
+                .andExpect(jsonPath("$.data.activityByDate[0].total", is(2)))
+                .andExpect(jsonPath("$.data.activityByDate[1].date", is("2026-04-02")))
+                .andExpect(jsonPath("$.data.activityByDate[1].total", is(1)));
+    }
+
     private RequestPostProcessor authAdminTi(Admin admin) {
         UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                 admin.getId().toString(),
@@ -207,5 +239,41 @@ class StudentControllerIntegrationTest {
         career.setName(CAREER_DSM_NAME);
         career.setStatus(CareerStatus.ACTIVE);
         careerRepository.save(career);
+    }
+
+    private mx.edu.utez.server.modules.students.entity.Student saveStudent(
+            String enrollmentId,
+            String email,
+            Career career,
+            mx.edu.utez.server.shared.enums.StudentStatus status
+    ) {
+        var student = new mx.edu.utez.server.modules.students.entity.Student();
+        student.setEnrollmentId(enrollmentId);
+        student.setName("Alumno");
+        student.setLastNamePaternal("Prueba");
+        student.setLastNameMaternal("Metrics");
+        student.setSex(mx.edu.utez.server.shared.enums.Sex.FEMALE);
+        student.setQuarter(4);
+        student.setInstitutionalEmail(email);
+        student.setInstitutionalEmailNormalized(email);
+        student.setCareer(career);
+        student.setStatus(status);
+        student.setCreatedByAdmin(adminTi);
+        student.setUpdatedByAdmin(adminTi);
+        return studentRepository.save(student);
+    }
+
+    private void saveAccessLog(
+            mx.edu.utez.server.modules.students.entity.Student student,
+            ElibroAccessResult result,
+            String occurredAt
+    ) {
+        ElibroAccessLog log = new ElibroAccessLog();
+        log.setStudent(student);
+        log.setResult(result);
+        log.setRequestId("req-" + occurredAt);
+        log.setCorrelationId("corr-" + occurredAt);
+        log.setOccurredAt(java.time.Instant.parse(occurredAt));
+        elibroAccessLogRepository.save(log);
     }
 }

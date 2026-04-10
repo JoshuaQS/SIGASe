@@ -1,5 +1,4 @@
 import { api } from '@/shared/lib/http/api-client';
-import { authSession } from '@/features/auth/store/auth-session-store';
 import type { ApiEnvelope, StudentSex, StudentStatus } from '@/shared/types/api';
 
 type PageEnvelope<T> = {
@@ -45,6 +44,9 @@ export type StudentResponseDto = {
   status: StudentBackendStatus;
   mustChangePassword: boolean;
   lastLoginAt: string | null;
+  totalAccesses: number;
+  successfulAccesses: number;
+  failedAccesses: number;
   createdByAdminId: string | null;
   updatedByAdminId: string | null;
   createdAt: string;
@@ -105,8 +107,21 @@ export type StudentImportTemplateResult = {
   filename: string;
 };
 
-const viteEnv = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env;
-const BASE_URL = viteEnv?.VITE_API_URL || 'http://localhost:8080/api/v1';
+export type StudentMetricsPointDto = {
+  date: string;
+  total: number;
+};
+
+export type StudentMetricsResponseDto = {
+  totalStudents: number;
+  activeStudents: number;
+  disabledStudents: number;
+  totalAccesses: number;
+  successfulAccesses: number;
+  failedAccesses: number;
+  successRate: number;
+  activityByDate: StudentMetricsPointDto[];
+};
 
 function buildStudentListQuery(params: StudentListParams) {
   const searchParams = new URLSearchParams();
@@ -131,6 +146,17 @@ export async function listStudents(params: StudentListParams = {}) {
   const query = buildStudentListQuery(params);
   const response = await api.get<ApiEnvelope<PageEnvelope<StudentResponseDto>>>(
     `/students${query ? `?${query}` : ''}`,
+  );
+  return response.data;
+}
+
+export async function getStudentMetrics(params: { dateFrom?: string; dateTo?: string } = {}) {
+  const query = new URLSearchParams();
+  if (params.dateFrom?.trim()) query.set('dateFrom', params.dateFrom.trim());
+  if (params.dateTo?.trim()) query.set('dateTo', params.dateTo.trim());
+
+  const response = await api.get<ApiEnvelope<StudentMetricsResponseDto>>(
+    `/students/metrics${query.toString() ? `?${query.toString()}` : ''}`,
   );
   return response.data;
 }
@@ -198,7 +224,6 @@ function extractFilenameFromContentDisposition(header: string | null, fallback: 
 }
 
 export async function exportStudentsReport(params: StudentExportParams = {}): Promise<StudentExportResult> {
-  const token = authSession.getSnapshot().user?.token;
   const query = new URLSearchParams();
   const format = params.format ?? 'csv';
 
@@ -212,30 +237,9 @@ export async function exportStudentsReport(params: StudentExportParams = {}): Pr
   if (params.status) query.set('status', params.status);
   query.set('format', format);
 
-  const response = await fetch(`${BASE_URL}/reports/students/export?${query.toString()}`, {
-    method: 'GET',
-    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-  });
-
-  if (!response.ok) {
-    let message = 'No se pudo exportar el reporte de estudiantes.';
-    try {
-      const errorPayload = await response.json() as { message?: string };
-      if (errorPayload.message) {
-        message = errorPayload.message;
-      }
-    } catch {
-      const fallback = await response.text();
-      if (fallback) {
-        message = fallback;
-      }
-    }
-    throw new Error(message);
-  }
-
-  const blob = await response.blob();
+  const { blob, headers } = await api.download(`/reports/students/export?${query.toString()}`);
   const filename = extractFilenameFromContentDisposition(
-    response.headers.get('Content-Disposition'),
+    headers.get('Content-Disposition'),
     `students-export.${format}`,
   );
 
@@ -245,31 +249,9 @@ export async function exportStudentsReport(params: StudentExportParams = {}): Pr
 export async function downloadStudentsImportTemplate(
   format: StudentExportFormat = 'csv',
 ): Promise<StudentImportTemplateResult> {
-  const token = authSession.getSnapshot().user?.token;
-  const response = await fetch(`${BASE_URL}/students/import-template?format=${format}`, {
-    method: 'GET',
-    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-  });
-
-  if (!response.ok) {
-    let message = 'No se pudo descargar la plantilla de importación.';
-    try {
-      const errorPayload = await response.json() as { message?: string };
-      if (errorPayload.message) {
-        message = errorPayload.message;
-      }
-    } catch {
-      const fallback = await response.text();
-      if (fallback) {
-        message = fallback;
-      }
-    }
-    throw new Error(message);
-  }
-
-  const blob = await response.blob();
+  const { blob, headers } = await api.download(`/students/import-template?format=${format}`);
   const filename = extractFilenameFromContentDisposition(
-    response.headers.get('Content-Disposition'),
+    headers.get('Content-Disposition'),
     `students-import-template.${format}`,
   );
 

@@ -11,9 +11,11 @@ import { Dialog, DialogContent } from '@/shared/components/ui/dialog'
 import StatCard from '@/shared/components/data-display/status-card'
 import { SectionHeader } from '@/shared/components/ui/section-header'
 import { useAppToast } from '@/shared/components/ui/app-toast-provider'
-import { AppConfirmDialog } from '@/shared/components/ui/confirmation-dialog'
-import { AdminDataTable, type AdminManagementRow, type AdminRole } from '@/features/admins/components/admin-data-table'
-import { CreateAdminModal, type AdminFormValues } from '@/features/admins/components/modals/create-admin-modal'
+import { AdminsTable, type AdminManagementRow, type AdminRole } from '@/features/admins/components/AdminsTable'
+import type { AdminFormValues } from '@/features/admins/components/modals/create-admin-modal'
+import { AdminStatusChangeModal } from '@/features/admins/components/modals/admin-status-change-modal'
+import { CreateAdminModal } from '@/modalsfinal/CreateAdminModal'
+import { useTableFilterState } from '@/shared/hooks/use-table-filter-state'
 import {
   listAdmins,
   createAdmin,
@@ -24,6 +26,7 @@ import {
   getAdminDashboardMetrics,
   type AdminResponseDto,
   type AdminBackendRole,
+  type AdminBackendStatus,
   type AdminDashboardMetrics,
 } from '@/features/admins/api/admins-api'
 import {
@@ -62,6 +65,11 @@ const EMPTY_FORM: AdminFormValues = {
   password: '', role: 'ADMIN_TI', status: 'ACTIVE',
 }
 
+const DEFAULT_TABLE_FILTERS = {
+  role: 'todos' as 'todos' | AdminRole,
+  status: 'todos' as 'todos' | AdminBackendStatus,
+}
+
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 type PendingAction =
@@ -84,18 +92,20 @@ function formatRelativeAccess(iso?: string | null) {
   if (diffMin < 60) return `hace ${Math.max(diffMin, 1)} min`
   const diffHours = Math.floor(diffMin / 60)
   if (diffHours < 24) return `hace ${diffHours}h`
-  const diffDays = Math.floor(diffHours / 24)
-  return `hace ${diffDays}d`
+  return `hace ${Math.floor(diffHours / 24)}d`
 }
 
-function formatRelativeOccurredAt(iso: string) {
-  return formatRelativeAccess(iso)
+function buildRadarData(roleModuleActivity: AdminDashboardMetrics['roleModuleActivity']) {
+  const map = new Map<string, Record<string, number>>()
+  for (const item of roleModuleActivity) {
+    const existing = map.get(item.module) ?? {}
+    existing[item.role] = item.count
+    map.set(item.module, existing)
+  }
+  return Array.from(map.entries()).map(([module, counts]) => ({ area: module, ...counts }))
 }
 
-function toRow(
-  admin: AdminResponseDto,
-  actionsMap: Map<string, number>,
-): AdminManagementRow {
+function toRow(admin: AdminResponseDto, actionsMap: Map<string, number>): AdminManagementRow {
   return {
     id: admin.id,
     nombre: buildFullName(admin),
@@ -105,25 +115,6 @@ function toRow(
     ultimaAccion: formatRelativeAccess(admin.lastLoginAt),
     acciones: actionsMap.get(admin.id),
   }
-}
-
-/**
- * Pivots flat roleModuleActivity rows into the format Recharts RadarChart expects:
- * [{ area: 'ADMINS', ADMIN_TI: 45, ADMIN_BIBLIOTECA: 10 }, ...]
- */
-function buildRadarData(roleModuleActivity: AdminDashboardMetrics['roleModuleActivity']) {
-  const map = new Map<string, Record<string, number>>()
-
-  for (const item of roleModuleActivity) {
-    const existing = map.get(item.module) ?? {}
-    existing[item.role] = item.count
-    map.set(item.module, existing)
-  }
-
-  return Array.from(map.entries()).map(([module, counts]) => ({
-    area: module,
-    ...counts,
-  }))
 }
 
 // ── Component ──────────────────────────────────────────────────────────────────
@@ -141,8 +132,19 @@ const AdminsManagement = () => {
   // ── Filter / pagination state ─────────────────────────────────────────────
   const [searchInput, setSearchInput] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
-  const [roleFilter, setRoleFilter] = useState<'todos' | AdminRole>('todos')
   const [page, setPage] = useState(0)
+  const [pageSize, setPageSize] = useState(PAGE_SIZE)
+  const {
+    filtersOpen,
+    setFiltersOpen,
+    draftFilters,
+    appliedFilters,
+    updateDraftFilter,
+    applyFilters,
+    resetDraftFilters,
+    clearFilters,
+    commitAppliedFilters,
+  } = useTableFilterState(DEFAULT_TABLE_FILTERS)
 
   // ── Action state ──────────────────────────────────────────────────────────
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null)
@@ -165,13 +167,12 @@ const AdminsManagement = () => {
     return () => window.clearTimeout(id)
   }, [searchInput])
 
-  // ── Derived: actionsPerAdmin lookup map ───────────────────────────────────
+  // ── Derived ───────────────────────────────────────────────────────────────
   const actionsMap = useMemo<Map<string, number>>(() => {
     if (!metrics) return new Map()
     return new Map(metrics.actionsPerAdmin.map((a) => [a.adminId, Number(a.totalActions)]))
   }, [metrics])
 
-  // ── Derived: KPIs from metrics ────────────────────────────────────────────
   const summary = useMemo(() => ({
     total: metrics?.totalAdmins ?? 0,
     adminTi: metrics?.adminTiCount ?? 0,
@@ -181,7 +182,6 @@ const AdminsManagement = () => {
     trend: metrics?.trendPercentage ?? 0,
   }), [metrics])
 
-  // ── Derived: radar chart data ─────────────────────────────────────────────
   const radarData = useMemo(
     () => (metrics ? buildRadarData(metrics.roleModuleActivity) : []),
     [metrics],
@@ -202,9 +202,10 @@ const AdminsManagement = () => {
     try {
       const response = await listAdmins({
         query: debouncedSearch.trim() || undefined,
-        role: roleFilter === 'todos' ? undefined : (roleFilter as AdminBackendRole),
+        role: appliedFilters.role === 'todos' ? undefined : (appliedFilters.role as AdminBackendRole),
+        status: appliedFilters.status === 'todos' ? undefined : appliedFilters.status,
         page,
-        size: PAGE_SIZE,
+        size: pageSize,
         sortBy: 'updatedAt',
         sortDir: 'desc',
       })
@@ -217,7 +218,7 @@ const AdminsManagement = () => {
     } finally {
       setLoading(false)
     }
-  }, [debouncedSearch, roleFilter, page, showToast])
+  }, [appliedFilters.role, appliedFilters.status, debouncedSearch, page, pageSize, showToast])
 
   // ── Effects ───────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -230,11 +231,46 @@ const AdminsManagement = () => {
     return () => window.clearTimeout(id)
   }, [fetchAdmins])
 
+  useEffect(() => {
+    setPage(0)
+  }, [appliedFilters.role, appliedFilters.status])
+
   // ── Table rows ────────────────────────────────────────────────────────────
   const rows = useMemo(
     () => admins.map((a) => toRow(a, actionsMap)),
     [admins, actionsMap],
   )
+
+  const activeFilterChips = useMemo(() => ([
+    ...(searchInput.trim()
+      ? [{
+          id: 'search',
+          label: `Búsqueda: ${searchInput.trim()}`,
+          onClear: () => {
+            setSearchInput('')
+            setPage(0)
+          },
+        }]
+      : []),
+    ...(appliedFilters.role !== 'todos'
+      ? [{
+          id: 'role',
+          label: `Rol: ${appliedFilters.role === 'ADMIN_TI' ? 'Admin TI' : 'Admin Biblioteca'}`,
+          onClear: () => {
+            commitAppliedFilters((current) => ({ ...current, role: 'todos' }))
+          },
+        }]
+      : []),
+    ...(appliedFilters.status !== 'todos'
+      ? [{
+          id: 'status',
+          label: `Estado: ${appliedFilters.status === 'ACTIVE' ? 'Activo' : 'Inactivo'}`,
+          onClear: () => {
+            commitAppliedFilters((current) => ({ ...current, status: 'todos' }))
+          },
+        }]
+      : []),
+  ]), [appliedFilters.role, appliedFilters.status, commitAppliedFilters, searchInput])
 
   // ── Create ────────────────────────────────────────────────────────────────
   const handleOpenCreate = () => {
@@ -294,24 +330,15 @@ const AdminsManagement = () => {
   }
 
   // ── Activate / Deactivate ─────────────────────────────────────────────────
-  const confirmDialogCopy = useMemo(() => {
-    if (!pendingAction) return { title: '', description: '', confirmText: '', confirmColor: 'primary' as const }
-    const name = buildFullName(pendingAction.admin)
-    if (pendingAction.type === 'deactivate') {
-      return { title: 'Desactivar administrador', description: `Se desactivará el acceso de ${name}. Podrá ser reactivado en cualquier momento.`, confirmText: 'Desactivar', confirmColor: 'error' as const }
-    }
-    return { title: 'Activar administrador', description: `Se reactivará el acceso de ${name}.`, confirmText: 'Activar', confirmColor: 'success' as const }
-  }, [pendingAction])
-
-  const handleConfirmAction = async () => {
+  const handleConfirmAction = async (payload: { nextStatus: 'ACTIVE' | 'INACTIVE' }) => {
     if (!pendingAction) return
     setActionLoading(true)
     try {
-      const reason = pendingAction.type === 'deactivate'
+      const reason = payload.nextStatus === 'INACTIVE'
         ? 'Desactivado desde el panel de gestión de administradores.'
         : 'Activado desde el panel de gestión de administradores.'
 
-      if (pendingAction.type === 'deactivate') {
+      if (payload.nextStatus === 'INACTIVE') {
         await deactivateAdmin(pendingAction.admin.id, { reason })
         showToast({ severity: 'success', title: 'Administrador desactivado', description: `${buildFullName(pendingAction.admin)} ya no tiene acceso al sistema.` })
       } else {
@@ -353,16 +380,12 @@ const AdminsManagement = () => {
   return (
     <motion.div className="space-y-6" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}>
 
-      {/* Confirm dialog — activate / deactivate */}
-      <AppConfirmDialog
+      <AdminStatusChangeModal
         open={Boolean(pendingAction)}
-        title={confirmDialogCopy.title}
-        description={confirmDialogCopy.description}
-        confirmText={actionLoading ? 'Procesando...' : confirmDialogCopy.confirmText}
-        cancelText="Cancelar"
-        confirmColor={confirmDialogCopy.confirmColor}
-        onCancel={() => !actionLoading && setPendingAction(null)}
-        onConfirm={() => { if (actionLoading) return; void handleConfirmAction() }}
+        admin={pendingAction?.admin ?? null}
+        loading={actionLoading}
+        onClose={() => !actionLoading && setPendingAction(null)}
+        onConfirm={(payload) => handleConfirmAction(payload)}
       />
 
       {/* Create / edit modal */}
@@ -417,9 +440,9 @@ const AdminsManagement = () => {
 
       {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title="Total Admins"  value={summary.total}      icon={Users}      iconBg="bg-violet-500/10"  iconFg="text-violet-600"  delay={0} />
-        <StatCard title="Admin TI"      value={summary.adminTi}    icon={Shield}     iconBg="bg-amber-500/10"   iconFg="text-amber-600"   delay={0.05} />
-        <StatCard title="Activos"       value={summary.active}     icon={UserCheck}  iconBg="bg-emerald-500/10" iconFg="text-emerald-600" delay={0.1} />
+        <StatCard title="Total Admins"  value={summary.total}       icon={Users}      iconBg="bg-violet-500/10"  iconFg="text-violet-600"  delay={0} />
+        <StatCard title="Admin TI"      value={summary.adminTi}     icon={Shield}     iconBg="bg-amber-500/10"   iconFg="text-amber-600"   delay={0.05} />
+        <StatCard title="Activos"       value={summary.active}      icon={UserCheck}  iconBg="bg-emerald-500/10" iconFg="text-emerald-600" delay={0.1} />
         <StatCard
           title="Acciones hoy"
           value={summary.actionsToday}
@@ -432,21 +455,23 @@ const AdminsManagement = () => {
         />
       </div>
 
-      {/* Charts + Recent Activity */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      {/* Charts + Recent Activity — equal-weight 2-col grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
 
         {/* Radar — activity by role and module */}
-        <Card>
-          <CardHeader className="pb-2">
+        <Card className="flex flex-col">
+          <CardHeader className="pb-0 pt-5 px-5">
             <CardTitle className="text-sm font-semibold">Actividad por Rol y Módulo</CardTitle>
-            <p className="text-xs text-muted-foreground">Nivel de uso de cada módulo por tipo de rol · últimos 30 días</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">Nivel de uso de cada módulo por tipo de rol · últimos 30 días</p>
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex-1 px-5 pb-5 pt-4">
             {radarData.length === 0 ? (
-              <div className="flex items-center justify-center h-[220px] text-sm text-muted-foreground">Sin datos de actividad disponibles.</div>
+              <div className="flex h-[260px] items-center justify-center text-sm text-muted-foreground">
+                Sin datos de actividad disponibles.
+              </div>
             ) : (
               <>
-                <ResponsiveContainer width="100%" height={220}>
+                <ResponsiveContainer width="100%" height={260}>
                   <RadarChart data={radarData}>
                     <PolarGrid stroke="rgba(128,128,128,0.2)" />
                     <PolarAngleAxis dataKey="area" tick={{ fill: '#64748b', fontSize: 11 }} />
@@ -464,10 +489,10 @@ const AdminsManagement = () => {
                     <Tooltip contentStyle={tooltipStyle} />
                   </RadarChart>
                 </ResponsiveContainer>
-                <div className="flex justify-center gap-4 mt-2">
+                <div className="flex justify-center gap-6 mt-3">
                   {Object.entries(RADAR_COLORS).map(([role, color]) => (
                     <div key={role} className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                      <span className="w-3 h-0.5 rounded-full inline-block" style={{ backgroundColor: color }} />
+                      <span className="inline-block h-0.5 w-4 rounded-full" style={{ backgroundColor: color }} />
                       {role === 'ADMIN_TI' ? 'Admin TI' : 'Admin Biblioteca'}
                     </div>
                   ))}
@@ -478,53 +503,62 @@ const AdminsManagement = () => {
         </Card>
 
         {/* Recent Activity Timeline */}
-        <Card>
-          <CardHeader className="pb-2">
+        <Card className="flex flex-col">
+          <CardHeader className="pb-0 pt-5 px-5">
             <CardTitle className="text-sm font-semibold">Actividad Reciente</CardTitle>
-            <p className="text-xs text-muted-foreground">Últimas acciones de administradores</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">Últimas acciones de administradores</p>
           </CardHeader>
-          <CardContent className="p-0">
+          <CardContent className="flex-1 p-0">
             {!metrics || metrics.recentActivity.length === 0 ? (
-              <p className="px-5 py-4 text-sm text-muted-foreground">Sin actividad reciente registrada.</p>
+              <p className="px-5 py-8 text-sm text-muted-foreground">Sin actividad reciente registrada.</p>
             ) : metrics.recentActivity.map((a, i) => (
-              <motion.div
+              <div
                 key={i}
-                initial={{ opacity: 0, x: -6 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.2 + i * 0.05 }}
-                className="flex items-start gap-3 px-5 py-3 border-b border-border last:border-0 hover:bg-muted/30 transition-colors"
+                className="flex items-start gap-3 border-b border-border px-5 py-3 last:border-0 hover:bg-muted/30 transition-colors"
               >
-                <div className="flex flex-col items-center gap-1 flex-shrink-0">
-                  <div className={`w-2 h-2 rounded-full mt-1 ${SEVERITY_DOT[a.severity ?? ''] ?? 'bg-muted-foreground'}`} />
-                  {i < metrics.recentActivity.length - 1 && <div className="w-px h-6 bg-border" />}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs text-muted-foreground mb-0.5">
-                    {a.adminName ?? 'Sistema'} · {formatRelativeOccurredAt(a.occurredAt)}
+                <div className={`mt-1.5 h-2 w-2 flex-shrink-0 rounded-full ${SEVERITY_DOT[a.severity ?? ''] ?? 'bg-muted-foreground'}`} />
+                <div className="min-w-0 flex-1">
+                  <p className="mb-0.5 text-xs text-muted-foreground">
+                    {a.adminName ?? 'Sistema'} · {formatRelativeAccess(a.occurredAt)}
                   </p>
-                  <p className="text-sm text-foreground leading-tight truncate">
+                  <p className="truncate text-sm font-medium text-foreground leading-snug">
                     {a.action}{a.module ? ` · ${a.module}` : ''}
                   </p>
                 </div>
-              </motion.div>
+              </div>
             ))}
           </CardContent>
         </Card>
       </div>
 
       {/* Admin table */}
-      <AdminDataTable
-        title="Administradores"
+      <AdminsTable
         rows={rows}
         searchInput={searchInput}
         onSearchInputChange={(value) => { setSearchInput(value); setPage(0) }}
-        roleFilter={roleFilter}
-        onRoleFilterChange={(value) => { setRoleFilter(value); setPage(0) }}
+        roleFilter={draftFilters.role}
+        onRoleFilterChange={(value) => { updateDraftFilter('role', value) }}
+        statusFilter={draftFilters.status}
+        onStatusFilterChange={(value) => { updateDraftFilter('status', value) }}
+        filtersOpen={filtersOpen}
+        onFiltersToggle={() => setFiltersOpen((c) => !c)}
+        onApplyFilters={() => {
+          applyFilters()
+          setPage(0)
+        }}
+        onResetFilters={resetDraftFilters}
+        onClearFilters={() => {
+          clearFilters()
+          setSearchInput('')
+          setPage(0)
+        }}
+        activeFilterChips={activeFilterChips}
         filteredCount={totalElements}
         page={page}
         totalPages={totalPages}
-        pageSize={PAGE_SIZE}
+        pageSize={pageSize}
         onPageChange={setPage}
+        onPageSizeChange={(next) => { setPageSize(next); setPage(0) }}
         onEdit={handleOpenEdit}
         onDeactivate={(row) => {
           const source = admins.find((a) => a.id === row.id)

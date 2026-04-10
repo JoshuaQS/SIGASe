@@ -39,7 +39,7 @@ export function ModalFormHeader({
             <div className="flex min-w-0 items-center gap-4">
                 <div
                     className={cn(
-                        "flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/10 ring-2 ring-primary/20 text-primary [&_svg]:size-6",
+                        "flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 ring-2 ring-primary/20 text-primary [&_svg]:size-6",
                         avatarRingClassName
                     )}
                 >

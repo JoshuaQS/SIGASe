@@ -9,6 +9,8 @@ import mx.edu.utez.server.modules.careers.service.CareerService;
 import mx.edu.utez.server.modules.elibro.repository.ElibroAccessLogRepository;
 import mx.edu.utez.server.modules.logs.audit.service.AuditTrailService;
 import mx.edu.utez.server.modules.students.dto.CreateStudentRequest;
+import mx.edu.utez.server.modules.students.dto.StudentMetricsPointResponse;
+import mx.edu.utez.server.modules.students.dto.StudentMetricsResponse;
 import mx.edu.utez.server.modules.students.dto.StudentResponse;
 import mx.edu.utez.server.modules.students.dto.StudentStatusChangeRequest;
 import mx.edu.utez.server.modules.students.dto.UpdateStudentRequest;
@@ -26,9 +28,15 @@ import mx.edu.utez.server.shared.util.EmailNormalizer;
 import jakarta.servlet.http.HttpServletRequest;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneOffset;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.HexFormat;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
@@ -117,7 +125,7 @@ public class StudentService {
                 ),
                 httpRequest
         );
-        return studentMapper.toResponse(saved);
+        return toResponseWithAccessMetrics(saved);
     }
 
     @Transactional
@@ -152,13 +160,13 @@ public class StudentService {
                 ),
                 httpRequest
         );
-        return studentMapper.toResponse(saved);
+        return toResponseWithAccessMetrics(saved);
     }
 
     @Transactional(readOnly = true)
     public StudentResponse getById(UUID studentId, Admin actorAdmin, HttpServletRequest httpRequest) {
         Student student = findByIdOrThrow(studentId);
-        return studentMapper.toResponse(student);
+        return toResponseWithAccessMetrics(student);
     }
 
     @Transactional(readOnly = true)
@@ -197,14 +205,74 @@ public class StudentService {
                 quarter,
                 status
         );
-        Page<StudentResponse> result = studentRepository.findAll(spec, pageable).map(studentMapper::toResponse);
+        Page<Student> result = studentRepository.findAll(spec, pageable);
+        Map<UUID, StudentAccessMetrics> accessMetrics = summarizeAccessMetrics(
+                result.getContent().stream().map(Student::getId).toList()
+        );
+        List<StudentResponse> content = result.getContent().stream()
+                .map(student -> {
+                    StudentAccessMetrics metrics = accessMetrics.getOrDefault(student.getId(), StudentAccessMetrics.empty());
+                    return studentMapper.toResponse(
+                            student,
+                            metrics.totalAccesses(),
+                            metrics.successfulAccesses(),
+                            metrics.failedAccesses()
+                    );
+                })
+                .toList();
 
         return new PageResponse<>(
-                result.getContent(),
+                content,
                 result.getNumber(),
                 result.getSize(),
                 result.getTotalElements(),
                 result.getTotalPages()
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public StudentMetricsResponse getMetrics(Instant dateFrom, Instant dateTo) {
+        MetricsRange range = resolveMetricsRange(dateFrom, dateTo);
+
+        long totalStudents = studentRepository.count();
+        long activeStudents = studentRepository.countByStatus(StudentStatus.ACTIVE);
+        long disabledStudents = studentRepository.countByStatus(StudentStatus.INACTIVE);
+
+        long totalAccesses = elibroAccessLogRepository.countByOccurredAtGreaterThanEqualAndOccurredAtLessThanEqual(
+                range.dateFrom(),
+                range.dateTo()
+        );
+        long successfulAccesses = elibroAccessLogRepository.countByOccurredAtGreaterThanEqualAndOccurredAtLessThanEqualAndResult(
+                range.dateFrom(),
+                range.dateTo(),
+                mx.edu.utez.server.shared.enums.ElibroAccessResult.SUCCESS
+        );
+        long failedAccesses = Math.max(0, totalAccesses - successfulAccesses);
+
+        Map<LocalDate, Long> totalsByDay = new HashMap<>();
+        for (var row : elibroAccessLogRepository.countDailyAccesses(range.dateFrom(), range.dateTo())) {
+            totalsByDay.put(row.getActivityDate(), row.getTotal());
+        }
+
+        List<StudentMetricsPointResponse> activityByDate = new ArrayList<>();
+        LocalDate cursor = range.fromDay();
+        while (!cursor.isAfter(range.toDay())) {
+            activityByDate.add(new StudentMetricsPointResponse(
+                    cursor.toString(),
+                    totalsByDay.getOrDefault(cursor, 0L)
+            ));
+            cursor = cursor.plusDays(1);
+        }
+
+        return new StudentMetricsResponse(
+                totalStudents,
+                activeStudents,
+                disabledStudents,
+                totalAccesses,
+                successfulAccesses,
+                failedAccesses,
+                calculateSuccessRate(successfulAccesses, failedAccesses),
+                activityByDate
         );
     }
 
@@ -233,7 +301,7 @@ public class StudentService {
                 Map.of("reason", request.reason().trim()),
                 httpRequest
         );
-        return studentMapper.toResponse(saved);
+        return toResponseWithAccessMetrics(saved);
     }
 
     @Transactional
@@ -261,7 +329,7 @@ public class StudentService {
                 Map.of("reason", request.reason().trim()),
                 httpRequest
         );
-        return studentMapper.toResponse(saved);
+        return toResponseWithAccessMetrics(saved);
     }
 
     @Transactional
@@ -385,6 +453,78 @@ public class StudentService {
         return Sort.by(direction, safeSortBy);
     }
 
+    private MetricsRange resolveMetricsRange(Instant dateFrom, Instant dateTo) {
+        if (dateFrom == null && dateTo == null) {
+            LocalDate today = LocalDate.now(ZoneOffset.UTC);
+            LocalDate fromDay = today.minusDays(6);
+            Instant resolvedFrom = fromDay.atStartOfDay().toInstant(ZoneOffset.UTC);
+            Instant resolvedTo = today.atTime(LocalTime.MAX).toInstant(ZoneOffset.UTC);
+            return new MetricsRange(resolvedFrom, resolvedTo, fromDay, today);
+        }
+        if (dateFrom == null || dateTo == null) {
+            throw new BusinessException(
+                    ErrorCode.VALIDATION_ERROR,
+                    "dateFrom y dateTo deben enviarse juntos o ambos omitirse."
+            );
+        }
+        if (dateFrom.isAfter(dateTo)) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "dateFrom debe ser menor o igual a dateTo.");
+        }
+
+        LocalDate fromDay = dateFrom.atZone(ZoneOffset.UTC).toLocalDate();
+        LocalDate toDay = dateTo.atZone(ZoneOffset.UTC).toLocalDate();
+        return new MetricsRange(dateFrom, dateTo, fromDay, toDay);
+    }
+
+    private double calculateSuccessRate(long successfulAccesses, long failedAccesses) {
+        long total = successfulAccesses + failedAccesses;
+        if (total <= 0) {
+            return 0.0;
+        }
+        return Math.round((successfulAccesses * 10000.0) / total) / 100.0;
+    }
+
+    private StudentResponse toResponseWithAccessMetrics(Student student) {
+        StudentAccessMetrics metrics = summarizeAccessMetrics(List.of(student.getId()))
+                .getOrDefault(student.getId(), StudentAccessMetrics.empty());
+        return studentMapper.toResponse(
+                student,
+                metrics.totalAccesses(),
+                metrics.successfulAccesses(),
+                metrics.failedAccesses()
+        );
+    }
+
+    private Map<UUID, StudentAccessMetrics> summarizeAccessMetrics(List<UUID> studentIds) {
+        if (studentIds == null || studentIds.isEmpty()) {
+            return Map.of();
+        }
+
+        Map<UUID, StudentAccessMetrics> summary = new HashMap<>();
+        for (var row : elibroAccessLogRepository.summarizeStudentAccessMetrics(studentIds)) {
+            StudentAccessMetrics current = summary.getOrDefault(row.getStudentId(), StudentAccessMetrics.empty());
+            long accessCount = row.getAccessCount();
+            long successfulAccesses = current.successfulAccesses();
+            long failedAccesses = current.failedAccesses();
+
+            if (row.getResult() == mx.edu.utez.server.shared.enums.ElibroAccessResult.SUCCESS) {
+                successfulAccesses += accessCount;
+            } else {
+                failedAccesses += accessCount;
+            }
+
+            summary.put(
+                    row.getStudentId(),
+                    new StudentAccessMetrics(
+                            current.totalAccesses() + accessCount,
+                            successfulAccesses,
+                            failedAccesses
+                    )
+            );
+        }
+        return summary;
+    }
+
     private void validateCreateRules(String enrollmentId, String normalizedEmail) {
         if (studentRepository.existsByEnrollmentId(enrollmentId.trim())) {
             throw new BusinessException(ErrorCode.BUSINESS_RULE_VIOLATION, "El enrollmentId ya existe.");
@@ -441,6 +581,24 @@ public class StudentService {
             return HexFormat.of().formatHex(hash);
         } catch (Exception e) {
             throw new IllegalStateException("SHA-256 error", e);
+        }
+    }
+
+    private record MetricsRange(
+            Instant dateFrom,
+            Instant dateTo,
+            LocalDate fromDay,
+            LocalDate toDay
+    ) {
+    }
+
+    private record StudentAccessMetrics(
+            long totalAccesses,
+            long successfulAccesses,
+            long failedAccesses
+    ) {
+        private static StudentAccessMetrics empty() {
+            return new StudentAccessMetrics(0L, 0L, 0L);
         }
     }
 }

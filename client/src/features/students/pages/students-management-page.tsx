@@ -3,11 +3,11 @@ import { motion } from 'framer-motion'
 import {
   GraduationCap,
   Users,
-  BookOpen,
   UserX,
   Plus,
   Upload,
   Download,
+  Activity,
 } from 'lucide-react'
 import {
   BarChart,
@@ -17,10 +17,6 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-  Legend,
 } from 'recharts'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card'
 import { Button } from '@/shared/components/ui/button'
@@ -28,23 +24,32 @@ import StatCard from '@/shared/components/data-display/status-card'
 import { SectionHeader } from '@/shared/components/ui/section-header'
 import { useAppToast } from '@/shared/components/ui/app-toast-provider'
 import { AppConfirmDialog } from '@/shared/components/ui/confirmation-dialog'
-import { StudentsCreateModal } from '@/features/students/components/modals/create-student-modal'
+import { ExportFormatDialog } from '@/shared/components/ui/export-format-dialog'
 import { CsvImportModal } from '@/features/students/components/import/csv-import-modal'
 import type { CsvImportParsed } from '@/features/students/components/import/csv-import'
-import { StudentDataTable, type StudentManagementRow } from '@/features/students/components/student-data-table'
+import { StudentsTable, type StudentManagementRow } from '@/features/students/components/StudentsTable'
+import { CreateStudentModal } from '@/modalsfinal/CreateStudentModal'
+import { EditStudentModal } from '@/modalsfinal/EditStudentModal'
+import { StudentDetailModal } from '@/modalsfinal/StudentDetailModal'
+import { DeleteUserModal } from '@/modalsfinal/DeleteUserModal'
+import { StudentStatusChangeModal } from '@/features/students/components/modals/student-status-change-modal'
 import {
   deactivateStudent,
   deleteStudent,
   exportStudentsReport,
+  getStudentMetrics,
   importStudentsCsv,
   listStudents,
   reactivateStudent,
+  type StudentExportFormat,
   type StudentBackendStatus,
+  type StudentMetricsResponseDto,
   type StudentResponseDto,
 } from '@/features/students/api/students-api'
 import { listActiveCareers, type CareerDto } from '@/features/careers/api/careers-api'
+import { useTableFilterState } from '@/shared/hooks/use-table-filter-state'
 
-type PendingActionType = 'deactivate' | 'reactivate' | 'delete'
+type PendingActionType = 'delete'
 
 type PendingAction = {
   type: PendingActionType
@@ -58,8 +63,12 @@ const tooltipStyle = {
   fontSize: '12px',
 }
 
-const PIE_COLORS = ['#6366f1', '#8b5cf6', '#06b6d4', '#10b981', '#f59e0b', '#f97316']
 const PAGE_SIZE = 8
+
+const DEFAULT_TABLE_FILTERS = {
+  careerCode: 'todas',
+  status: 'todos' as 'todos' | StudentBackendStatus,
+}
 
 function buildFullName(student: StudentResponseDto) {
   return [
@@ -83,75 +92,65 @@ function formatRelativeAccess(iso?: string | null) {
   return `hace ${diffDays}d`
 }
 
-function buildCareersChartData(students: StudentResponseDto[]) {
-  const bucket = new Map<string, number>()
-  students.forEach((student) => {
-    const key = student.career?.code ?? 'N/D'
-    bucket.set(key, (bucket.get(key) ?? 0) + 1)
-  })
-
-  return Array.from(bucket.entries())
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 6)
-    .map(([name, value], index) => ({
-      name,
-      value,
-      color: PIE_COLORS[index % PIE_COLORS.length],
-    }))
-}
-
-function buildWeeklyActivityData(students: StudentResponseDto[]) {
-  const days: Array<{ key: string; day: string; accesos: number }> = []
-  const now = new Date()
-
-  for (let index = 6; index >= 0; index -= 1) {
-    const date = new Date(now)
-    date.setHours(0, 0, 0, 0)
-    date.setDate(now.getDate() - index)
-    const key = date.toISOString().slice(0, 10)
-    const short = date.toLocaleDateString('es-MX', { weekday: 'short' }).replace('.', '')
+function formatActivityData(metrics: StudentMetricsResponseDto) {
+  return metrics.activityByDate.map((point) => {
+    const parsed = new Date(`${point.date}T00:00:00Z`)
+    const short = parsed.toLocaleDateString('es-MX', { weekday: 'short', timeZone: 'UTC' }).replace('.', '')
     const day = short.charAt(0).toUpperCase() + short.slice(1, 3)
-    days.push({ key, day, accesos: 0 })
-  }
-
-  const byDate = new Map(days.map((item) => [item.key, item]))
-  students.forEach((student) => {
-    if (!student.lastLoginAt) return
-    const key = new Date(student.lastLoginAt).toISOString().slice(0, 10)
-    const target = byDate.get(key)
-    if (target) {
-      target.accesos += 1
+    return {
+      day,
+      accesos: point.total,
     }
   })
-
-  return days.map(({ day, accesos }) => ({ day, accesos }))
 }
 
 const StudentsManagement = () => {
   const { showToast } = useAppToast()
-  type ViewMode = 'table' | 'cards'
   const [searchInput, setSearchInput] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
-  const [carreraF, setCarreraF] = useState('todas')
-  const [estadoF, setEstadoF] = useState<'todos' | StudentBackendStatus>('todos')
   const [page, setPage] = useState(0)
   const [pageSize, setPageSize] = useState(PAGE_SIZE)
-  const [viewMode, setViewMode] = useState<ViewMode>('table')
-  const [filtersOpen, setFiltersOpen] = useState(false)
+  const {
+    filtersOpen,
+    setFiltersOpen,
+    draftFilters,
+    appliedFilters,
+    updateDraftFilter,
+    applyFilters,
+    resetDraftFilters,
+    clearFilters,
+    commitAppliedFilters,
+  } = useTableFilterState(DEFAULT_TABLE_FILTERS)
 
   const [careers, setCareers] = useState<CareerDto[]>([])
   const [students, setStudents] = useState<StudentResponseDto[]>([])
   const [loadingStudents, setLoadingStudents] = useState(true)
   const [totalElements, setTotalElements] = useState(0)
   const [totalPages, setTotalPages] = useState(0)
-  const [summary, setSummary] = useState({ total: 0, active: 0, inactive: 0 })
+  const [metrics, setMetrics] = useState<StudentMetricsResponseDto>({
+    totalStudents: 0,
+    activeStudents: 0,
+    disabledStudents: 0,
+    totalAccesses: 0,
+    successfulAccesses: 0,
+    failedAccesses: 0,
+    successRate: 0,
+    activityByDate: [],
+  })
 
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null)
   const [actionLoading, setActionLoading] = useState(false)
   const [importLoading, setImportLoading] = useState(false)
   const [exportLoading, setExportLoading] = useState(false)
+  const [exportDialogOpen, setExportDialogOpen] = useState(false)
   const [createModalOpen, setCreateModalOpen] = useState(false)
   const [importModalOpen, setImportModalOpen] = useState(false)
+  const [viewStudent, setViewStudent] = useState<StudentResponseDto | null>(null)
+  const [editingStudent, setEditingStudent] = useState<StudentResponseDto | null>(null)
+  const [statusTarget, setStatusTarget] = useState<StudentResponseDto | null>(null)
+  const [statusLoading, setStatusLoading] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<StudentResponseDto | null>(null)
+  const [deleteLoading, setDeleteLoading] = useState(false)
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -162,28 +161,26 @@ const StudentsManagement = () => {
 
   const activeFilters = useMemo(() => ({
     query: debouncedSearch.trim() || undefined,
-    careerCode: carreraF === 'todas' ? undefined : carreraF,
-    status: estadoF === 'todos' ? undefined : estadoF,
-  }), [debouncedSearch, carreraF, estadoF])
+    careerCode: appliedFilters.careerCode === 'todas' ? undefined : appliedFilters.careerCode,
+    status: appliedFilters.status === 'todos' ? undefined : appliedFilters.status,
+  }), [appliedFilters.careerCode, appliedFilters.status, debouncedSearch])
 
   const activeFilterChips = useMemo(() => ([
-    ...(carreraF !== 'todas'
+    ...(appliedFilters.careerCode !== 'todas'
       ? [{
           id: 'career',
-          label: `Carrera: ${carreraF}`,
+          label: `Carrera: ${appliedFilters.careerCode}`,
           onClear: () => {
-            setCarreraF('todas')
-            setPage(0)
+            commitAppliedFilters((current) => ({ ...current, careerCode: 'todas' }))
           },
         }]
       : []),
-    ...(estadoF !== 'todos'
+    ...(appliedFilters.status !== 'todos'
       ? [{
           id: 'status',
-          label: `Estado: ${estadoF === 'ACTIVE' ? 'Activo' : 'Inactivo'}`,
+          label: `Estado: ${appliedFilters.status === 'ACTIVE' ? 'Activo' : 'Inactivo'}`,
           onClear: () => {
-            setEstadoF('todos')
-            setPage(0)
+            commitAppliedFilters((current) => ({ ...current, status: 'todos' }))
           },
         }]
       : []),
@@ -197,7 +194,7 @@ const StudentsManagement = () => {
           },
         }]
       : []),
-  ]), [carreraF, estadoF, searchInput])
+  ]), [appliedFilters.careerCode, appliedFilters.status, commitAppliedFilters, searchInput])
 
   const fetchCareers = useCallback(async () => {
     try {
@@ -213,31 +210,19 @@ const StudentsManagement = () => {
     }
   }, [showToast])
 
-  const fetchSummary = useCallback(async () => {
+  const fetchMetrics = useCallback(async () => {
     try {
-      const baseFilters = {
-        query: activeFilters.query,
-        careerCode: activeFilters.careerCode,
-      }
-      const [total, active, inactive] = await Promise.all([
-        listStudents({ ...baseFilters, page: 0, size: 1 }),
-        listStudents({ ...baseFilters, page: 0, size: 1, status: 'ACTIVE' }),
-        listStudents({ ...baseFilters, page: 0, size: 1, status: 'INACTIVE' }),
-      ])
-      setSummary({
-        total: total.totalElements,
-        active: active.totalElements,
-        inactive: inactive.totalElements,
-      })
+      const response = await getStudentMetrics()
+      setMetrics(response)
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'No se pudo cargar el resumen de estudiantes.'
+      const message = error instanceof Error ? error.message : 'No se pudieron cargar las métricas reales de estudiantes.'
       showToast({
         severity: 'warning',
-        title: 'Resumen no disponible',
+        title: 'Métricas no disponibles',
         description: message,
       })
     }
-  }, [activeFilters.query, activeFilters.careerCode, showToast])
+  }, [showToast])
 
   const fetchStudents = useCallback(async () => {
     setLoadingStudents(true)
@@ -276,10 +261,10 @@ const StudentsManagement = () => {
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
-      void fetchSummary()
+      void fetchMetrics()
     }, 0)
     return () => window.clearTimeout(timeoutId)
-  }, [fetchSummary])
+  }, [fetchMetrics])
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -287,6 +272,10 @@ const StudentsManagement = () => {
     }, 0)
     return () => window.clearTimeout(timeoutId)
   }, [fetchStudents])
+
+  useEffect(() => {
+    setPage(0)
+  }, [appliedFilters.careerCode, appliedFilters.status])
 
   const rows = useMemo<StudentManagementRow[]>(() => (
     students.map((student) => ({
@@ -299,17 +288,10 @@ const StudentsManagement = () => {
             ? 'pendiente' as const
             : 'activo' as const,
       lastAccessLabel: formatRelativeAccess(student.lastLoginAt),
-      totalAccesses: student.lastLoginAt ? 1 : 0,
     }))
   ), [students])
 
-  const pieData = useMemo(() => buildCareersChartData(students), [students])
-  const actividadData = useMemo(() => buildWeeklyActivityData(students), [students])
-  const createdThisPage = rows.filter((row) => {
-    const date = new Date(row.createdAt)
-    const now = new Date()
-    return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear()
-  }).length
+  const actividadData = useMemo(() => formatActivityData(metrics), [metrics])
 
   const confirmDialogCopy = useMemo(() => {
     if (!pendingAction) {
@@ -328,30 +310,16 @@ const StudentsManagement = () => {
         confirmColor: 'error' as const,
       }
     }
-    if (pendingAction.type === 'deactivate') {
-      return {
-        title: 'Desactivar estudiante',
-        description: `Se desactivará el acceso de ${buildFullName(pendingAction.student)}.`,
-        confirmText: 'Desactivar',
-        confirmColor: 'warning' as const,
-      }
-    }
-    return {
-      title: 'Reactivar estudiante',
-      description: `Se reactivará el acceso de ${buildFullName(pendingAction.student)}.`,
-      confirmText: 'Reactivar',
-      confirmColor: 'success' as const,
-    }
   }, [pendingAction])
 
   const handleStudentCreated = useCallback(async () => {
-    await fetchSummary()
+    await fetchMetrics()
     if (page === 0) {
       await fetchStudents()
       return
     }
     setPage(0)
-  }, [fetchSummary, fetchStudents, page])
+  }, [fetchMetrics, fetchStudents, page])
 
   const handleConfirmAction = async () => {
     if (!pendingAction) return
@@ -364,30 +332,12 @@ const StudentsManagement = () => {
           title: 'Estudiante eliminado',
           description: `${buildFullName(pendingAction.student)} fue eliminado correctamente.`,
         })
-      } else if (pendingAction.type === 'deactivate') {
-        await deactivateStudent(pendingAction.student.id, {
-          reason: 'Desactivado desde el panel de gestión de estudiantes.',
-        })
-        showToast({
-          severity: 'success',
-          title: 'Estudiante desactivado',
-          description: `${buildFullName(pendingAction.student)} ahora está inactivo.`,
-        })
-      } else {
-        await reactivateStudent(pendingAction.student.id, {
-          reason: 'Reactivado desde el panel de gestión de estudiantes.',
-        })
-        showToast({
-          severity: 'success',
-          title: 'Estudiante reactivado',
-          description: `${buildFullName(pendingAction.student)} ahora está activo.`,
-        })
       }
 
       const shouldGoBack = pendingAction.type === 'delete' && rows.length === 1 && page > 0
       setPendingAction(null)
 
-      await fetchSummary()
+      await fetchMetrics()
       if (shouldGoBack) {
         setPage((current) => current - 1)
       } else {
@@ -414,7 +364,7 @@ const StudentsManagement = () => {
         title: 'Importación completada',
         description: `Filas procesadas: ${result.totalRows} · Exitosas: ${result.successCount} · Con error: ${result.errorCount}`,
       })
-      await fetchSummary()
+      await fetchMetrics()
       if (page === 0) {
         await fetchStudents()
       } else {
@@ -432,7 +382,7 @@ const StudentsManagement = () => {
     } finally {
       setImportLoading(false)
     }
-  }, [fetchStudents, fetchSummary, page, showToast])
+  }, [fetchStudents, fetchMetrics, page, showToast])
 
   const handleImportFromModal = useCallback(async (payload: CsvImportParsed) => {
     const imported = await handleImportFile(payload.file)
@@ -441,14 +391,14 @@ const StudentsManagement = () => {
     }
   }, [handleImportFile])
 
-  const handleExport = async () => {
+  const handleExport = async (format: StudentExportFormat) => {
     setExportLoading(true)
     try {
       const { blob, filename } = await exportStudentsReport({
         query: activeFilters.query,
         careerCode: activeFilters.careerCode,
         status: activeFilters.status,
-        format: 'csv',
+        format,
       })
       const downloadUrl = window.URL.createObjectURL(blob)
       const link = document.createElement('a')
@@ -462,6 +412,7 @@ const StudentsManagement = () => {
         title: 'Exportación completada',
         description: `Se descargó ${filename}.`,
       })
+      setExportDialogOpen(false)
     } catch (error) {
       const message = error instanceof Error ? error.message : 'No se pudo exportar la lista de estudiantes.'
       showToast({
@@ -489,11 +440,99 @@ const StudentsManagement = () => {
           void handleConfirmAction()
         }}
       />
-      <StudentsCreateModal
+      <ExportFormatDialog
+        open={exportDialogOpen}
+        title="Exportar estudiantes"
+        description="Selecciona el formato de descarga para la consulta actual de estudiantes."
+        loading={exportLoading}
+        onClose={() => !exportLoading && setExportDialogOpen(false)}
+        onSelect={(format) => {
+          void handleExport(format as StudentExportFormat)
+        }}
+      />
+      <CreateStudentModal
         open={createModalOpen}
         onClose={() => setCreateModalOpen(false)}
-        onCreated={() => {
-          void handleStudentCreated()
+        onCreated={() => void handleStudentCreated()}
+      />
+      <EditStudentModal
+        open={Boolean(editingStudent)}
+        student={editingStudent}
+        onClose={() => setEditingStudent(null)}
+        onSaved={() => void handleStudentCreated()}
+      />
+      <StudentStatusChangeModal
+        open={Boolean(statusTarget)}
+        student={statusTarget}
+        loading={statusLoading}
+        onClose={() => {
+          if (!statusLoading) setStatusTarget(null)
+        }}
+        onSubmit={(payload) => {
+          if (!statusTarget || statusLoading) return
+          setStatusLoading(true)
+          const action = payload.nextStatus === 'INACTIVE' ? deactivateStudent : reactivateStudent
+          void action(statusTarget.id, { reason: payload.reason })
+            .then(async () => {
+              showToast({
+                severity: 'success',
+                title: payload.nextStatus === 'INACTIVE' ? 'Estudiante deshabilitado' : 'Estudiante reactivado',
+                description: `${buildFullName(statusTarget)} fue actualizado correctamente.`,
+              })
+              setStatusTarget(null)
+              await fetchMetrics()
+              await fetchStudents()
+            })
+            .catch((error) => {
+              const message = error instanceof Error ? error.message : 'No se pudo actualizar el estado del estudiante.'
+              showToast({
+                severity: 'error',
+                title: 'Estado no actualizado',
+                description: message,
+              })
+            })
+            .finally(() => setStatusLoading(false))
+        }}
+      />
+      <StudentDetailModal
+        open={Boolean(viewStudent)}
+        student={viewStudent}
+        onOpenChange={(open) => {
+          if (!open) setViewStudent(null)
+        }}
+      />
+      <DeleteUserModal
+        open={Boolean(deleteTarget)}
+        targetName={deleteTarget ? buildFullName(deleteTarget) : ''}
+        targetMeta={deleteTarget ? `Mat. ${deleteTarget.enrollmentId} · ${deleteTarget.career?.code ?? 'N/D'} · ${deleteTarget.quarter}°` : undefined}
+        entityLabel="estudiante"
+        loading={deleteLoading}
+        onClose={() => {
+          if (!deleteLoading) setDeleteTarget(null)
+        }}
+        onConfirm={() => {
+          if (!deleteTarget || deleteLoading) return
+          setDeleteLoading(true)
+          void deleteStudent(deleteTarget.id)
+            .then(async () => {
+              showToast({
+                severity: 'success',
+                title: 'Estudiante eliminado',
+                description: `${buildFullName(deleteTarget)} fue eliminado correctamente.`,
+              })
+              setDeleteTarget(null)
+              await fetchMetrics()
+              await fetchStudents()
+            })
+            .catch((error) => {
+              const message = error instanceof Error ? error.message : 'No se pudo eliminar el estudiante.'
+              showToast({
+                severity: 'error',
+                title: 'Eliminación fallida',
+                description: message,
+              })
+            })
+            .finally(() => setDeleteLoading(false))
         }}
       />
       <CsvImportModal
@@ -506,7 +545,7 @@ const StudentsManagement = () => {
       <SectionHeader
         icon={GraduationCap}
         title="Gestión de Estudiantes"
-        subtitle={`${summary.total} estudiantes registrados · ${summary.active} con acceso activo`}
+        subtitle={`${metrics.totalStudents} estudiantes registrados · ${metrics.activeStudents} con acceso activo`}
         actions={(
           <div className="flex flex-wrap items-center justify-end gap-2">
             <Button
@@ -523,9 +562,7 @@ const StudentsManagement = () => {
               size="md"
               className="gap-2"
               isLoading={exportLoading}
-              onClick={() => {
-                void handleExport()
-              }}
+              onClick={() => setExportDialogOpen(true)}
             >
               {!exportLoading && <Download className="w-3.5 h-3.5" />}
               Exportar
@@ -545,7 +582,7 @@ const StudentsManagement = () => {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title="Total Estudiantes"
-          value={summary.total}
+          value={metrics.totalStudents}
           icon={Users}
           iconBg="bg-indigo-500/10"
           iconFg="text-indigo-600"
@@ -553,7 +590,7 @@ const StudentsManagement = () => {
         />
         <StatCard
           title="Activos con eLibro"
-          value={summary.active}
+          value={metrics.activeStudents}
           subtitle="Acceso habilitado"
           icon={GraduationCap}
           iconBg="bg-emerald-500/10"
@@ -561,16 +598,17 @@ const StudentsManagement = () => {
           delay={0.05}
         />
         <StatCard
-          title="Nuevos en esta página"
-          value={createdThisPage}
-          icon={BookOpen}
+          title="Accesos eLibro"
+          value={metrics.totalAccesses}
+          subtitle="Periodo actual"
+          icon={Activity}
           iconBg="bg-violet-500/10"
           iconFg="text-violet-600"
           delay={0.1}
         />
         <StatCard
           title="Inactivos"
-          value={summary.inactive}
+          value={metrics.disabledStudents}
           icon={UserX}
           iconBg="bg-amber-500/10"
           iconFg="text-amber-600"
@@ -598,56 +636,47 @@ const StudentsManagement = () => {
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold">Distribución por Carrera</CardTitle>
+            <CardTitle className="text-sm font-semibold">Resumen de Resultado</CardTitle>
           </CardHeader>
           <CardContent>
-            {pieData.length === 0 ? (
-              <div className="h-[200px] flex items-center justify-center text-sm text-muted-foreground">
-                Sin datos para graficar
+            <div className="flex h-[200px] flex-col justify-between rounded-xl border border-border/60 bg-muted/20 p-4">
+              <div className="space-y-1">
+                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Tasa de éxito</p>
+                <p className="text-3xl font-semibold text-foreground">{metrics.successRate.toFixed(2)}%</p>
+                <p className="text-sm text-muted-foreground">Calculado únicamente con accesos reales de eLibro.</p>
               </div>
-            ) : (
-              <ResponsiveContainer width="100%" height={200}>
-                <PieChart>
-                  <Pie data={pieData} cx="50%" cy="45%" innerRadius={48} outerRadius={72} paddingAngle={3} dataKey="value">
-                    {pieData.map((item, index) => <Cell key={`${item.name}-${index}`} fill={item.color} />)}
-                  </Pie>
-                  <Tooltip contentStyle={tooltipStyle} />
-                  <Legend iconType="circle" iconSize={7} wrapperStyle={{ fontSize: '11px' }} />
-                </PieChart>
-              </ResponsiveContainer>
-            )}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-lg border border-emerald-200/70 bg-emerald-50/70 p-3">
+                  <p className="text-xs font-medium uppercase tracking-wide text-emerald-700">Exitosos</p>
+                  <p className="mt-1 text-2xl font-semibold text-emerald-800">{metrics.successfulAccesses}</p>
+                </div>
+                <div className="rounded-lg border border-rose-200/70 bg-rose-50/70 p-3">
+                  <p className="text-xs font-medium uppercase tracking-wide text-rose-700">Fallidos</p>
+                  <p className="mt-1 text-2xl font-semibold text-rose-800">{metrics.failedAccesses}</p>
+                </div>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
 
-      <StudentDataTable
-        title="Alumnos totales"
+      <StudentsTable
         rows={rows}
         loading={loadingStudents}
-        viewMode={viewMode}
-        onViewModeChange={setViewMode}
         searchInput={searchInput}
         onSearchInputChange={(value) => {
           setSearchInput(value)
           setPage(0)
         }}
         onView={(student) => {
-          showToast({
-            severity: 'info',
-            title: 'Perfil en construcción',
-            description: `La vista de detalle de ${student.fullName} se habilitará en un siguiente paso.`,
-          })
+          setViewStudent(student)
         }}
         onEdit={(student) => {
-          showToast({
-            severity: 'info',
-            title: 'Edición en construcción',
-            description: `La edición completa de ${student.fullName} se habilitará en un siguiente paso.`,
-          })
+          setEditingStudent(student)
         }}
-        onDeactivate={(student) => setPendingAction({ type: 'deactivate', student })}
-        onReactivate={(student) => setPendingAction({ type: 'reactivate', student })}
-        onDelete={(student) => setPendingAction({ type: 'delete', student })}
+        onDeactivate={(student) => setStatusTarget(student)}
+        onReactivate={(student) => setStatusTarget(student)}
+        onDelete={(student) => setDeleteTarget(student)}
         page={page}
         totalElements={totalElements}
         totalPages={totalPages}
@@ -660,27 +689,29 @@ const StudentsManagement = () => {
         onFiltersToggle={() => setFiltersOpen((current) => !current)}
         filtersOpen={filtersOpen}
         careers={careers}
-        carreraF={carreraF}
+        carreraF={draftFilters.careerCode}
         onCareerChange={(value) => {
-          setCarreraF(value)
-          setPage(0)
+          updateDraftFilter('careerCode', value)
         }}
-        estadoF={estadoF}
+        estadoF={draftFilters.status}
         onStatusChange={(value) => {
-          setEstadoF(value)
-          setPage(0)
+          updateDraftFilter('status', value)
         }}
         onClearFilters={() => {
-          setCarreraF('todas')
-          setEstadoF('todos')
+          clearFilters()
           setSearchInput('')
           setPage(0)
         }}
-        onCloseFilters={() => setFiltersOpen(false)}
+        onResetFilters={resetDraftFilters}
+        onApplyFilters={() => {
+          applyFilters()
+          setPage(0)
+        }}
         activeFilterChips={activeFilterChips}
       />
 
     </motion.div>
+
   )
 }
 

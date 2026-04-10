@@ -19,6 +19,7 @@ tests/playwright/storage-states/
 .env.*
 /get-shit-done/
 /oh-my-codex
-/AGENTS.md
+/AGENTS.
+.planning/
 !.env.example
 !**/.env.example

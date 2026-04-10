@@ -95,6 +95,39 @@ export function StudentStatusChangeModal({
           />
 
           <ModalFormBody>
+            <div className="relative overflow-hidden rounded-xl border border-border">
+              <div className="grid grid-cols-2">
+                <div className="border-r border-border bg-success/10">
+                  <div className="flex flex-col items-center justify-center px-6 py-6 text-center">
+                    <div className="mb-3 h-2 w-2 rounded-full bg-success" />
+                    <p className="text-[10px] font-bold uppercase tracking-[0.35em] text-muted-foreground">
+                      Estado actual
+                    </p>
+                    <p className="mt-2 text-3xl font-extrabold leading-none text-success">
+                      {student.status === 'ACTIVE' ? 'Activo' : 'Inactivo'}
+                    </p>
+                  </div>
+                </div>
+                <div className="bg-destructive/10">
+                  <div className="flex flex-col items-center justify-center px-6 py-6 text-center">
+                    <div className="mb-3 h-2 w-2 rounded-full bg-destructive" />
+                    <p className="text-[10px] font-bold uppercase tracking-[0.35em] text-muted-foreground">
+                      Nuevo estado
+                    </p>
+                    <p className="mt-2 text-3xl font-extrabold leading-none text-destructive">
+                      {nextStatus === 'ACTIVE' ? 'Activo' : 'Inactivo'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pointer-events-none absolute inset-y-0 left-1/2 flex -translate-x-1/2 items-center">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-destructive text-destructive-foreground shadow-md ring-2 ring-card">
+                  <ArrowLeftRight className="h-4 w-4 rotate-90" />
+                </div>
+              </div>
+            </div>
+
             <div
               className={cn(
                 'rounded-xl border px-4 py-4 text-sm',
