@@ -6,17 +6,6 @@
   <component name="ChangeListManager">
     <list default="true" id="5ddae72a-7e26-41dc-8744-da8fff9ed1e9" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/../client/src/app/router/layouts/admin-profile-menu.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/app/router/layouts/admin-profile-menu.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/app/router/layouts/admin-topbar.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/app/router/layouts/admin-topbar.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/features/access-logs/pages/access-logs-page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/features/access-logs/pages/access-logs-page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/features/admins/components/admin-data-table.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/features/admins/components/index.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/features/admins/components/index.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/features/admins/components/modals/delete-user-modal.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/features/admins/components/modals/delete-user-modal.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/features/admins/components/modals/index.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/features/admins/components/modals/index.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/features/admins/pages/admins-management-page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/features/admins/pages/admins-management-page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/features/audit-logs/api/audit-logs-api.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/features/audit-logs/api/audit-logs-api.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/features/audit-logs/pages/audit-logs-page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/features/audit-logs/pages/audit-logs-page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/features/dashboard/components/date-range/date-range.types.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/features/dashboard/components/date-range/date-range.types.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/features/dashboard/components/monitoring-composer/.gitkeep" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/../client/src/features/dashboard/components/monitoring-composer/access-status-field.tsx" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/../client/src/features/dashboard/components/monitoring-composer/analysis-mode-selector.tsx" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/../client/src/features/dashboard/components/monitoring-composer/career-multi-combobox-field.tsx" beforeDir="false" />
@@ -33,41 +22,17 @@
       <change beforePath="$PROJECT_DIR$/../client/src/features/dashboard/components/monitoring-composer/student-lookup-field.tsx" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/../client/src/features/dashboard/components/monitoring-composer/top-n-field.tsx" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/../client/src/features/dashboard/pages/monitoring-and-reports-page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/features/dashboard/pages/monitoring-and-reports-page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/features/elibro-config/components/elibro-credentials-static-card.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/features/elibro-config/components/elibro-credentials-static-card.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/features/elibro-config/components/elibro-service-status-panel.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/features/elibro-config/components/elibro-service-status-panel.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/features/student-portal/components/cta-card/elibro-cta-card.css" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/features/student-portal/components/cta-card/elibro-cta-card.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/features/student-portal/components/layout/portal-top-bar.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/features/student-portal/components/layout/portal-top-bar.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/features/student-portal/components/layout/student-profile-menu.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/features/student-portal/components/layout/student-profile-menu.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/features/student-portal/pages/portal-page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/features/student-portal/pages/portal-page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/features/students/api/students-api.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/features/students/api/students-api.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/features/students/components/import/csv-import-modal.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/features/students/components/import/csv-import-modal.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/features/students/components/import/csv-import-tab-layout.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/features/students/components/import/csv-import-tab-layout.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/features/students/components/import/csv-import.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/features/students/components/import/csv-import.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/features/students/components/modals/student-status-change-modal.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/features/students/components/modals/student-status-change-modal.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/features/students/components/student-data-table.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/features/students/pages/students-management-page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/features/students/pages/students-management-page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/shared/components/ui/combobox.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/shared/components/ui/combobox.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../client/src/shared/components/ui/forms/modal-form-primitives.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/shared/components/ui/forms/modal-form-primitives.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/modalsfinal/AdminProfileModal.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/modalsfinal/CreateAdminModal.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/modalsfinal/CreateStudentModal.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/modalsfinal/DeleteUserModal.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/modalsfinal/EditAdminModal.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/modalsfinal/EditStudentModal.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/modalsfinal/StudentDetailModal.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/modalsfinal/StudentProfileModal.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/modalsfinal/tops.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/shared/styles/global.css" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/shared/styles/global.css" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/dashboard/service/DashboardService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/dashboard/service/DashboardService.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/elibro/repository/ElibroAccessLogRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/elibro/repository/ElibroAccessLogRepository.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/logs/audit/controller/AuditLogQueryController.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/logs/audit/controller/AuditLogQueryController.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/logs/audit/service/AuditLogQueryService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/logs/audit/service/AuditLogQueryService.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/reports/controller/ReportController.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/reports/controller/ReportController.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/reports/service/AuditLogReportService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/reports/service/AuditLogReportService.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/reports/service/ReportService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/reports/service/ReportService.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/reports/service/ReportXlsxExportService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/reports/service/ReportXlsxExportService.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/students/controller/StudentController.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/students/controller/StudentController.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/students/dto/StudentResponse.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/students/dto/StudentResponse.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/students/entity/Student.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/students/entity/Student.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/students/mapper/StudentMapper.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/students/mapper/StudentMapper.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/students/repository/StudentRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/students/repository/StudentRepository.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/students/service/StudentService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/students/service/StudentService.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/resources/application.properties" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/application.properties" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/test/java/mx/edu/utez/server/modules/dashboard/controller/DashboardControllerIntegrationTest.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/test/java/mx/edu/utez/server/modules/dashboard/controller/DashboardControllerIntegrationTest.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/test/java/mx/edu/utez/server/modules/logs/audit/controller/AuditLogQueryControllerIntegrationTest.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/test/java/mx/edu/utez/server/modules/logs/audit/controller/AuditLogQueryControllerIntegrationTest.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/test/java/mx/edu/utez/server/modules/reports/controller/ReportExportIntegrationTest.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/test/java/mx/edu/utez/server/modules/reports/controller/ReportExportIntegrationTest.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/test/java/mx/edu/utez/server/modules/students/controller/StudentControllerIntegrationTest.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/test/java/mx/edu/utez/server/modules/students/controller/StudentControllerIntegrationTest.java" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -194,6 +159,8 @@
       <workItem from="1775687930555" duration="44000" />
       <workItem from="1775689911214" duration="919000" />
       <workItem from="1775693953365" duration="13536000" />
+      <workItem from="1775870210377" duration="3206000" />
+      <workItem from="1775972490941" duration="556000" />
     </task>
     <servers />
   </component>

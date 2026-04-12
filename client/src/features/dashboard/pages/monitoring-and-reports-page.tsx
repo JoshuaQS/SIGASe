@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { motion } from 'framer-motion'
-import { BarChart2, Download, Flame, RefreshCw, TrendingUp, Users, ShieldCheck, ShieldX, Trophy, CheckCircle, Calendar, FileText, FileSpreadsheet, Search, Mail, Sparkles, AlertTriangle } from 'lucide-react'
+import * as motion from 'motion/react-client'
+import { BarChart2, Download, Flame, RefreshCw, TrendingUp, Users, ShieldCheck, ShieldX, Trophy, FileText, FileSpreadsheet, ChevronLeft, ChevronRight } from 'lucide-react'
 import {
-  AreaChart,
-  Area,
+  ComposedChart,
   BarChart,
   Bar,
   XAxis,
@@ -15,14 +14,10 @@ import {
   Cell,
 } from 'recharts'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card'
-import { Button, type ButtonProps } from '@/shared/components/ui/button'
+import { Button } from '@/shared/components/ui/button'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select'
 import { Badge } from '@/shared/components/ui/badge'
 import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/popover'
-import { Input } from '@/shared/components/ui/input'
-import { Textarea } from '@/shared/components/ui/textarea'
-import { FormField } from '@/shared/components/ui/forms/form-field'
-import { ProtectedField } from '@/shared/components/ui/forms/protected-field'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select'
 import StatCard from '@/shared/components/data-display/status-card'
 import { SectionHeader } from '@/shared/components/ui/section-header'
 import { useAppToast } from '@/shared/components/ui/app-toast-provider'
@@ -37,10 +32,21 @@ import {
   type DashboardExportFormat,
   type DashboardQueryParams,
 } from '@/features/dashboard/api/dashboard-api'
-import { MonitoringFiltersCard } from '@/features/dashboard/components/monitoring-composer/monitoring-filters-card'
-import { resolveMonitoringQuery } from '@/features/dashboard/components/monitoring-composer/composer.utils'
-import type { ComposerDraftState, MonitoringResolvedQuery } from '@/features/dashboard/components/monitoring-composer/composer.types'
+import { endOfDay, max, startOfDay, subDays, subMonths } from 'date-fns'
+import Shell from '@/features/dashboard/components/shell'
 
+type TrendGranularityId = '7d' | '15d' | '1m' | '3m' | '6m' | '12m'
+
+const TREND_GRANULARITY_OPTIONS: Array<{ id: TrendGranularityId; label: string }> = [
+  { id: '7d', label: '7 días' },
+  { id: '15d', label: '15 días' },
+  { id: '1m', label: '1 mes' },
+  { id: '3m', label: '3 meses' },
+  { id: '6m', label: '6 meses' },
+  { id: '12m', label: '12 meses' },
+]
+
+const DEFAULT_TREND_GRANULARITY: TrendGranularityId = '3m'
 const ACCESS_CHART_COLORS = {
   success: 'hsl(var(--success))',
   destructive: 'hsl(var(--destructive))',
@@ -126,12 +132,16 @@ function buildAccessChartData(
   const isHistorical = !dateFrom || !dateTo
 
   if (!isHistorical) {
-    return points.map((point) => ({
-      label: formatTrendLabel(point.day, dateFrom, dateTo),
-      permitidos: point.successful,
-      denegados: point.failed,
-      total: point.successful + point.failed,
-    }))
+    return points.map((point) => {
+      const permitidos = point.successful
+      const denegados = point.failed
+      return {
+        label: formatTrendLabel(point.day, dateFrom, dateTo),
+        permitidos,
+        denegados,
+        total: permitidos + denegados,
+      }
+    })
   }
 
   const weeklyBuckets = new Map<string, AccessChartPoint>()
@@ -150,7 +160,7 @@ function buildAccessChartData(
     if (current) {
       current.permitidos += point.successful
       current.denegados += point.failed
-      current.total += point.successful + point.failed
+      current.total = current.permitidos + current.denegados
       continue
     }
 
@@ -164,7 +174,89 @@ function buildAccessChartData(
 
   return Array.from(weeklyBuckets.entries())
     .sort(([left], [right]) => left.localeCompare(right))
-    .map(([, value]) => value)
+    .map(([, value]) => ({
+      ...value,
+      total: value.permitidos + value.denegados,
+    }))
+}
+
+type TrendWindowHistoricalResult = {
+  chartData: AccessChartPoint[]
+  periodLabel: string
+  canGoOlder: boolean
+  canGoNewer: boolean
+}
+
+function getTrendWindowBounds(
+  dataMax: Date,
+  offsetBack: number,
+  granularity: TrendGranularityId,
+): { windowStart: Date; windowEnd: Date } {
+  const anchorEnd = endOfDay(dataMax)
+
+  if (granularity === '7d' || granularity === '15d') {
+    const dayCount = granularity === '7d' ? 7 : 15
+    const windowEnd = endOfDay(subDays(anchorEnd, offsetBack * dayCount))
+    const windowStart = startOfDay(subDays(windowEnd, dayCount - 1))
+    return { windowStart, windowEnd }
+  }
+
+  const months =
+    granularity === '1m'
+      ? 1
+      : granularity === '3m'
+        ? 3
+        : granularity === '6m'
+          ? 6
+          : 12
+
+  const windowEnd = subMonths(anchorEnd, offsetBack * months)
+  const windowStart = startOfDay(subMonths(windowEnd, months))
+  return { windowStart, windowEnd }
+}
+
+/**
+ * Ventanas del tamaño elegido ancladas al último dato; cada incremento de offset retrocede un bloque completo.
+ */
+function buildTrendWindowHistoricalChart(
+  points: DashboardTrendPoint[],
+  offsetBack: number,
+  granularity: TrendGranularityId,
+): TrendWindowHistoricalResult {
+  const dates = points.map((p) => parseTrendDate(p.day)).filter((d) => !Number.isNaN(d.getTime()))
+  if (dates.length === 0) {
+    return { chartData: [], periodLabel: '', canGoOlder: false, canGoNewer: false }
+  }
+
+  const dataMax = max(dates)
+  const { windowStart, windowEnd } = getTrendWindowBounds(dataMax, offsetBack, granularity)
+
+  const filtered = points.filter((p) => {
+    const d = parseTrendDate(p.day)
+    if (Number.isNaN(d.getTime())) return false
+    return d >= windowStart && d <= windowEnd
+  })
+
+  const dateFromIso = windowStart.toISOString()
+  const dateToIso = windowEnd.toISOString()
+  const chartData = buildAccessChartData(filtered, dateFromIso, dateToIso)
+
+  const hasOlderData = points.some((p) => {
+    const d = parseTrendDate(p.day)
+    return !Number.isNaN(d.getTime()) && d < windowStart
+  })
+
+  const fmt = (d: Date) =>
+    d.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/\./g, '')
+
+  const periodLabel = `${fmt(windowStart)} – ${fmt(windowEnd)}`
+
+  return {
+    chartData,
+    periodLabel,
+    canGoOlder: hasOlderData,
+    canGoNewer: offsetBack > 0,
+  }
 }
 
 function getPagedSlice<T>(items: T[], page: number, pageSizes: readonly number[]) {
@@ -282,199 +374,6 @@ function TopCareerTooltip({
   )
 }
 
-const BUTTON_VARIANT_SHOWCASE: Array<{
-  variant: ButtonProps['variant']
-  label: string
-}> = [
-  { variant: 'primary', label: 'Primario' },
-  { variant: 'secondary', label: 'Secundario' },
-  { variant: 'outline', label: 'Outline' },
-  { variant: 'ghost', label: 'Ghost' },
-  { variant: 'destructive', label: 'Peligro' },
-  { variant: 'success', label: 'Success' },
-  { variant: 'warning', label: 'Warning' },
-  { variant: 'info', label: 'Info' },
-]
-
-const BUTTON_SIZE_SHOWCASE: Array<{
-  size: ButtonProps['size']
-  label: string
-}> = [
-  { size: 'xs', label: 'XS' },
-  { size: 'sm', label: 'SM' },
-  { size: 'md', label: 'MD' },
-  { size: 'lg', label: 'LG' },
-]
-
-function MonitoringUiShowcase() {
-  const [showcaseSelect, setShowcaseSelect] = useState('overview')
-  const [showcaseSelectAlt, setShowcaseSelectAlt] = useState('success')
-
-  return (
-    <Card className="overflow-hidden border-border/70">
-      <CardHeader className="flex flex-col gap-3 border-b border-border/60 pb-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-            <Sparkles className="h-4 w-4 text-warning" />
-            Showcase de controles
-          </CardTitle>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Referencia viva de botones, form fields e inputs reales del sistema con tamaños, variantes y estados.
-          </p>
-        </div>
-        <Badge variant="outlined" className="gap-1 border-info/25 bg-info/5 text-info">
-          <Flame className="h-3 w-3" />
-          Primitives activos
-        </Badge>
-      </CardHeader>
-      <CardContent className="space-y-4 pt-4">
-        <div className="grid gap-4 xl:grid-cols-[1.15fr_1fr]">
-          <div className="rounded-2xl border border-border/70 bg-card/50 p-4">
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <div>
-                <h4 className="text-sm font-semibold text-foreground">Buttons</h4>
-                <p className="text-xs text-muted-foreground">Variantes, tamaños y estados cargando/deshabilitado.</p>
-              </div>
-            </div>
-            <div className="space-y-4">
-              <div className="flex flex-wrap gap-2">
-                {BUTTON_VARIANT_SHOWCASE.map((item) => (
-                  <Button key={item.label} variant={item.variant} size="sm">
-                    {item.label}
-                  </Button>
-                ))}
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                {BUTTON_SIZE_SHOWCASE.map((item) => (
-                  <Button key={item.label} variant="outline" size={item.size}>
-                    {item.label}
-                  </Button>
-                ))}
-                <Button variant="primary" size="icon-sm" aria-label="Accion de icono">
-                  <Search className="h-3.5 w-3.5" />
-                </Button>
-                <Button variant="outline" size="md" isLoading>
-                  Cargando
-                </Button>
-                <Button variant="secondary" size="md" disabled>
-                  Deshabilitado
-                </Button>
-              </div>
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-border/70 bg-card/50 p-4">
-            <div className="mb-3">
-              <h4 className="text-sm font-semibold text-foreground">Inputs por tamaño</h4>
-              <p className="text-xs text-muted-foreground">Escala xs, sm, md y lg con adornos reales.</p>
-            </div>
-            <div className="grid gap-3 md:grid-cols-2">
-              <FormField label="XS" size="xs" layout="compact" description="Campo compacto para tablas y filtros densos.">
-                <Input size="xs" placeholder="Buscar" startAdornment={<Search className="h-3 w-3" />} />
-              </FormField>
-              <FormField label="SM" size="sm" layout="compact" description="Buen punto medio para paneles internos.">
-                <Input size="sm" placeholder="Correo institucional" startAdornment={<Mail className="h-3.5 w-3.5" />} />
-              </FormField>
-              <FormField label="MD" size="md" layout="compact" description="Default operativo para formularios admin.">
-                <Input size="md" placeholder="Nombre del estudiante" />
-              </FormField>
-              <FormField label="LG" size="lg" layout="compact" description="Entrada amplia para auth o pasos clave.">
-                <Input size="lg" placeholder="Busqueda extendida" endAdornment={<Calendar className="h-4 w-4" />} />
-              </FormField>
-            </div>
-          </div>
-        </div>
-
-        <div className="grid gap-4 xl:grid-cols-[1.15fr_1fr]">
-          <div className="rounded-2xl border border-border/70 bg-card/50 p-4">
-            <div className="mb-3">
-              <h4 className="text-sm font-semibold text-foreground">Estados de formulario</h4>
-              <p className="text-xs text-muted-foreground">Validacion, loading, readonly, protected y variantes de superficie.</p>
-            </div>
-            <div className="grid gap-3 md:grid-cols-2">
-              <FormField label="Default" layout="compact" description="Campo neutro del sistema.">
-                <Input placeholder="Matricula 20263TN001" />
-              </FormField>
-              <FormField label="Success" layout="compact" success="Valor validado correctamente.">
-                <Input defaultValue="utez@utez.edu.mx" success endAdornment={<CheckCircle className="h-4 w-4" />} />
-              </FormField>
-              <FormField label="Error" layout="compact" error="El formato no cumple con la regla esperada.">
-                <Input defaultValue="correo-invalido" invalid endAdornment={<AlertTriangle className="h-4 w-4" />} />
-              </FormField>
-              <FormField label="Loading" layout="compact" description="Consulta asíncrona en progreso.">
-                <Input placeholder="Consultando..." loading />
-              </FormField>
-              <FormField label="Filled" layout="compact" description="Variante elevada sobre superficie secundaria.">
-                <Input variant="filled" defaultValue="Canal configurado" />
-              </FormField>
-              <FormField label="Readonly" layout="compact" description="Visible pero no editable.">
-                <Input defaultValue="Solo lectura" readOnly />
-              </FormField>
-              <FormField label="Protected display" layout="compact" description="Estado seguro para secretos guardados.">
-                <ProtectedField mode="display" value="token-demo" />
-              </FormField>
-              <FormField label="Protected edit" layout="compact" description="Mismo control en modo edición.">
-                <ProtectedField mode="edit" value="demo-secret" />
-              </FormField>
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-border/70 bg-card/50 p-4">
-            <div className="mb-3">
-              <h4 className="text-sm font-semibold text-foreground">Selects y textarea</h4>
-              <p className="text-xs text-muted-foreground">Estados y tamaños aplicados a controles enriquecidos.</p>
-            </div>
-            <div className="space-y-3">
-              <FormField label="Select md" layout="compact" description="Selector base de monitoreo.">
-                <Select value={showcaseSelect} onValueChange={setShowcaseSelect}>
-                  <SelectTrigger size="md">
-                    <SelectValue placeholder="Selecciona una opción" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="overview">Vista general</SelectItem>
-                    <SelectItem value="students">Estudiantes</SelectItem>
-                    <SelectItem value="careers">Carreras</SelectItem>
-                  </SelectContent>
-                </Select>
-              </FormField>
-              <FormField label="Select sm success" layout="compact" success="La selección ya es válida.">
-                <Select value={showcaseSelectAlt} onValueChange={setShowcaseSelectAlt}>
-                  <SelectTrigger size="sm" success>
-                    <SelectValue placeholder="Selecciona estado" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="success">Exitoso</SelectItem>
-                    <SelectItem value="failed">Fallido</SelectItem>
-                    <SelectItem value="all">Ambos</SelectItem>
-                  </SelectContent>
-                </Select>
-              </FormField>
-              <FormField label="Select loading" layout="compact" description="Ejemplo de carga de catálogo remoto.">
-                <Select value="loading" onValueChange={() => undefined}>
-                  <SelectTrigger size="md" loading>
-                    <SelectValue placeholder="Cargando opciones" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="loading">Cargando</SelectItem>
-                  </SelectContent>
-                </Select>
-              </FormField>
-              <FormField label="Textarea" layout="compact" description="Notas, observaciones o contexto amplio.">
-                <Textarea
-                  size="sm"
-                  rows={3}
-                  defaultValue="Este bloque resume las variantes de formulario disponibles para nuevos módulos."
-                  resize="none"
-                />
-              </FormField>
-            </div>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  )
-}
-
 const downloadBlob = (blob: Blob, filename: string) => {
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
@@ -492,57 +391,17 @@ const DEFAULT_EXPORT_PARAMS: DashboardQueryParams = {
   sortDir: 'desc',
 }
 
-function appendIsoDateRange(params: DashboardQueryParams, dateRange?: { from: Date; to: Date }) {
-  if (!dateRange?.from || !dateRange?.to) return
-  const from = new Date(dateRange.from)
-  const to = new Date(dateRange.to)
-  from.setUTCHours(0, 0, 0, 0)
-  to.setUTCHours(23, 59, 59, 999)
-  params.dateFrom = from.toISOString()
-  params.dateTo = to.toISOString()
-}
-
-function monitoringResolvedToDashboardParams(resolved: MonitoringResolvedQuery): DashboardQueryParams {
-  const params: DashboardQueryParams = { status: resolved.accessType }
-
-  appendIsoDateRange(params, resolved.dateRange)
-
-  switch (resolved.family) {
-    case 'student_individual':
-      params.analysisType = 'students_individual'
-      params.studentId = resolved.studentId
-      return params
-    case 'student_all':
-      params.analysisType = 'students_all'
-      params.sortDir = resolved.sortDirection ?? 'desc'
-      if (resolved.topN !== undefined) {
-        params.topEnabled = true
-        params.topN = resolved.topN
-      }
-      return params
-    case 'career_single':
-      params.analysisType = 'careers'
-      params.careerCodes = resolved.careerCodes
-      params.sortDir = resolved.sortDirection ?? 'desc'
-      return params
-    case 'career_multi':
-      params.analysisType = 'careers'
-      params.careerCodes = resolved.careerCodes
-      params.sortDir = resolved.sortDirection ?? 'desc'
-      if (resolved.topN !== undefined) {
-        params.topEnabled = true
-        params.topN = resolved.topN
-      }
-      return params
-  }
-}
-
-
 const MonitoringAndReports = () => {
   const { showToast } = useAppToast()
   const [loading, setLoading] = useState(true)
   const [isHeaderExportOpen, setIsHeaderExportOpen] = useState(false)
-  const [chartData, setChartData] = useState<AccessChartPoint[]>([])
+  const [trendBundle, setTrendBundle] = useState<{
+    points: DashboardTrendPoint[]
+    dateFrom?: string
+    dateTo?: string
+  }>({ points: [] })
+  const [historicalTrendWindowOffset, setHistoricalTrendWindowOffset] = useState(0)
+  const [trendGranularity, setTrendGranularity] = useState<TrendGranularityId>(DEFAULT_TREND_GRANULARITY)
   const [kpis, setKpis] = useState(EMPTY_KPI)
   const [historicalTopCarrerasData, setHistoricalTopCarrerasData] = useState<TopCarreraPoint[]>([])
   const [historicalTopUsuarios, setHistoricalTopUsuarios] = useState<TopUsuarioPoint[]>([])
@@ -552,10 +411,29 @@ const MonitoringAndReports = () => {
 
   const monthlyTotalsKpi = useMemo(() => ({ accesosPeriodo: kpis.accesosPeriodo }), [kpis.accesosPeriodo])
 
-  /** Cuando es null, KPIs y tendencias usan vista global; rankings conservan top carreras ampliado (50). */
-  const [scopedDashboardParams, setScopedDashboardParams] = useState<DashboardQueryParams | null>(null)
+  const { chartData, historicalChartNav } = useMemo(() => {
+    if (trendBundle.dateFrom && trendBundle.dateTo) {
+      return {
+        chartData: buildAccessChartData(trendBundle.points, trendBundle.dateFrom, trendBundle.dateTo),
+        historicalChartNav: null as null | {
+          periodLabel: string
+          canGoOlder: boolean
+          canGoNewer: boolean
+        },
+      }
+    }
+    const win = buildTrendWindowHistoricalChart(trendBundle.points, historicalTrendWindowOffset, trendGranularity)
+    return {
+      chartData: win.chartData,
+      historicalChartNav: {
+        periodLabel: win.periodLabel,
+        canGoOlder: win.canGoOlder,
+        canGoNewer: win.canGoNewer,
+      },
+    }
+  }, [trendBundle, historicalTrendWindowOffset, trendGranularity])
 
-  const exportQueryParams = scopedDashboardParams ?? DEFAULT_EXPORT_PARAMS
+  const exportQueryParams = DEFAULT_EXPORT_PARAMS
 
   const applyTopListsFromResponses = useCallback(
     (
@@ -618,30 +496,10 @@ const MonitoringAndReports = () => {
       accesosPermitidos: summary.successfulAccessesInRange,
       accesosDenegados: summary.failedAccessesInRange,
     })
-    setChartData(buildAccessChartData(trends.points, undefined, undefined))
+    setTrendBundle({ points: trends.points })
+    setHistoricalTrendWindowOffset(0)
     applyTopListsFromResponses(historicalTopCareers, historicalTopStudents)
   }, [applyTopListsFromResponses])
-
-  const fetchScopedDashboard = useCallback(
-    async (params: DashboardQueryParams) => {
-      const [summary, trends, historicalTopCareers, historicalTopStudents] = await Promise.all([
-        getDashboardSummary(params),
-        getDashboardAccessTrends(params),
-        getDashboardTopCareers(params),
-        getDashboardTopStudents(params),
-      ])
-
-      setKpis({
-        alumnosTotales: summary.totalStudents,
-        accesosPeriodo: summary.successfulAccessesInRange + summary.failedAccessesInRange,
-        accesosPermitidos: summary.successfulAccessesInRange,
-        accesosDenegados: summary.failedAccessesInRange,
-      })
-      setChartData(buildAccessChartData(trends.points, params.dateFrom, params.dateTo))
-      applyTopListsFromResponses(historicalTopCareers, historicalTopStudents)
-    },
-    [applyTopListsFromResponses],
-  )
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -662,8 +520,7 @@ const MonitoringAndReports = () => {
 
   const handleRefresh = () => {
     setLoading(true)
-    const run = scopedDashboardParams === null ? fetchDefaultDashboard() : fetchScopedDashboard(scopedDashboardParams)
-    void run
+    void fetchDefaultDashboard()
       .then(() => {
         showToast({
           severity: 'success',
@@ -681,29 +538,6 @@ const MonitoringAndReports = () => {
       })
       .finally(() => setLoading(false))
   }
-
-  const handleMonitoringApply = useCallback(
-    (draft: ComposerDraftState) => {
-      const resolved = resolveMonitoringQuery(draft)
-      if (!resolved) return
-      const params = monitoringResolvedToDashboardParams(resolved)
-      setScopedDashboardParams(params)
-      setTopCareersPage(1)
-      setTopStudentsPage(1)
-      setLoading(true)
-      void fetchScopedDashboard(params)
-        .catch((error) => {
-          const message = error instanceof Error ? error.message : 'No se pudo aplicar el filtro.'
-          showToast({
-            severity: 'error',
-            title: 'Error al filtrar',
-            description: message,
-          })
-        })
-        .finally(() => setLoading(false))
-    },
-    [fetchScopedDashboard, showToast],
-  )
 
   const topCareersPagination = useMemo(
     () => getPagedSlice(historicalTopCarrerasData, topCareersPage, TOP_CAREERS_PAGE_SIZES),
@@ -792,9 +626,7 @@ const MonitoringAndReports = () => {
         }
       />
 
-      <MonitoringFiltersCard onApply={handleMonitoringApply} disableExport />
-
-      <MonitoringUiShowcase />
+      <Shell />
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <StatCard title="Alumnos Totales" value={kpis.alumnosTotales.toLocaleString()} icon={Users} iconBg="bg-teal-500/10" iconFg="text-teal-600" delay={0} />
@@ -805,72 +637,129 @@ const MonitoringAndReports = () => {
 
           <Card>
             <CardHeader className="flex flex-col gap-3 border-b border-border/60 pb-4 sm:flex-row sm:items-start sm:justify-between">
-              <div>
+              <div className="min-w-0 flex-1">
                 <CardTitle className="text-base font-semibold">Accesos historicos totales</CardTitle>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Vista semanal acumulada del histórico disponible, con el nuevo lenguaje visual de la gráfica principal.
+                  {historicalChartNav
+                    ? 'Elige el tamaño de cada ventana y navega hacia atrás en el histórico disponible.'
+                    : 'Serie diaria según el rango de fechas del filtro aplicado.'}
                 </p>
+                {historicalChartNav?.periodLabel ? (
+                  <p className="mt-2 text-xs font-medium text-foreground">{historicalChartNav.periodLabel}</p>
+                ) : null}
               </div>
-              <div className="flex flex-wrap gap-2 text-xs">
-                <Badge variant="outlined" className="gap-1 border-emerald-500/20 bg-emerald-500/5 text-emerald-700">
-                  <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" />
-                  Exitosos
-                </Badge>
-                <Badge variant="outlined" className="gap-1 border-rose-500/20 bg-rose-500/5 text-rose-700">
-                  <span className="inline-block h-2 w-2 rounded-full bg-rose-500" />
-                  Fallidos
-                </Badge>
-                <Badge variant="outlined" className="gap-1 border-sky-500/20 bg-sky-500/5 text-sky-700">
-                  <span className="inline-block h-2 w-2 rounded-full bg-sky-500" />
-                  Totales
-                </Badge>
+              <div className="flex w-full min-w-0 flex-col items-stretch gap-3 sm:max-w-xl sm:items-end">
+                {historicalChartNav ? (
+                  <div className="flex w-full min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end sm:justify-end">
+                    <div className="w-full min-w-0 sm:w-[200px] sm:max-w-[220px]">
+                      <span className="mb-1 block text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                        Tamaño de ventana
+                      </span>
+                      <Select
+                        value={trendGranularity}
+                        onValueChange={(v) => {
+                          setTrendGranularity(v as TrendGranularityId)
+                          setHistoricalTrendWindowOffset(0)
+                        }}
+                      >
+                        <SelectTrigger size="sm" className="h-8 w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {TREND_GRANULARITY_OPTIONS.map((opt) => (
+                            <SelectItem key={opt.id} value={opt.id}>
+                              {opt.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="inline-flex w-full min-w-0 shrink-0 divide-x divide-border overflow-hidden rounded-md border border-border bg-background shadow-xs sm:w-auto">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={!historicalChartNav.canGoOlder}
+                        onClick={() => setHistoricalTrendWindowOffset((o) => o + 1)}
+                        aria-label="Periodo anterior"
+                        className="h-8 flex-1 gap-1.5 rounded-none rounded-l-md border-0 shadow-none transition-none hover:bg-muted/70 focus-visible:z-10 active:scale-[0.98] sm:flex-initial sm:px-3"
+                      >
+                        <ChevronLeft className="size-4 shrink-0" aria-hidden />
+                        <span className="whitespace-nowrap">Anterior</span>
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={!historicalChartNav.canGoNewer}
+                        onClick={() => setHistoricalTrendWindowOffset((o) => Math.max(0, o - 1))}
+                        aria-label="Periodo más reciente"
+                        className="h-8 flex-1 gap-1.5 rounded-none rounded-r-md border-0 shadow-none transition-none hover:bg-muted/70 focus-visible:z-10 active:scale-[0.98] sm:flex-initial sm:px-3"
+                      >
+                        <span className="whitespace-nowrap">Más reciente</span>
+                        <ChevronRight className="size-4 shrink-0" aria-hidden />
+                      </Button>
+                    </div>
+                  </div>
+                ) : null}
+                <div className="flex flex-wrap gap-2 text-xs sm:justify-end">
+                  <Badge variant="outlined" className="gap-1 border-emerald-500/20 bg-emerald-500/5 text-emerald-700">
+                    <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" />
+                    Exitosos
+                  </Badge>
+                  <Badge variant="outlined" className="gap-1 border-rose-500/20 bg-rose-500/5 text-rose-700">
+                    <span className="inline-block h-2 w-2 rounded-full bg-rose-500" />
+                    Fallidos
+                  </Badge>
+                  <Badge variant="outlined" className="gap-1 border-sky-500/20 bg-sky-500/5 text-sky-700">
+                    <span className="inline-block h-2 w-2 rounded-full bg-sky-500" />
+                    Totales
+                  </Badge>
+                </div>
               </div>
             </CardHeader>
             <CardContent className="min-w-0">
               <ResponsiveContainer width="100%" height={290} minWidth={1} minHeight={290}>
-                <AreaChart data={chartData} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="historicalSuccess" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor={ACCESS_CHART_COLORS.success} stopOpacity={0.30} />
-                      <stop offset="95%" stopColor={ACCESS_CHART_COLORS.success} stopOpacity={0.04} />
-                    </linearGradient>
-                    <linearGradient id="historicalFailed" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor={ACCESS_CHART_COLORS.destructive} stopOpacity={0.26} />
-                      <stop offset="95%" stopColor={ACCESS_CHART_COLORS.destructive} stopOpacity={0.03} />
-                    </linearGradient>
-                  </defs>
+                <ComposedChart data={chartData} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
                   <CartesianGrid vertical={false} stroke="rgba(128,128,128,0.14)" />
                   <XAxis dataKey="label" tick={false} tickLine={false} axisLine={false} height={10} />
-                  <YAxis tick={{ fill: '#64748b', fontSize: 11 }} tickLine={false} axisLine={false} />
+                  <YAxis
+                    tick={{ fill: '#64748b', fontSize: 11 }}
+                    tickLine={false}
+                    axisLine={false}
+                    allowDecimals={false}
+                    domain={[0, 'auto']}
+                  />
                   <Tooltip content={<HistoricalTrendTooltip />} />
-                  <Area
-                    type="natural"
+                  <Line
+                    type="monotone"
                     dataKey="permitidos"
                     name="Exitosos"
-                    stackId="historical"
                     stroke={ACCESS_CHART_COLORS.success}
-                    fill="url(#historicalSuccess)"
-                    strokeWidth={2.2}
+                    strokeWidth={2}
+                    dot={false}
+                    isAnimationActive={false}
                   />
-                  <Area
-                    type="natural"
+                  <Line
+                    type="monotone"
                     dataKey="denegados"
                     name="Fallidos"
-                    stackId="historical"
                     stroke={ACCESS_CHART_COLORS.destructive}
-                    fill="url(#historicalFailed)"
-                    strokeWidth={2.1}
+                    strokeWidth={2}
+                    dot={false}
+                    isAnimationActive={false}
                   />
                   <Line
                     type="monotone"
                     dataKey="total"
                     name="Totales"
                     stroke={ACCESS_CHART_COLORS.info}
-                    strokeWidth={2.3}
+                    strokeWidth={2.5}
                     dot={false}
                     activeDot={{ r: 4 }}
+                    isAnimationActive={false}
                   />
-                </AreaChart>
+                </ComposedChart>
               </ResponsiveContainer>
             </CardContent>
           </Card>

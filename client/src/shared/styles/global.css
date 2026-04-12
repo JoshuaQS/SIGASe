@@ -67,7 +67,7 @@
     0 32px 64px hsl(var(--shadow-color) / 0.10);
 
   /* Base */
-  --background: 0 0% 100%;
+  --background: 0 10% 100%;
   --surface: 0 0% 100%;
   --foreground: 188 38% 22%;
 

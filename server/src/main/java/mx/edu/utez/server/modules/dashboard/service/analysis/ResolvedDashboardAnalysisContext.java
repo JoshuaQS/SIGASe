@@ -1,0 +1,25 @@
+package mx.edu.utez.server.modules.dashboard.service.analysis;
+
+import java.time.Instant;
+import java.util.List;
+import java.util.UUID;
+import mx.edu.utez.server.modules.dashboard.dto.DashboardAccessResultFilter;
+import mx.edu.utez.server.modules.dashboard.dto.DashboardFilterMode;
+import mx.edu.utez.server.modules.dashboard.dto.DashboardFilterScope;
+import mx.edu.utez.server.modules.dashboard.dto.DashboardRankingMode;
+import mx.edu.utez.server.modules.dashboard.dto.DashboardSortDirection;
+
+public record ResolvedDashboardAnalysisContext(
+        DashboardFilterScope scope,
+        DashboardFilterMode mode,
+        UUID studentId,
+        List<UUID> careerIds,
+        DashboardAccessResultFilter accessResult,
+        Instant effectiveDateFrom,
+        Instant effectiveDateTo,
+        DashboardRankingMode rankingMode,
+        Integer effectiveTopN,
+        DashboardSortDirection effectiveSortDirection,
+        boolean groupedScope
+) {
+}

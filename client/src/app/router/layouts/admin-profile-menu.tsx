@@ -7,7 +7,6 @@ import {
 
 import { authSession } from '@/features/auth/store/auth-session-store';
 import { useAuthUser } from '@/features/auth/hooks/use-auth-user';
-import { AdminProfileModal } from '@/modalsfinal/AdminProfileModal';
 import { useAppToast } from '@/shared/components/ui/app-toast-provider';
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
 import { cn } from '@/shared/lib/utils';
@@ -58,7 +57,6 @@ export function AdminProfileMenu() {
 
   return (
     <>
-      <AdminProfileModal open={profileOpen} onClose={() => setProfileOpen(false)} />
 
       <div className="group relative">
         <button
