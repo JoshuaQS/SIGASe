@@ -7,6 +7,7 @@ import {
   Clock3,
   Download,
   Eye,
+  FileText,
   Filter,
   Info,
   RefreshCw,
@@ -21,7 +22,7 @@ import { Input } from '@/shared/components/ui/input'
 import { Badge } from '@/shared/components/ui/badge'
 import { DataTable } from '@/shared/components/ui/data-table'
 import { DataTableFiltersShell } from '@/shared/components/ui/data-table-filters-shell'
-import { ExportFormatDialog } from '@/shared/components/ui/export-format-dialog'
+import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/popover'
 import {
   Dialog,
   DialogContent,
@@ -182,7 +183,7 @@ const AuditLogs = () => {
   const [loading, setLoading] = useState(true)
   const [exporting, setExporting] = useState(false)
   const [selectedLog, setSelectedLog] = useState<AuditLogDto | null>(null)
-  const [exportDialogOpen, setExportDialogOpen] = useState(false)
+  const [isHeaderExportOpen, setIsHeaderExportOpen] = useState(false)
   const {
     filtersOpen,
     setFiltersOpen,
@@ -298,7 +299,7 @@ const AuditLogs = () => {
     try {
       const result = await exportAuditLogsReport(queryParams, format)
       downloadBlob(result.blob, result.filename)
-      setExportDialogOpen(false)
+      setIsHeaderExportOpen(false)
       showToast({
         severity: 'success',
         title: 'Exportación completada',
@@ -414,29 +415,47 @@ const AuditLogs = () => {
               <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
               Actualizar
             </Button>
-            <Button
-              variant="outline"
-              size="md"
-              className="gap-2"
-              disabled={exporting}
-              onClick={() => setExportDialogOpen(true)}
-            >
-              <Download className={`w-3.5 h-3.5 ${exporting ? 'animate-pulse' : ''}`} />
-              Exportar
-            </Button>
+            <Popover open={isHeaderExportOpen} onOpenChange={setIsHeaderExportOpen}>
+              <PopoverTrigger asChild>
+                <Button disabled={exporting} variant="outline" size="md" className="gap-2">
+                  <Download className={`w-3.5 h-3.5 ${exporting ? 'animate-pulse' : ''}`} />
+                  Exportar
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-[180px] p-2">
+                <div className="space-y-1">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="w-full justify-start gap-2"
+                    onClick={() => {
+                      setIsHeaderExportOpen(false)
+                      void handleExport('csv')
+                    }}
+                  >
+                    <FileText className="size-4" />
+                    Descargar CSV
+                  </Button>
+                  <div className="my-1 h-px bg-border" />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="w-full justify-start gap-2"
+                    onClick={() => {
+                      setIsHeaderExportOpen(false)
+                      void handleExport('xlsx')
+                    }}
+                  >
+                    <FileText className="size-4" />
+                    Descargar XLSX
+                  </Button>
+                </div>
+              </PopoverContent>
+            </Popover>
           </>
         }
-      />
-
-      <ExportFormatDialog
-        open={exportDialogOpen}
-        title="Exportar audit logs"
-        description="Selecciona el formato de descarga para la consulta actual de auditoría."
-        loading={exporting}
-        onClose={() => !exporting && setExportDialogOpen(false)}
-        onSelect={(format) => {
-          void handleExport(format as AuditLogExportFormat)
-        }}
       />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -445,8 +464,7 @@ const AuditLogs = () => {
           value={totalElements.toLocaleString()}
           subtitle="Coincide con la consulta actual"
           icon={Activity}
-          iconBg="bg-indigo-500/10"
-          iconFg="text-indigo-600"
+          variant="info"
           delay={0}
         />
         <StatusCard
@@ -454,8 +472,7 @@ const AuditLogs = () => {
           value={currentActors}
           subtitle="En la página actual"
           icon={UserCircle2}
-          iconBg="bg-sky-500/10"
-          iconFg="text-sky-600"
+          variant="primary"
           delay={0.05}
         />
         <StatusCard
@@ -463,8 +480,7 @@ const AuditLogs = () => {
           value={currentPageCriticals}
           subtitle="Security + Critical"
           icon={AlertCircle}
-          iconBg="bg-red-500/10"
-          iconFg="text-red-500"
+          variant="destructive"
           delay={0.1}
         />
         <StatusCard
@@ -472,38 +488,10 @@ const AuditLogs = () => {
           value={currentPageFailures}
           subtitle="FAILURE + ERROR"
           icon={Clock3}
-          iconBg="bg-amber-500/10"
-          iconFg="text-amber-600"
+          variant="warning"
           delay={0.15}
         />
       </div>
-
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-semibold">Leyenda de resultados</CardTitle>
-          <p className="text-xs text-muted-foreground">
-            Interpretación visible de todos los outcomes posibles del módulo de auditoría.
-          </p>
-        </CardHeader>
-        <CardContent className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-          {(['SUCCESS', 'FAILURE', 'DENIED', 'ERROR'] as const).map((outcome) => (
-            <div key={outcome} className="rounded-xl border border-border/70 bg-secondary/10 px-3 py-2">
-              <Badge variant="outlined" className="border-border/70 bg-background">
-                {outcomeLabels[outcome]}
-              </Badge>
-              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-                {outcome === 'SUCCESS'
-                  ? 'La acción auditada se completó correctamente.'
-                  : outcome === 'FAILURE'
-                    ? 'La acción intentó ejecutarse, pero terminó con fallo de negocio o validación.'
-                    : outcome === 'DENIED'
-                      ? 'La acción fue bloqueada por permisos, política o restricción de seguridad.'
-                      : 'La acción terminó con error técnico o excepción del sistema.'}
-              </p>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card>

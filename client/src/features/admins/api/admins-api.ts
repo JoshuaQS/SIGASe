@@ -120,6 +120,10 @@ export async function resetAdminPassword(adminId: string, input: ResetAdminPassw
   await api.post<ApiEnvelope<null>>(`/admins/${adminId}/reset-password`, input);
 }
 
+export async function deleteAdmin(adminId: string) {
+  await api.delete<ApiEnvelope<null>>(`/admins/${adminId}`);
+}
+
 // ── Dashboard metrics ────────────────────────────────────────────────────
 
 export type AdminRoleModuleActivity = {

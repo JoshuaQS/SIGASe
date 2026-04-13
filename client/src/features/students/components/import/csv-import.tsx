@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState, type ChangeEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "react";
 import { CloudUpload, Download, FileSpreadsheet, FileText, X, AlertCircle, Upload } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 
@@ -19,6 +19,10 @@ type CsvImportProps = {
   showSimulateError?: boolean;
   /** Ancho completo del contenedor (p. ej. modal); si no, max-w-lg */
   fullWidth?: boolean;
+  /** Si true, no muestra los botones inferiores (control externo). */
+  hideActions?: boolean;
+  /** Entrega el handler para abrir el picker desde afuera. */
+  onOpenPickerReady?: (openPicker: () => void) => void;
   onParsed?: (data: CsvImportParsed) => void;
   onImport?: (data: CsvImportParsed) => void | Promise<void>;
   importing?: boolean;
@@ -82,6 +86,8 @@ export function CsvImport({
   maxSizeBytes = 10 * 1024 * 1024,
   previewRowCount = 3,
   fullWidth = false,
+  hideActions = false,
+  onOpenPickerReady,
   onParsed,
   onImport,
   importing = false,
@@ -101,6 +107,15 @@ export function CsvImport({
     setErrorMessage("");
     if (inputRef.current) inputRef.current.value = "";
   }, []);
+
+  const openPicker = useCallback(() => {
+    if (inputRef.current) inputRef.current.click();
+  }, []);
+
+  // Expose openPicker to parent layouts when needed.
+  useEffect(() => {
+    onOpenPickerReady?.(openPicker);
+  }, [onOpenPickerReady, openPicker]);
 
   const processFile = useCallback(
     (file: File) => {
@@ -186,8 +201,6 @@ export function CsvImport({
   };
 
   const onDragLeave = () => setState("idle");
-
-  const openPicker = () => inputRef.current?.click();
 
   const handleImport = useCallback(async () => {
     if (!parsed || !onImport || isImporting) return;
@@ -434,7 +447,7 @@ export function CsvImport({
           ) : null}
         </div>
       </div>
-      {fullWidth ? (
+      {fullWidth && !hideActions ? (
         <div className="flex shrink-0 flex-wrap gap-2">
           <button
             type="button"

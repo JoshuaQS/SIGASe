@@ -20,6 +20,48 @@ public record ResolvedDashboardAnalysisContext(
         DashboardRankingMode rankingMode,
         Integer effectiveTopN,
         DashboardSortDirection effectiveSortDirection,
-        boolean groupedScope
+        boolean groupedScope,
+        ResolvedDashboardWidgetControls widgetControls
 ) {
+    public ResolvedDashboardAnalysisContext(
+            DashboardFilterScope scope,
+            DashboardFilterMode mode,
+            UUID studentId,
+            List<UUID> careerIds,
+            DashboardAccessResultFilter accessResult,
+            Instant effectiveDateFrom,
+            Instant effectiveDateTo,
+            DashboardRankingMode rankingMode,
+            Integer effectiveTopN,
+            DashboardSortDirection effectiveSortDirection,
+            boolean groupedScope
+    ) {
+        this(
+                scope,
+                mode,
+                studentId,
+                careerIds,
+                accessResult,
+                effectiveDateFrom,
+                effectiveDateTo,
+                rankingMode,
+                effectiveTopN,
+                effectiveSortDirection,
+                groupedScope,
+                new ResolvedDashboardWidgetControls(
+                        new ResolvedDashboardTableWidgetControl(
+                                DashboardWidgetComposer.STUDENT_ACTIVITY_DEFAULT_PAGE,
+                                DashboardWidgetComposer.STUDENT_ACTIVITY_DEFAULT_SIZE,
+                                DashboardWidgetComposer.STUDENT_ACTIVITY_DEFAULT_SORT_BY,
+                                DashboardWidgetComposer.STUDENT_ACTIVITY_DEFAULT_SORT_DIRECTION
+                        ),
+                        new ResolvedDashboardTableWidgetControl(
+                                DashboardWidgetComposer.CAREER_STUDENT_TABLE_DEFAULT_PAGE,
+                                DashboardWidgetComposer.CAREER_STUDENT_TABLE_DEFAULT_SIZE,
+                                DashboardWidgetComposer.CAREER_STUDENT_TABLE_DEFAULT_SORT_BY,
+                                DashboardWidgetComposer.CAREER_STUDENT_TABLE_DEFAULT_SORT_DIRECTION
+                        )
+                )
+        );
+    }
 }

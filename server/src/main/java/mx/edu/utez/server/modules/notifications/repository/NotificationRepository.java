@@ -19,6 +19,10 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     Optional<Notification> findByIdAndAdmin_IdAndDismissedFalse(Long id, UUID adminId);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("DELETE FROM Notification n WHERE n.admin.id = :adminId")
+    int deleteAllByAdminId(@Param("adminId") UUID adminId);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""
             UPDATE Notification n
                SET n.read = true

@@ -5,6 +5,7 @@ import { Button } from '@/shared/components/ui/button'
 import { DataTable } from '@/shared/components/ui/data-table'
 import { DataTableFiltersShell, type DataTableFilterChip } from '@/shared/components/ui/data-table-filters-shell'
 import type { StudentResponseDto } from '@/features/students/api/students-api'
+import { cn } from '@/shared/lib/utils'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -50,6 +51,21 @@ const statusStyles: Record<StudentManagementRow['uiStatus'], string> = {
   activo: 'text-emerald-600 border-emerald-200 bg-emerald-50',
   inactivo: 'text-muted-foreground border-border',
   pendiente: 'text-amber-700 border-amber-200 bg-amber-50',
+}
+
+const sexBadgeStyles: Record<StudentResponseDto['sex'], { label: string; className: string }> = {
+  FEMALE: {
+    label: 'Mujer',
+    className: 'border-pink-500/30 text-pink-700 bg-pink-50 dark:text-pink-400 dark:bg-pink-950/40',
+  },
+  MALE: {
+    label: 'Hombre',
+    className: 'border-blue-500/30 text-blue-700 bg-blue-50 dark:text-blue-400 dark:bg-blue-950/40',
+  },
+  NON_BINARY: {
+    label: 'Otro',
+    className: 'border-muted-foreground/30 text-muted-foreground bg-muted',
+  },
 }
 
 function initials(name: string) {
@@ -177,6 +193,7 @@ export function StudentsTable({
                   'Nombre completo',
                   'Correo institucional',
                   'Carrera',
+                  'Sexo',
                   'Cuatrimestre',
                   'Estado',
                   'Último acceso',
@@ -198,13 +215,13 @@ export function StudentsTable({
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-8 text-center text-sm text-muted-foreground">
+                  <td colSpan={9} className="px-4 py-8 text-center text-sm text-muted-foreground">
                     Cargando estudiantes...
                   </td>
                 </tr>
               ) : rows.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-8 text-center text-sm text-muted-foreground">
+                  <td colSpan={9} className="px-4 py-8 text-center text-sm text-muted-foreground">
                     No hay estudiantes para los filtros seleccionados.
                   </td>
                 </tr>
@@ -236,6 +253,17 @@ export function StudentsTable({
                       title={student.career?.name ?? student.career?.code ?? 'N/D'}
                     >
                       {student.career?.code ?? 'N/D'}
+                    </Badge>
+                  </td>
+                  <td className="px-4 py-2.5 whitespace-nowrap">
+                    <Badge
+                      variant="outlined"
+                      className={cn(
+                        'inline-flex h-6 items-center justify-center rounded-md px-2 text-[10px] font-semibold',
+                        sexBadgeStyles[student.sex]?.className ?? sexBadgeStyles.NON_BINARY.className,
+                      )}
+                    >
+                      {sexBadgeStyles[student.sex]?.label ?? sexBadgeStyles.NON_BINARY.label}
                     </Badge>
                   </td>
                   <td className="px-4 py-2.5">
@@ -316,7 +344,7 @@ export function StudentsTable({
         </div>
       )}
       renderCards={() => (
-        <div className="grid grid-cols-1 gap-3 p-5 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 p-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {loading ? (
             <div className="col-span-full py-8 text-center text-sm text-muted-foreground">
               Cargando estudiantes...
@@ -328,7 +356,7 @@ export function StudentsTable({
           ) : rows.map((student) => (
             <div
               key={student.id}
-              className="group flex h-full flex-col rounded-xl border border-border bg-background p-4 transition-all hover:border-primary/30 hover:shadow-sm"
+              className="group flex h-full min-h-[228px] flex-col rounded-xl border border-border bg-background p-4 transition-all hover:border-primary/30 hover:shadow-sm"
             >
               <div className="relative mb-4">
                 <div className="absolute left-0 top-0">
@@ -385,7 +413,7 @@ export function StudentsTable({
                   <p className="text-sm font-semibold text-foreground">{student.totalAccesses ?? '—'}</p>
                 </div>
               </div>
-              <div className="mt-3 flex items-center justify-end text-xs text-muted-foreground">
+              <div className="mt-auto flex items-center justify-end pt-3 text-xs text-muted-foreground">
                 {student.lastAccessLabel}
               </div>
             </div>

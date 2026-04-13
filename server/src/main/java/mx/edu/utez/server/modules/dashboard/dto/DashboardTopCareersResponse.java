@@ -8,5 +8,5 @@ public record DashboardTopCareersResponse(
         int limit,
         String sortDir,
         List<DashboardTopCareerItemResponse> careers
-) {
+) implements DashboardWidgetData {
 }

@@ -1,4 +1,4 @@
-import { StudentsCreateModal } from '@/features/students/components/modals/create-student-modal'
+import { StudentCreateModal } from '@/features/students/components/modals/create-student-modal'
 import type { StudentResponseDto } from '@/features/students/api/students-api'
 
 type EditStudentModalProps = {
@@ -15,7 +15,7 @@ export function EditStudentModal({
   onSuccess,
 }: EditStudentModalProps) {
   return (
-    <StudentsCreateModal
+    <StudentCreateModal
       open={open}
       onClose={onClose}
       onCreated={onSuccess}

@@ -8,6 +8,8 @@ import {
   Upload,
   Download,
   Activity,
+  FileText,
+  FileSpreadsheet,
 } from 'lucide-react'
 import {
   BarChart,
@@ -17,22 +19,27 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
 } from 'recharts'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card'
 import { Button } from '@/shared/components/ui/button'
 import StatCard from '@/shared/components/data-display/status-card'
 import { SectionHeader } from '@/shared/components/ui/section-header'
 import { useAppToast } from '@/shared/components/ui/app-toast-provider'
-import { AppConfirmDialog } from '@/shared/components/ui/confirmation-dialog'
-import { ExportFormatDialog } from '@/shared/components/ui/export-format-dialog'
+import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/popover'
 import { CsvImportModal } from '@/features/students/components/import/csv-import-modal'
 import type { CsvImportParsed } from '@/features/students/components/import/csv-import'
 import { StudentsTable, type StudentManagementRow } from '@/features/students/components/StudentsTable'
-import { CreateStudentModal } from '@/modalsfinal/CreateStudentModal'
-import { EditStudentModal } from '@/modalsfinal/EditStudentModal'
-import { StudentDetailModal } from '@/modalsfinal/StudentDetailModal'
-import { DeleteUserModal } from '@/modalsfinal/DeleteUserModal'
+import { StudentCreateModal as CreateStudentModal } from '@/features/students/components/modals/create-student-modal'
+import { EditStudentModal } from '@/features/students/components/modals/edit-student-modal'
+import { StudentDetailModal } from '@/features/students/components/modals/student-detail-modal'
+import { DeleteUserModal } from '@/features/admins/components/modals/delete-user-modal'
 import { StudentStatusChangeModal } from '@/features/students/components/modals/student-status-change-modal'
+import { listActiveCareers, type CareerDto } from '@/features/careers/api/careers-api'
+import { useTableFilterState } from '@/shared/hooks/use-table-filter-state'
 import {
   deactivateStudent,
   deleteStudent,
@@ -46,15 +53,6 @@ import {
   type StudentMetricsResponseDto,
   type StudentResponseDto,
 } from '@/features/students/api/students-api'
-import { listActiveCareers, type CareerDto } from '@/features/careers/api/careers-api'
-import { useTableFilterState } from '@/shared/hooks/use-table-filter-state'
-
-type PendingActionType = 'delete'
-
-type PendingAction = {
-  type: PendingActionType
-  student: StudentResponseDto
-}
 
 const tooltipStyle = {
   background: 'hsl(var(--card))',
@@ -138,11 +136,9 @@ const StudentsManagement = () => {
     activityByDate: [],
   })
 
-  const [pendingAction, setPendingAction] = useState<PendingAction | null>(null)
-  const [actionLoading, setActionLoading] = useState(false)
   const [importLoading, setImportLoading] = useState(false)
   const [exportLoading, setExportLoading] = useState(false)
-  const [exportDialogOpen, setExportDialogOpen] = useState(false)
+  const [isHeaderExportOpen, setIsHeaderExportOpen] = useState(false)
   const [createModalOpen, setCreateModalOpen] = useState(false)
   const [importModalOpen, setImportModalOpen] = useState(false)
   const [viewStudent, setViewStudent] = useState<StudentResponseDto | null>(null)
@@ -293,25 +289,6 @@ const StudentsManagement = () => {
 
   const actividadData = useMemo(() => formatActivityData(metrics), [metrics])
 
-  const confirmDialogCopy = useMemo(() => {
-    if (!pendingAction) {
-      return {
-        title: '',
-        description: '',
-        confirmText: '',
-        confirmColor: 'primary' as const,
-      }
-    }
-    if (pendingAction.type === 'delete') {
-      return {
-        title: 'Eliminar estudiante',
-        description: `Se eliminará el registro de ${buildFullName(pendingAction.student)}.`,
-        confirmText: 'Eliminar',
-        confirmColor: 'error' as const,
-      }
-    }
-  }, [pendingAction])
-
   const handleStudentCreated = useCallback(async () => {
     await fetchMetrics()
     if (page === 0) {
@@ -320,40 +297,6 @@ const StudentsManagement = () => {
     }
     setPage(0)
   }, [fetchMetrics, fetchStudents, page])
-
-  const handleConfirmAction = async () => {
-    if (!pendingAction) return
-    setActionLoading(true)
-    try {
-      if (pendingAction.type === 'delete') {
-        await deleteStudent(pendingAction.student.id)
-        showToast({
-          severity: 'success',
-          title: 'Estudiante eliminado',
-          description: `${buildFullName(pendingAction.student)} fue eliminado correctamente.`,
-        })
-      }
-
-      const shouldGoBack = pendingAction.type === 'delete' && rows.length === 1 && page > 0
-      setPendingAction(null)
-
-      await fetchMetrics()
-      if (shouldGoBack) {
-        setPage((current) => current - 1)
-      } else {
-        await fetchStudents()
-      }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'No se pudo completar la acción.'
-      showToast({
-        severity: 'error',
-        title: 'Acción no completada',
-        description: message,
-      })
-    } finally {
-      setActionLoading(false)
-    }
-  }
 
   const handleImportFile = useCallback(async (file: File): Promise<boolean> => {
     setImportLoading(true)
@@ -412,7 +355,7 @@ const StudentsManagement = () => {
         title: 'Exportación completada',
         description: `Se descargó ${filename}.`,
       })
-      setExportDialogOpen(false)
+      setIsHeaderExportOpen(false)
     } catch (error) {
       const message = error instanceof Error ? error.message : 'No se pudo exportar la lista de estudiantes.'
       showToast({
@@ -427,29 +370,6 @@ const StudentsManagement = () => {
 
   return (
     <motion.div className="space-y-6" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}>
-      <AppConfirmDialog
-        open={Boolean(pendingAction)}
-        title={confirmDialogCopy.title}
-        description={confirmDialogCopy.description}
-        confirmText={actionLoading ? 'Procesando...' : confirmDialogCopy.confirmText}
-        cancelText="Cancelar"
-        confirmColor={confirmDialogCopy.confirmColor}
-        onCancel={() => !actionLoading && setPendingAction(null)}
-        onConfirm={() => {
-          if (actionLoading) return
-          void handleConfirmAction()
-        }}
-      />
-      <ExportFormatDialog
-        open={exportDialogOpen}
-        title="Exportar estudiantes"
-        description="Selecciona el formato de descarga para la consulta actual de estudiantes."
-        loading={exportLoading}
-        onClose={() => !exportLoading && setExportDialogOpen(false)}
-        onSelect={(format) => {
-          void handleExport(format as StudentExportFormat)
-        }}
-      />
       <CreateStudentModal
         open={createModalOpen}
         onClose={() => setCreateModalOpen(false)}
@@ -459,7 +379,7 @@ const StudentsManagement = () => {
         open={Boolean(editingStudent)}
         student={editingStudent}
         onClose={() => setEditingStudent(null)}
-        onSaved={() => void handleStudentCreated()}
+        onSuccess={() => void handleStudentCreated()}
       />
       <StudentStatusChangeModal
         open={Boolean(statusTarget)}
@@ -557,16 +477,45 @@ const StudentsManagement = () => {
               <Upload className="w-3.5 h-3.5" />
               Importar
             </Button>
-            <Button
-              variant="outline"
-              size="md"
-              className="gap-2"
-              isLoading={exportLoading}
-              onClick={() => setExportDialogOpen(true)}
-            >
-              {!exportLoading && <Download className="w-3.5 h-3.5" />}
-              Exportar
-            </Button>
+            <Popover open={isHeaderExportOpen} onOpenChange={setIsHeaderExportOpen}>
+              <PopoverTrigger asChild>
+                <Button disabled={exportLoading} variant="outline" size="md" className="gap-2">
+                  <Download className="h-4 w-4" />
+                  Exportar
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-[180px] p-2">
+                <div className="space-y-1">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="w-full justify-start gap-2"
+                    onClick={() => {
+                      setIsHeaderExportOpen(false)
+                      void handleExport('csv')
+                    }}
+                  >
+                    <FileText className="size-4" />
+                    Descargar CSV
+                  </Button>
+                  <div className="my-1 h-px bg-border" />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="w-full justify-start gap-2"
+                    onClick={() => {
+                      setIsHeaderExportOpen(false)
+                      void handleExport('xlsx')
+                    }}
+                  >
+                    <FileSpreadsheet className="size-4" />
+                    Descargar XLSX
+                  </Button>
+                </div>
+              </PopoverContent>
+            </Popover>
             <Button
               size="md"
               className="gap-2"
@@ -583,9 +532,9 @@ const StudentsManagement = () => {
         <StatCard
           title="Total Estudiantes"
           value={metrics.totalStudents}
+          subtitle="Registrados"
           icon={Users}
-          iconBg="bg-indigo-500/10"
-          iconFg="text-indigo-600"
+          variant="info"
           delay={0}
         />
         <StatCard
@@ -593,8 +542,7 @@ const StudentsManagement = () => {
           value={metrics.activeStudents}
           subtitle="Acceso habilitado"
           icon={GraduationCap}
-          iconBg="bg-emerald-500/10"
-          iconFg="text-emerald-600"
+          variant="success"
           delay={0.05}
         />
         <StatCard
@@ -602,16 +550,15 @@ const StudentsManagement = () => {
           value={metrics.totalAccesses}
           subtitle="Periodo actual"
           icon={Activity}
-          iconBg="bg-violet-500/10"
-          iconFg="text-violet-600"
+          variant="primary"
           delay={0.1}
         />
         <StatCard
           title="Inactivos"
           value={metrics.disabledStudents}
+          subtitle="Sin acceso"
           icon={UserX}
-          iconBg="bg-amber-500/10"
-          iconFg="text-amber-600"
+          variant="warning"
           delay={0.15}
         />
       </div>
@@ -636,26 +583,41 @@ const StudentsManagement = () => {
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold">Resumen de Resultado</CardTitle>
+            <CardTitle className="text-sm font-semibold">Distribución por Carrera</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex h-[200px] flex-col justify-between rounded-xl border border-border/60 bg-muted/20 p-4">
-              <div className="space-y-1">
-                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Tasa de éxito</p>
-                <p className="text-3xl font-semibold text-foreground">{metrics.successRate.toFixed(2)}%</p>
-                <p className="text-sm text-muted-foreground">Calculado únicamente con accesos reales de eLibro.</p>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-lg border border-emerald-200/70 bg-emerald-50/70 p-3">
-                  <p className="text-xs font-medium uppercase tracking-wide text-emerald-700">Exitosos</p>
-                  <p className="mt-1 text-2xl font-semibold text-emerald-800">{metrics.successfulAccesses}</p>
-                </div>
-                <div className="rounded-lg border border-rose-200/70 bg-rose-50/70 p-3">
-                  <p className="text-xs font-medium uppercase tracking-wide text-rose-700">Fallidos</p>
-                  <p className="mt-1 text-2xl font-semibold text-rose-800">{metrics.failedAccesses}</p>
-                </div>
-              </div>
-            </div>
+            {(() => {
+              const colors = ['#6366f1', '#8b5cf6', '#06b6d4', '#22c55e', '#f97316', '#ef4444', '#0ea5e9']
+
+              const counts = new Map<string, number>()
+              for (const student of rows) {
+                const code = student.career?.code ?? 'N/D'
+                counts.set(code, (counts.get(code) ?? 0) + 1)
+              }
+
+              const sorted = Array.from(counts.entries())
+                .sort((a, b) => b[1] - a[1])
+
+              const top = sorted.slice(0, 6)
+              const restTotal = sorted.slice(6).reduce((acc, [, value]) => acc + value, 0)
+
+              const pieData = [
+                ...top.map(([code, value], i) => ({ name: code, value, color: colors[i % colors.length] })),
+                ...(restTotal > 0 ? [{ name: 'Otros', value: restTotal, color: '#94a3b8' }] : []),
+              ].filter((item) => item.value > 0)
+
+              return (
+                <ResponsiveContainer width="100%" height={200}>
+                  <PieChart>
+                    <Pie data={pieData} cx="50%" cy="45%" innerRadius={48} outerRadius={72} paddingAngle={3} dataKey="value">
+                      {pieData.map((e, i) => <Cell key={i} fill={e.color} />)}
+                    </Pie>
+                    <Tooltip contentStyle={tooltipStyle} />
+                    <Legend iconType="circle" iconSize={7} wrapperStyle={{ fontSize: '11px' }} />
+                  </PieChart>
+                </ResponsiveContainer>
+              )
+            })()}
           </CardContent>
         </Card>
       </div>

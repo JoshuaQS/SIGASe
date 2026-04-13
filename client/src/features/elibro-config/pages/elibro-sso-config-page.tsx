@@ -12,6 +12,7 @@ import { ElibroServiceStatusPanel } from '@/features/elibro-config/components/el
 import {
   getElibroConfigs,
   getElibroActiveOverview,
+  validateElibroConfig,
   validateElibroConfigControlled,
   type ElibroConfigOverviewResponse,
 } from '@/features/elibro-config/api/elibro-config-api'
@@ -144,16 +145,42 @@ const ElibroSsoConfig = () => {
   // ── KPI derivations ──────────────────────────────────────────────────────
   const connectionStatusValue = statusKey === 'configured' ? 'Activa' : statusKey === 'invalid' ? 'Error' : 'Inactiva'
   const connectionStatusIcon = statusKey === 'configured' ? Link2 : statusKey === 'invalid' ? XCircle : AlertTriangle
-  const connectionStatusIconBg = statusKey === 'configured' ? 'bg-emerald-500/10' : statusKey === 'invalid' ? 'bg-destructive/10' : 'bg-amber-500/10'
-  const connectionStatusIconFg = statusKey === 'configured' ? 'text-emerald-600' : statusKey === 'invalid' ? 'text-destructive' : 'text-amber-600'
+  const connectionStatusVariant = statusKey === 'configured' ? 'success' : statusKey === 'invalid' ? 'destructive' : 'warning'
 
   const aes256Value = runtimeChecklist.hasChannelSecret ? 'Habilitado' : 'Inactivo'
-  const aes256IconBg = runtimeChecklist.hasChannelSecret ? 'bg-indigo-500/10' : 'bg-muted'
-  const aes256IconFg = runtimeChecklist.hasChannelSecret ? 'text-indigo-600' : 'text-muted-foreground'
+  const aes256Variant = runtimeChecklist.hasChannelSecret ? 'primary' : 'destructive'
 
   const handleConfigChanged = useCallback(async () => {
     await loadOverview()
   }, [loadOverview])
+
+  const handleValidateConnection = useCallback(
+    async (configId: string) => {
+      setValidation({ status: 'loading', message: 'Probando conexión con eLibro…' })
+      try {
+        const result = await validateElibroConfig(configId)
+        const isError = result.validationStatus === 'INVALID'
+        const message = result.validationMessage || (isError ? 'La validación falló.' : 'Validación completada correctamente.')
+        setValidation({
+          status: isError ? 'error' : 'success',
+          message,
+          latency: result.latencyMs ?? undefined,
+          checkedAt: result.lastValidatedAt ?? undefined,
+        })
+        showToast({
+          severity: isError ? 'error' : 'success',
+          title: isError ? 'Validación con errores' : 'Conexión validada',
+          description: message,
+        })
+        await loadOverview()
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'No se pudo validar la conexión con eLibro.'
+        setValidation({ status: 'error', message })
+        showToast({ severity: 'error', title: 'Error validando conexión', description: message })
+      }
+    },
+    [loadOverview, showToast],
+  )
 
   const handleControlledValidateConnection = useCallback(
     async (payload: { testUser: string; nextUrl?: string }) => {
@@ -206,8 +233,7 @@ const ElibroSsoConfig = () => {
           title="Estado de integración"
           value={integrationStateLabel}
           icon={CheckCircle2}
-          iconBg="bg-emerald-500/10"
-          iconFg="text-emerald-600"
+          variant={overview ? 'success' : 'destructive'}
           subtitle="Estado actual backend"
           delay={0}
         />
@@ -215,8 +241,7 @@ const ElibroSsoConfig = () => {
           title="Estado de conexión"
           value={connectionStatusValue}
           icon={connectionStatusIcon}
-          iconBg={connectionStatusIconBg}
-          iconFg={connectionStatusIconFg}
+          variant={connectionStatusVariant}
           subtitle="Validación SSO activa"
           delay={0.05}
         />
@@ -224,8 +249,7 @@ const ElibroSsoConfig = () => {
           title="Cifrado AES-256"
           value={aes256Value}
           icon={ShieldCheck}
-          iconBg={aes256IconBg}
-          iconFg={aes256IconFg}
+          variant={aes256Variant}
           subtitle="Channel Secret configurado"
           delay={0.1}
         />
@@ -236,6 +260,8 @@ const ElibroSsoConfig = () => {
           onConfigChanged={handleConfigChanged}
           onValidationStateChange={setValidation}
           onSelectedConfigChange={setSelectedConfigId}
+          onValidateConnection={handleValidateConnection}
+          isValidationLoading={validation.status === 'loading'}
           endpoint={ELIBRO_FIXED_ENDPOINT}
         />
       </motion.div>
@@ -255,6 +281,8 @@ const ElibroSsoConfig = () => {
         endpoint={ELIBRO_FIXED_ENDPOINT}
         validation={validation}
         canValidate={Boolean(selectedConfigId) && validation.status !== 'loading'}
+        disabled={statusKey !== 'configured'}
+        disabledMessage="Configura y valida eLibro (estado: Configurado) para habilitar la prueba controlada."
         onValidateConnection={selectedConfigId ? handleControlledValidateConnection : undefined}
       />
     </motion.div>

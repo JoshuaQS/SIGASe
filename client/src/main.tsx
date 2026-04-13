@@ -1,7 +1,7 @@
 import { BrowserRouter } from 'react-router-dom'
 import ReactDOM from 'react-dom/client'
 import './shared/styles/global.css'
-import App from './app/app'
+import App from '@/app/App'
 import { ThemeProvider } from './shared/hooks/use-theme'
 import { initTheme } from './shared/lib/theme'
 import React from 'react'

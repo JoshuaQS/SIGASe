@@ -16,5 +16,5 @@ public record DashboardStudentAccessSummaryResponse(
         Instant lastAccessAt,
         Instant lastSuccessfulAccessAt,
         Instant lastFailedAccessAt
-) {
+) implements DashboardWidgetData {
 }

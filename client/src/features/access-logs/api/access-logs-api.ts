@@ -37,6 +37,28 @@ export type AccessLogQueryParams = {
 
 export type AccessLogPage = PageEnvelope<UnifiedAccessLogRecord>;
 
+export type AccessLogDailyCountDto = {
+  day: string;
+  accesses: number;
+};
+
+export type AccessLogCareerDistributionDto = {
+  careerCode: string;
+  careerName: string;
+  total: number;
+};
+
+export type AccessLogMetricsDto = {
+  dailyAccesses: AccessLogDailyCountDto[];
+  careerDistribution: AccessLogCareerDistributionDto[];
+  hourlyVolumeToday: Array<{
+    t: string;
+    total: number;
+    successful: number;
+    failed: number;
+  }>;
+};
+
 function clean(value?: string | null) {
   const next = value?.trim();
   return next ? next : undefined;
@@ -64,6 +86,17 @@ function buildQuery(params: AccessLogQueryParams, includePaging: boolean) {
 export async function getAccessLogs(params: AccessLogQueryParams = {}) {
   const query = buildQuery(params, true);
   const response = await api.get<ApiEnvelope<AccessLogPage>>(`/access-logs${query}`);
+  return response.data;
+}
+
+export async function getAccessLogMetrics(
+  params: AccessLogQueryParams = {},
+  windowDays = 7,
+) {
+  const query = buildQuery(params, false);
+  const qs = new URLSearchParams(query.replace(/^\?/, ''));
+  qs.set('windowDays', String(windowDays));
+  const response = await api.get<ApiEnvelope<AccessLogMetricsDto>>(`/access-logs/metrics?${qs.toString()}`);
   return response.data;
 }
 

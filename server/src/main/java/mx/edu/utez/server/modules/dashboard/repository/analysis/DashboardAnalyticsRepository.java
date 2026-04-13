@@ -1,8 +1,15 @@
 package mx.edu.utez.server.modules.dashboard.repository.analysis;
 
+import java.time.Instant;
 import java.util.List;
+import mx.edu.utez.server.modules.dashboard.dto.DashboardCareerComparisonItemResponse;
+import mx.edu.utez.server.modules.dashboard.dto.DashboardCareerResultBreakdownItemResponse;
+import mx.edu.utez.server.modules.dashboard.dto.DashboardCareerRankingTableItemResponse;
+import mx.edu.utez.server.modules.dashboard.dto.DashboardCareerStudentTableResponse;
 import mx.edu.utez.server.modules.dashboard.dto.DashboardStudentActivityTableResponse;
 import mx.edu.utez.server.modules.dashboard.dto.DashboardStudentAccessSummaryResponse;
+import mx.edu.utez.server.modules.dashboard.dto.DashboardStudentRankingTableItemResponse;
+import mx.edu.utez.server.modules.dashboard.dto.DashboardStudentResultBreakdownItemResponse;
 import mx.edu.utez.server.modules.dashboard.dto.DashboardSortDirection;
 import mx.edu.utez.server.modules.dashboard.dto.DashboardTopCareerItemResponse;
 import mx.edu.utez.server.modules.dashboard.dto.DashboardTopStudentItemResponse;
@@ -21,7 +28,46 @@ public interface DashboardAnalyticsRepository {
 
     DashboardStudentAccessSummaryResponse fetchStudentAccessSummary(BaseAccessQueryFilter filter);
 
-    DashboardStudentActivityTableResponse fetchStudentActivity(BaseAccessQueryFilter filter, int page, int size);
+    DashboardStudentActivityTableResponse fetchStudentActivity(
+            BaseAccessQueryFilter filter,
+            int page,
+            int size,
+            String sortBy,
+            DashboardSortDirection sortDirection
+    );
+
+    AccessKpiAggregate fetchCareerKpis(BaseAccessQueryFilter filter);
+
+    List<DashboardCareerResultBreakdownItemResponse> fetchCareerResultBreakdown(BaseAccessQueryFilter filter);
+
+    DashboardCareerStudentTableResponse fetchCareerStudents(
+            BaseAccessQueryFilter filter,
+            int page,
+            int size,
+            String sortBy,
+            DashboardSortDirection sortDirection
+    );
+
+    CareerRankingKpiAggregate fetchCareerRankingKpis(BaseAccessQueryFilter filter);
+
+    List<DashboardCareerRankingTableItemResponse> fetchCareerRanking(
+            BaseAccessQueryFilter filter,
+            int limit,
+            DashboardSortDirection sortDirection,
+            RankingMetric rankingMetric
+    );
+
+    List<DashboardCareerComparisonItemResponse> fetchCareerComparison(BaseAccessQueryFilter filter);
+
+    AccessKpiAggregate fetchStudentRankingKpis(BaseAccessQueryFilter filter);
+
+    List<DashboardStudentResultBreakdownItemResponse> fetchStudentResultBreakdown(BaseAccessQueryFilter filter);
+
+    List<DashboardStudentRankingTableItemResponse> fetchStudentRanking(
+            BaseAccessQueryFilter filter,
+            int limit,
+            DashboardSortDirection sortDirection
+    );
 
     record OverviewKpiAggregate(
             long totalStudents,
@@ -34,5 +80,33 @@ public interface DashboardAnalyticsRepository {
             java.time.Instant lastSuccessfulAccessAt,
             java.time.Instant lastFailedAccessAt
     ) {
+    }
+
+    record AccessKpiAggregate(
+            long totalAccesses,
+            long successfulAccesses,
+            long failedAccesses,
+            long uniqueStudentsImpacted,
+            Instant lastAccessAt,
+            Instant lastSuccessfulAccessAt,
+            Instant lastFailedAccessAt
+    ) {
+    }
+
+    record CareerRankingKpiAggregate(
+            long totalAccesses,
+            long successfulAccesses,
+            long failedAccesses,
+            long uniqueCareersImpacted,
+            Instant lastAccessAt,
+            Instant lastSuccessfulAccessAt,
+            Instant lastFailedAccessAt
+    ) {
+    }
+
+    enum RankingMetric {
+        SUCCESS,
+        FAILED,
+        TOTAL
     }
 }

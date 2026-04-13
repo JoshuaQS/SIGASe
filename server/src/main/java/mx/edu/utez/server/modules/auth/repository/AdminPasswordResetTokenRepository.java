@@ -23,4 +23,8 @@ public interface AdminPasswordResetTokenRepository extends JpaRepository<AdminPa
     @Query("UPDATE AdminPasswordResetToken t SET t.usedAt = :now "
             + "WHERE t.admin = :admin AND t.usedAt IS NULL")
     int invalidatePendingTokens(@Param("admin") Admin admin, @Param("now") Instant now);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("DELETE FROM AdminPasswordResetToken t WHERE t.admin.id = :adminId")
+    int deleteAllByAdminId(@Param("adminId") UUID adminId);
 }

@@ -10,6 +10,9 @@ import mx.edu.utez.server.modules.admins.mapper.AdminMapper;
 import mx.edu.utez.server.modules.admins.repository.AdminRepository;
 import mx.edu.utez.server.modules.logs.audit.service.AuditTrailService;
 import mx.edu.utez.server.modules.notifications.service.NotificationService;
+import mx.edu.utez.server.modules.notifications.repository.NotificationRepository;
+import mx.edu.utez.server.modules.auth.repository.AdminPasswordResetTokenRepository;
+import mx.edu.utez.server.modules.auth.repository.AdminAuthEventRepository;
 import mx.edu.utez.server.shared.api.PageResponse;
 import mx.edu.utez.server.shared.enums.AdminRole;
 import mx.edu.utez.server.shared.enums.AdminStatus;
@@ -27,6 +30,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -45,6 +49,9 @@ public class AdminManagementService {
     private final PasswordEncoder passwordEncoder;
     private final AuditTrailService auditTrailService;
     private final NotificationService notificationService;
+    private final NotificationRepository notificationRepository;
+    private final AdminPasswordResetTokenRepository adminPasswordResetTokenRepository;
+    private final AdminAuthEventRepository adminAuthEventRepository;
 
     public AdminManagementService(
             AdminRepository adminRepository,
@@ -52,7 +59,10 @@ public class AdminManagementService {
             EmailNormalizer emailNormalizer,
             PasswordEncoder passwordEncoder,
             AuditTrailService auditTrailService,
-            NotificationService notificationService
+            NotificationService notificationService,
+            NotificationRepository notificationRepository,
+            AdminPasswordResetTokenRepository adminPasswordResetTokenRepository,
+            AdminAuthEventRepository adminAuthEventRepository
     ) {
         this.adminRepository = adminRepository;
         this.adminMapper = adminMapper;
@@ -60,6 +70,9 @@ public class AdminManagementService {
         this.passwordEncoder = passwordEncoder;
         this.auditTrailService = auditTrailService;
         this.notificationService = notificationService;
+        this.notificationRepository = notificationRepository;
+        this.adminPasswordResetTokenRepository = adminPasswordResetTokenRepository;
+        this.adminAuthEventRepository = adminAuthEventRepository;
     }
 
     @Transactional
@@ -231,6 +244,50 @@ public class AdminManagementService {
                 Map.of("resetByAdminId", actorAdmin.getId().toString()),
                 httpRequest
         );
+    }
+
+    @Transactional
+    public void delete(UUID adminId, Admin actorAdmin, HttpServletRequest httpRequest) {
+        if (actorAdmin.getId().equals(adminId)) {
+            throw new BusinessException(ErrorCode.BUSINESS_RULE_VIOLATION, "No puedes eliminarte a ti mismo.");
+        }
+
+        Admin admin = findByIdOrThrow(adminId);
+        String snapshotEmail = admin.getEmail();
+
+        try {
+            // Detach / cleanup dependent records that would block deletion.
+            adminAuthEventRepository.detachAdminReferences(adminId);
+            adminPasswordResetTokenRepository.deleteAllByAdminId(adminId);
+            notificationRepository.deleteAllByAdminId(adminId);
+
+            adminRepository.delete(admin);
+            adminRepository.flush();
+
+            auditTrailService.auditAdminAction(
+                    actorAdmin,
+                    "ADMIN_DELETE",
+                    "ADMIN",
+                    adminId.toString(),
+                    AuditOutcome.SUCCESS,
+                    Map.of("email", snapshotEmail),
+                    httpRequest
+            );
+        } catch (DataIntegrityViolationException ex) {
+            auditTrailService.auditAdminAction(
+                    actorAdmin,
+                    "ADMIN_DELETE",
+                    "ADMIN",
+                    adminId.toString(),
+                    AuditOutcome.FAILURE,
+                    Map.of("email", snapshotEmail, "error", "INTEGRITY_VIOLATION"),
+                    httpRequest
+            );
+            throw new BusinessException(
+                    ErrorCode.BUSINESS_RULE_VIOLATION,
+                    "No se puede eliminar el administrador porque tiene referencias en otros módulos. Desactívalo en su lugar."
+            );
+        }
     }
 
     private Specification<Admin> buildSpecification(String q, AdminStatus status, AdminRole role) {

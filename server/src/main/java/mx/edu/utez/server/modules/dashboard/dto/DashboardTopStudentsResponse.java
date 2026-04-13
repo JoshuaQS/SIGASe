@@ -8,5 +8,5 @@ public record DashboardTopStudentsResponse(
         int limit,
         String sortDir,
         List<DashboardTopStudentItemResponse> students
-) {
+) implements DashboardWidgetData {
 }

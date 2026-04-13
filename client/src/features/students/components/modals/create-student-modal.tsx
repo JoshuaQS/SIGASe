@@ -42,7 +42,7 @@ export type StudentsCreateModalProps = {
   student?: StudentResponseDto | null;
 };
 
-export function StudentsCreateModal({
+export function StudentCreateModal({
   open,
   onClose,
   onCreated,
@@ -347,7 +347,7 @@ export function StudentsCreateModal({
 }
 
 export function ModalV1(props: StudentsCreateModalProps) {
-  return <StudentsCreateModal {...props} />;
+  return <StudentCreateModal {...props} />;
 }
 
 function SectionLabel({ children }: { children: React.ReactNode }) {

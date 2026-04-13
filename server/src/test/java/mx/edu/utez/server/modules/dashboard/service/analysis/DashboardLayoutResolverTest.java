@@ -16,7 +16,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class DashboardLayoutResolverTest {
 
-    private final DashboardLayoutResolver resolver = new DashboardLayoutResolver();
+    private final DashboardAnalysisSupportMatrix supportMatrix = new DashboardAnalysisSupportMatrix();
+    private final DashboardLayoutResolver resolver = new DashboardLayoutResolver(supportMatrix);
 
     @Test
     void shouldResolveOverview() {
@@ -40,14 +41,14 @@ class DashboardLayoutResolverTest {
     @Test
     void shouldRejectUnsupportedLayout() {
         ResolvedDashboardAnalysisContext context = new ResolvedDashboardAnalysisContext(
-                DashboardFilterScope.STUDENTS,
-                DashboardFilterMode.ALL,
+                DashboardFilterScope.CAREERS,
+                DashboardFilterMode.MULTI,
                 null,
                 List.of(),
                 DashboardAccessResultFilter.ALL,
                 Instant.parse("2026-03-01T00:00:00Z"),
                 Instant.parse("2026-03-31T23:59:59Z"),
-                DashboardRankingMode.TOP,
+                DashboardRankingMode.NONE,
                 null,
                 DashboardSortDirection.DESC,
                 true
@@ -73,5 +74,81 @@ class DashboardLayoutResolverTest {
         );
 
         assertEquals(DashboardLayoutType.STUDENT_DETAIL, resolver.resolve(context));
+    }
+
+    @Test
+    void shouldResolveCareerDetail() {
+        ResolvedDashboardAnalysisContext context = new ResolvedDashboardAnalysisContext(
+                DashboardFilterScope.CAREERS,
+                DashboardFilterMode.INDIVIDUAL,
+                null,
+                List.of(java.util.UUID.randomUUID()),
+                DashboardAccessResultFilter.ALL,
+                Instant.parse("2026-03-01T00:00:00Z"),
+                Instant.parse("2026-03-31T23:59:59Z"),
+                DashboardRankingMode.NONE,
+                null,
+                DashboardSortDirection.DESC,
+                false
+        );
+
+        assertEquals(DashboardLayoutType.CAREER_DETAIL, resolver.resolve(context));
+    }
+
+    @Test
+    void shouldResolveStudentRanking() {
+        ResolvedDashboardAnalysisContext context = new ResolvedDashboardAnalysisContext(
+                DashboardFilterScope.STUDENTS,
+                DashboardFilterMode.ALL,
+                null,
+                List.of(),
+                DashboardAccessResultFilter.ALL,
+                Instant.parse("2026-03-01T00:00:00Z"),
+                Instant.parse("2026-03-31T23:59:59Z"),
+                DashboardRankingMode.TOP,
+                10,
+                DashboardSortDirection.DESC,
+                true
+        );
+
+        assertEquals(DashboardLayoutType.STUDENT_RANKING, resolver.resolve(context));
+    }
+
+    @Test
+    void shouldResolveCareerRanking() {
+        ResolvedDashboardAnalysisContext context = new ResolvedDashboardAnalysisContext(
+                DashboardFilterScope.CAREERS,
+                DashboardFilterMode.ALL,
+                null,
+                List.of(),
+                DashboardAccessResultFilter.SUCCESS,
+                Instant.parse("2026-03-01T00:00:00Z"),
+                Instant.parse("2026-03-31T23:59:59Z"),
+                DashboardRankingMode.TOP,
+                10,
+                DashboardSortDirection.DESC,
+                true
+        );
+
+        assertEquals(DashboardLayoutType.CAREER_RANKING, resolver.resolve(context));
+    }
+
+    @Test
+    void shouldResolveCareerRankingSplit() {
+        ResolvedDashboardAnalysisContext context = new ResolvedDashboardAnalysisContext(
+                DashboardFilterScope.CAREERS,
+                DashboardFilterMode.MULTI,
+                null,
+                List.of(java.util.UUID.randomUUID(), java.util.UUID.randomUUID()),
+                DashboardAccessResultFilter.ALL,
+                Instant.parse("2026-03-01T00:00:00Z"),
+                Instant.parse("2026-03-31T23:59:59Z"),
+                DashboardRankingMode.TOP,
+                10,
+                DashboardSortDirection.DESC,
+                true
+        );
+
+        assertEquals(DashboardLayoutType.CAREER_RANKING_SPLIT, resolver.resolve(context));
     }
 }

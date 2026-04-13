@@ -1,10 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import { Users, Plus, Shield, UserCheck, Clock } from 'lucide-react'
-import {
-  RadarChart, Radar, PolarGrid, PolarAngleAxis, ResponsiveContainer, Tooltip,
-} from 'recharts'
-import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card'
+import { Card } from '@/shared/components/ui/card'
 import { Button } from '@/shared/components/ui/button'
 import { Input } from '@/shared/components/ui/input'
 import { Dialog, DialogContent } from '@/shared/components/ui/dialog'
@@ -12,17 +9,18 @@ import StatCard from '@/shared/components/data-display/status-card'
 import { SectionHeader } from '@/shared/components/ui/section-header'
 import { useAppToast } from '@/shared/components/ui/app-toast-provider'
 import { AdminsTable, type AdminManagementRow, type AdminRole } from '@/features/admins/components/AdminsTable'
+import AdminGraphs from '@/features/admins/components/admin-graphs'
 import type { AdminFormValues } from '@/features/admins/components/modals/create-admin-modal'
-import { AdminStatusChangeModal } from '@/features/admins/components/modals/admin-status-change-modal'
-import { CreateAdminModal } from '@/modalsfinal/CreateAdminModal'
+import { CreateAdminModal } from '@/features/admins/components/modals/create-admin-modal'
 import { useTableFilterState } from '@/shared/hooks/use-table-filter-state'
+import { AppConfirmDialog } from '@/shared/components/ui/confirmation-dialog'
 import {
   listAdmins,
   createAdmin,
   updateAdmin,
-  activateAdmin,
   deactivateAdmin,
   resetAdminPassword,
+  deleteAdmin,
   getAdminDashboardMetrics,
   type AdminResponseDto,
   type AdminBackendRole,
@@ -40,26 +38,6 @@ import {
 
 const PAGE_SIZE = 5
 
-const RADAR_COLORS: Record<string, string> = {
-  ADMIN_TI: '#0d9488',
-  ADMIN_BIBLIOTECA: '#8b5cf6',
-}
-
-const SEVERITY_DOT: Record<string, string> = {
-  INFO: 'bg-primary',
-  NOTICE: 'bg-blue-400',
-  WARNING: 'bg-amber-500',
-  SECURITY: 'bg-red-500',
-  CRITICAL: 'bg-red-700',
-}
-
-const tooltipStyle = {
-  background: 'hsl(var(--card))',
-  border: '1px solid hsl(var(--border))',
-  borderRadius: '8px',
-  fontSize: '12px',
-}
-
 const EMPTY_FORM: AdminFormValues = {
   email: '', name: '', lastNamePaternal: '', lastNameMaternal: '',
   password: '', role: 'ADMIN_TI', status: 'ACTIVE',
@@ -72,9 +50,9 @@ const DEFAULT_TABLE_FILTERS = {
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
-type PendingAction =
+type ConfirmAction =
   | { type: 'deactivate'; admin: AdminResponseDto }
-  | { type: 'activate'; admin: AdminResponseDto }
+  | { type: 'delete'; admin: AdminResponseDto }
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -93,16 +71,6 @@ function formatRelativeAccess(iso?: string | null) {
   const diffHours = Math.floor(diffMin / 60)
   if (diffHours < 24) return `hace ${diffHours}h`
   return `hace ${Math.floor(diffHours / 24)}d`
-}
-
-function buildRadarData(roleModuleActivity: AdminDashboardMetrics['roleModuleActivity']) {
-  const map = new Map<string, Record<string, number>>()
-  for (const item of roleModuleActivity) {
-    const existing = map.get(item.module) ?? {}
-    existing[item.role] = item.count
-    map.set(item.module, existing)
-  }
-  return Array.from(map.entries()).map(([module, counts]) => ({ area: module, ...counts }))
 }
 
 function toRow(admin: AdminResponseDto, actionsMap: Map<string, number>): AdminManagementRow {
@@ -146,9 +114,9 @@ const AdminsManagement = () => {
     commitAppliedFilters,
   } = useTableFilterState(DEFAULT_TABLE_FILTERS)
 
-  // ── Action state ──────────────────────────────────────────────────────────
-  const [pendingAction, setPendingAction] = useState<PendingAction | null>(null)
-  const [actionLoading, setActionLoading] = useState(false)
+  // ── Confirmation state ────────────────────────────────────────────────────
+  const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null)
+  const [confirmLoading, setConfirmLoading] = useState(false)
 
   // ── Create / edit modal state ─────────────────────────────────────────────
   const [createModalOpen, setCreateModalOpen] = useState(false)
@@ -181,11 +149,6 @@ const AdminsManagement = () => {
     actionsToday: metrics?.actionsToday ?? 0,
     trend: metrics?.trendPercentage ?? 0,
   }), [metrics])
-
-  const radarData = useMemo(
-    () => (metrics ? buildRadarData(metrics.roleModuleActivity) : []),
-    [metrics],
-  )
 
   // ── Fetch helpers ─────────────────────────────────────────────────────────
   const fetchMetrics = useCallback(async () => {
@@ -329,32 +292,40 @@ const AdminsManagement = () => {
     }
   }
 
-  // ── Activate / Deactivate ─────────────────────────────────────────────────
-  const handleConfirmAction = async (payload: { nextStatus: 'ACTIVE' | 'INACTIVE' }) => {
-    if (!pendingAction) return
-    setActionLoading(true)
+  const handleConfirmDialog = async () => {
+    if (!confirmAction) return
+    setConfirmLoading(true)
     try {
-      const reason = payload.nextStatus === 'INACTIVE'
-        ? 'Desactivado desde el panel de gestión de administradores.'
-        : 'Activado desde el panel de gestión de administradores.'
-
-      if (payload.nextStatus === 'INACTIVE') {
-        await deactivateAdmin(pendingAction.admin.id, { reason })
-        showToast({ severity: 'success', title: 'Administrador desactivado', description: `${buildFullName(pendingAction.admin)} ya no tiene acceso al sistema.` })
-      } else {
-        await activateAdmin(pendingAction.admin.id, { reason })
-        showToast({ severity: 'success', title: 'Administrador activado', description: `${buildFullName(pendingAction.admin)} volvió a tener acceso.` })
+      if (confirmAction.type === 'deactivate') {
+        const reason = 'Desactivado desde el panel de gestión de administradores.'
+        await deactivateAdmin(confirmAction.admin.id, { reason })
+        showToast({
+          severity: 'success',
+          title: 'Administrador deshabilitado',
+          description: `${buildFullName(confirmAction.admin)} ya no tiene acceso al sistema.`,
+        })
+        const shouldGoBack = rows.length === 1 && page > 0
+        setConfirmAction(null)
+        void fetchMetrics()
+        if (shouldGoBack) { setPage((c) => c - 1) } else { await fetchAdmins() }
+        return
       }
 
+      await deleteAdmin(confirmAction.admin.id)
+      showToast({
+        severity: 'success',
+        title: 'Administrador eliminado',
+        description: `${buildFullName(confirmAction.admin)} fue eliminado correctamente.`,
+      })
       const shouldGoBack = rows.length === 1 && page > 0
-      setPendingAction(null)
+      setConfirmAction(null)
       void fetchMetrics()
       if (shouldGoBack) { setPage((c) => c - 1) } else { await fetchAdmins() }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'No se pudo completar la acción.'
       showToast({ severity: 'error', title: 'Acción no completada', description: message })
     } finally {
-      setActionLoading(false)
+      setConfirmLoading(false)
     }
   }
 
@@ -379,13 +350,17 @@ const AdminsManagement = () => {
 
   return (
     <motion.div className="space-y-6" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}>
-
-      <AdminStatusChangeModal
-        open={Boolean(pendingAction)}
-        admin={pendingAction?.admin ?? null}
-        loading={actionLoading}
-        onClose={() => !actionLoading && setPendingAction(null)}
-        onConfirm={(payload) => handleConfirmAction(payload)}
+      <AppConfirmDialog
+        open={Boolean(confirmAction)}
+        title={confirmAction?.type === 'delete' ? 'Eliminar administrador' : 'Deshabilitar administrador'}
+        description={confirmAction?.type === 'delete'
+          ? 'Esta acción eliminará definitivamente al administrador. Esta operación no se puede deshacer.'
+          : 'Esta acción bloqueará el acceso del administrador al sistema. Podrás reactivarlo más tarde desde backend.'}
+        confirmText={confirmAction?.type === 'delete' ? 'Eliminar' : 'Deshabilitar'}
+        cancelText="Cancelar"
+        confirmColor={confirmAction?.type === 'delete' ? 'error' : 'warning'}
+        onCancel={() => !confirmLoading && setConfirmAction(null)}
+        onConfirm={() => { if (!confirmLoading) void handleConfirmDialog() }}
       />
 
       {/* Create / edit modal */}
@@ -440,96 +415,22 @@ const AdminsManagement = () => {
 
       {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title="Total Admins"  value={summary.total}       icon={Users}      iconBg="bg-violet-500/10"  iconFg="text-violet-600"  delay={0} />
-        <StatCard title="Admin TI"      value={summary.adminTi}     icon={Shield}     iconBg="bg-amber-500/10"   iconFg="text-amber-600"   delay={0.05} />
-        <StatCard title="Activos"       value={summary.active}      icon={UserCheck}  iconBg="bg-emerald-500/10" iconFg="text-emerald-600" delay={0.1} />
+        <StatCard className="min-h-[120px]" title="Total Admins" value={summary.total} icon={Users} variant="primary" delay={0} />
+        <StatCard className="min-h-[120px]" title="Admin TI" value={summary.adminTi} icon={Shield} variant="warning" delay={0.05} />
+        <StatCard className="min-h-[120px]" title="Activos" value={summary.active} icon={UserCheck} variant="success" delay={0.1} />
         <StatCard
+          className="min-h-[120px]"
           title="Acciones hoy"
           value={summary.actionsToday}
           icon={Clock}
-          iconBg="bg-cyan-500/10"
-          iconFg="text-cyan-600"
+          variant="info"
           trend={summary.trend}
           trendLabel="vs ayer"
           delay={0.15}
         />
       </div>
 
-      {/* Charts + Recent Activity — equal-weight 2-col grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
-
-        {/* Radar — activity by role and module */}
-        <Card className="flex flex-col">
-          <CardHeader className="pb-0 pt-5 px-5">
-            <CardTitle className="text-sm font-semibold">Actividad por Rol y Módulo</CardTitle>
-            <p className="mt-0.5 text-xs text-muted-foreground">Nivel de uso de cada módulo por tipo de rol · últimos 30 días</p>
-          </CardHeader>
-          <CardContent className="flex-1 px-5 pb-5 pt-4">
-            {radarData.length === 0 ? (
-              <div className="flex h-[260px] items-center justify-center text-sm text-muted-foreground">
-                Sin datos de actividad disponibles.
-              </div>
-            ) : (
-              <>
-                <ResponsiveContainer width="100%" height={260}>
-                  <RadarChart data={radarData}>
-                    <PolarGrid stroke="rgba(128,128,128,0.2)" />
-                    <PolarAngleAxis dataKey="area" tick={{ fill: '#64748b', fontSize: 11 }} />
-                    {Object.keys(RADAR_COLORS).map((role) => (
-                      <Radar
-                        key={role}
-                        name={role === 'ADMIN_TI' ? 'Admin TI' : 'Admin Biblioteca'}
-                        dataKey={role}
-                        stroke={RADAR_COLORS[role]}
-                        fill={RADAR_COLORS[role]}
-                        fillOpacity={0.15}
-                        strokeWidth={2}
-                      />
-                    ))}
-                    <Tooltip contentStyle={tooltipStyle} />
-                  </RadarChart>
-                </ResponsiveContainer>
-                <div className="flex justify-center gap-6 mt-3">
-                  {Object.entries(RADAR_COLORS).map(([role, color]) => (
-                    <div key={role} className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                      <span className="inline-block h-0.5 w-4 rounded-full" style={{ backgroundColor: color }} />
-                      {role === 'ADMIN_TI' ? 'Admin TI' : 'Admin Biblioteca'}
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Recent Activity Timeline */}
-        <Card className="flex flex-col">
-          <CardHeader className="pb-0 pt-5 px-5">
-            <CardTitle className="text-sm font-semibold">Actividad Reciente</CardTitle>
-            <p className="mt-0.5 text-xs text-muted-foreground">Últimas acciones de administradores</p>
-          </CardHeader>
-          <CardContent className="flex-1 p-0">
-            {!metrics || metrics.recentActivity.length === 0 ? (
-              <p className="px-5 py-8 text-sm text-muted-foreground">Sin actividad reciente registrada.</p>
-            ) : metrics.recentActivity.map((a, i) => (
-              <div
-                key={i}
-                className="flex items-start gap-3 border-b border-border px-5 py-3 last:border-0 hover:bg-muted/30 transition-colors"
-              >
-                <div className={`mt-1.5 h-2 w-2 flex-shrink-0 rounded-full ${SEVERITY_DOT[a.severity ?? ''] ?? 'bg-muted-foreground'}`} />
-                <div className="min-w-0 flex-1">
-                  <p className="mb-0.5 text-xs text-muted-foreground">
-                    {a.adminName ?? 'Sistema'} · {formatRelativeAccess(a.occurredAt)}
-                  </p>
-                  <p className="truncate text-sm font-medium text-foreground leading-snug">
-                    {a.action}{a.module ? ` · ${a.module}` : ''}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      </div>
+      <AdminGraphs metrics={metrics} />
 
       {/* Admin table */}
       <AdminsTable
@@ -560,17 +461,17 @@ const AdminsManagement = () => {
         onPageChange={setPage}
         onPageSizeChange={(next) => { setPageSize(next); setPage(0) }}
         onEdit={handleOpenEdit}
-        onDeactivate={(row) => {
-          const source = admins.find((a) => a.id === row.id)
-          if (source) setPendingAction({ type: 'deactivate', admin: source })
-        }}
-        onActivate={(row) => {
-          const source = admins.find((a) => a.id === row.id)
-          if (source) setPendingAction({ type: 'activate', admin: source })
-        }}
         onResetPassword={(row) => {
           const source = admins.find((a) => a.id === row.id)
           if (source) { setResetAdmin(source); setNewPassword('') }
+        }}
+        onDeactivate={(row) => {
+          const source = admins.find((a) => a.id === row.id)
+          if (source) setConfirmAction({ type: 'deactivate', admin: source })
+        }}
+        onDelete={(row) => {
+          const source = admins.find((a) => a.id === row.id)
+          if (source) setConfirmAction({ type: 'delete', admin: source })
         }}
       />
     </motion.div>

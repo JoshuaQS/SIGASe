@@ -5,6 +5,7 @@ import java.util.Map;
 import mx.edu.utez.server.modules.dashboard.dto.DashboardAnalysisResponse;
 import mx.edu.utez.server.modules.dashboard.dto.DashboardFilterSummary;
 import mx.edu.utez.server.modules.dashboard.dto.DashboardLayoutType;
+import mx.edu.utez.server.modules.dashboard.dto.DashboardWidgetData;
 import mx.edu.utez.server.modules.dashboard.dto.DashboardWidgetResponse;
 import org.springframework.stereotype.Component;
 
@@ -15,7 +16,7 @@ public class DashboardResponseAssembler {
             ResolvedDashboardAnalysisContext context,
             DashboardLayoutType layoutType,
             List<DashboardWidgetComposer.DashboardWidgetDefinition> definitions,
-            Map<String, Object> widgetData
+            Map<String, DashboardWidgetData> widgetData
     ) {
         List<DashboardWidgetResponse> widgets = definitions.stream()
                 .map(definition -> new DashboardWidgetResponse(

@@ -15,6 +15,22 @@ public record DashboardAnalysisRequest(
         Instant dateTo,
         DashboardRankingMode rankingMode,
         Integer topN,
-        DashboardSortDirection sortDirection
+        DashboardSortDirection sortDirection,
+        DashboardAnalysisWidgetControlsRequest widgetControls
 ) {
+    public DashboardAnalysisRequest(
+            DashboardFilterScope scope,
+            DashboardFilterMode mode,
+            UUID studentId,
+            List<UUID> careerIds,
+            DashboardAccessResultFilter accessResult,
+            DashboardDateFilterType dateFilterType,
+            Instant dateFrom,
+            Instant dateTo,
+            DashboardRankingMode rankingMode,
+            Integer topN,
+            DashboardSortDirection sortDirection
+    ) {
+        this(scope, mode, studentId, careerIds, accessResult, dateFilterType, dateFrom, dateTo, rankingMode, topN, sortDirection, null);
+    }
 }

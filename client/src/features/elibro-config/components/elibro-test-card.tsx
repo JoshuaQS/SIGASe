@@ -30,6 +30,8 @@ interface ElibroTestCardProps {
   endpoint: string
   validation: ValidationState
   canValidate: boolean
+  disabled?: boolean
+  disabledMessage?: string
   onValidateConnection?: (payload: { testUser: string; nextUrl?: string }) => Promise<ControlledValidationOutcome>
 }
 
@@ -42,7 +44,14 @@ function formatConsoleTime(date = new Date()) {
   })
 }
 
-const ElibroTestCard = ({ endpoint, validation, canValidate, onValidateConnection }: ElibroTestCardProps) => {
+const ElibroTestCard = ({
+  endpoint,
+  validation,
+  canValidate,
+  disabled = false,
+  disabledMessage,
+  onValidateConnection,
+}: ElibroTestCardProps) => {
   const [testUser, setTestUser] = useState('')
   const [testNext, setTestNext] = useState('')
   const [executionLines, setExecutionLines] = useState<TerminalLine[]>([])
@@ -200,6 +209,9 @@ const ElibroTestCard = ({ endpoint, validation, canValidate, onValidateConnectio
           <p className="text-[13px] leading-5 text-muted-foreground">
             Ejecuta una sola prueba del flujo SSO con un correo institucional y un `next` opcional.
           </p>
+          {disabled && disabledMessage ? (
+            <p className="text-[13px] leading-5 text-destructive">{disabledMessage}</p>
+          ) : null}
         </div>
       </CardHeader>
 
@@ -216,6 +228,7 @@ const ElibroTestCard = ({ endpoint, validation, canValidate, onValidateConnectio
               placeholder="alumno@utez.edu.mx"
               className="font-mono"
               startAdornment={<Mail className="h-4 w-4" />}
+              disabled={disabled}
             />
           </div>
 
@@ -230,6 +243,7 @@ const ElibroTestCard = ({ endpoint, validation, canValidate, onValidateConnectio
               placeholder="Opcional"
               className="font-mono"
               startAdornment={<Link2 className="h-4 w-4" />}
+              disabled={disabled}
             />
           </div>
 
@@ -237,7 +251,7 @@ const ElibroTestCard = ({ endpoint, validation, canValidate, onValidateConnectio
             variant="outline"
             size="md"
             className="gap-2 2xl:min-w-[170px]"
-            disabled={!canValidate || !testUser.trim()}
+            disabled={disabled || !canValidate || !testUser.trim()}
             isLoading={validation.status === 'loading'}
             onClick={() => void handleValidateClick()}
           >

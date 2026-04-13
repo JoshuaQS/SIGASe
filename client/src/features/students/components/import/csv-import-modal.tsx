@@ -31,8 +31,9 @@ export function CsvImportModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         size="4"
+        animation="fade"
         showCloseButton={false}
-        className="flex h-[94vh] max-h-[94vh] w-[96vw] max-w-[min(96vw,1600px)] flex-col gap-0 overflow-hidden rounded-[28px] border-border bg-background p-0 shadow-2xl"
+        className="flex max-h-[82vh] flex-col gap-0 overflow-hidden p-0"
       >
         <DialogHeader className="flex shrink-0 flex-row items-center justify-between gap-3 space-y-0 border-b border-border bg-card px-5 py-3.5 text-left">
           <DialogTitle
@@ -52,18 +53,14 @@ export function CsvImportModal({
         <DialogDescription className="sr-only">
           Importa estudiantes desde un archivo CSV: carga el archivo, revisa la plantilla y el historial de cargas.
         </DialogDescription>
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-4 sm:px-8 sm:py-6">
-            <div className="flex h-full min-h-0 flex-1 flex-col">
-              <CsvImportTabLayout
-                invertedOrder
-                fullWidth
-                importing={importing}
-                onImport={onImport}
-                onDownloadTemplate={onDownloadTemplate}
-              />
-            </div>
-          </div>
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-4 sm:px-6 sm:py-5">
+          <CsvImportTabLayout
+            invertedOrder
+            fullWidth
+            importing={importing}
+            onImport={onImport}
+            onDownloadTemplate={onDownloadTemplate}
+          />
         </div>
       </DialogContent>
     </Dialog>

@@ -6,6 +6,7 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.Query;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -17,6 +18,10 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import mx.edu.utez.server.modules.accesslogs.dto.AccessLogActorType;
+import mx.edu.utez.server.modules.accesslogs.dto.AccessLogCareerDistributionResponse;
+import mx.edu.utez.server.modules.accesslogs.dto.AccessLogDailyCountResponse;
+import mx.edu.utez.server.modules.accesslogs.dto.AccessLogHourlyVolumeResponse;
+import mx.edu.utez.server.modules.accesslogs.dto.AccessLogMetricsResponse;
 import mx.edu.utez.server.modules.accesslogs.dto.AccessLogQueryFilters;
 import mx.edu.utez.server.modules.accesslogs.dto.AccessLogResponse;
 import mx.edu.utez.server.modules.accesslogs.dto.AccessLogScope;
@@ -183,6 +188,130 @@ public class AccessLogQueryService {
         dataQuery.setParameter("limit", total);
         dataQuery.setParameter("offset", 0);
         return mapRows(dataQuery);
+    }
+
+    @Transactional(readOnly = true)
+    public AccessLogMetricsResponse metrics(AccessLogQueryFilters filters) {
+        validateSharedFilters(filters);
+
+        QueryContext context = buildQueryContext(filters);
+        String where = context.whereClause();
+
+        Query dailyQuery = entityManager.createNativeQuery("""
+                SELECT DATE(occurred_at) AS day, COUNT(*) AS accesses
+                  FROM (
+                """ + UNION_SQL + """
+                ) access_log_union
+                """ + where + """
+                 GROUP BY DATE(occurred_at)
+                 ORDER BY day ASC
+                """);
+        bindParams(dailyQuery, context.params());
+
+        Query careerQuery = entityManager.createNativeQuery("""
+                SELECT
+                    COALESCE(c.code, 'N/D') AS career_code,
+                    COALESCE(c.name, 'Sin carrera') AS career_name,
+                    COUNT(*) AS total
+                  FROM (
+                """ + UNION_SQL + """
+                ) access_log_union
+             LEFT JOIN careers c ON c.id = access_log_union.career_ref_id
+                """ + where + """
+                 GROUP BY access_log_union.career_ref_id, career_code, career_name
+                 ORDER BY total DESC
+                 LIMIT 8
+                """);
+        bindParams(careerQuery, context.params());
+
+        List<AccessLogDailyCountResponse> daily = new ArrayList<>();
+        @SuppressWarnings("unchecked")
+        List<Object[]> dailyRows = dailyQuery.getResultList();
+        for (Object[] row : dailyRows) {
+            String day = row[0] != null ? row[0].toString() : LocalDate.now(ZoneOffset.UTC).toString();
+            long accesses = ((Number) row[1]).longValue();
+            daily.add(new AccessLogDailyCountResponse(day, accesses));
+        }
+
+        List<AccessLogCareerDistributionResponse> careers = new ArrayList<>();
+        @SuppressWarnings("unchecked")
+        List<Object[]> careerRows = careerQuery.getResultList();
+        for (Object[] row : careerRows) {
+            String code = row[0] != null ? row[0].toString() : "N/D";
+            String name = row[1] != null ? row[1].toString() : "Sin carrera";
+            long total = ((Number) row[2]).longValue();
+            careers.add(new AccessLogCareerDistributionResponse(code, name, total));
+        }
+
+        List<AccessLogHourlyVolumeResponse> hourly = buildTodayHourlyVolume(filters);
+
+        return new AccessLogMetricsResponse(daily, careers, hourly);
+    }
+
+    private List<AccessLogHourlyVolumeResponse> buildTodayHourlyVolume(AccessLogQueryFilters baseFilters) {
+        Instant now = Instant.now();
+        LocalDate todayUtc = now.atOffset(ZoneOffset.UTC).toLocalDate();
+        Instant from = todayUtc.atStartOfDay().toInstant(ZoneOffset.UTC);
+        Instant to = now;
+
+        AccessLogQueryFilters todayFilters = new AccessLogQueryFilters(
+                baseFilters.actorType(),
+                baseFilters.scope(),
+                baseFilters.result(),
+                from,
+                to,
+                baseFilters.studentId(),
+                baseFilters.adminId(),
+                baseFilters.careerId(),
+                baseFilters.search(),
+                0,
+                1,
+                baseFilters.sort()
+        );
+
+        QueryContext context = buildQueryContext(todayFilters);
+        String where = context.whereClause();
+
+        Query q = entityManager.createNativeQuery("""
+                SELECT HOUR(occurred_at) AS h,
+                       COUNT(*) AS total,
+                       SUM(CASE WHEN result = 'SUCCESS' THEN 1 ELSE 0 END) AS successful,
+                       SUM(CASE WHEN result = 'SUCCESS' THEN 0 ELSE 1 END) AS failed
+                  FROM (
+                """ + UNION_SQL + """
+                ) access_log_union
+                """ + where + """
+                 GROUP BY HOUR(occurred_at)
+                 ORDER BY h ASC
+                """);
+        bindParams(q, context.params());
+
+        long[] totalByHour = new long[24];
+        long[] successByHour = new long[24];
+        long[] failedByHour = new long[24];
+
+        @SuppressWarnings("unchecked")
+        List<Object[]> rows = q.getResultList();
+        for (Object[] row : rows) {
+            int hour = ((Number) row[0]).intValue();
+            if (hour < 0 || hour > 23) {
+                continue;
+            }
+            totalByHour[hour] = ((Number) row[1]).longValue();
+            successByHour[hour] = ((Number) row[2]).longValue();
+            failedByHour[hour] = ((Number) row[3]).longValue();
+        }
+
+        List<AccessLogHourlyVolumeResponse> out = new ArrayList<>(24);
+        for (int h = 0; h < 24; h++) {
+            out.add(new AccessLogHourlyVolumeResponse(
+                    String.format("%02d:00", h),
+                    totalByHour[h],
+                    successByHour[h],
+                    failedByHour[h]
+            ));
+        }
+        return out;
     }
 
     private void validatePageFilters(AccessLogQueryFilters filters) {

@@ -14,5 +14,5 @@ public record DashboardSummaryResponse(
         Instant lastAccessAt,
         Instant lastSuccessfulAccessAt,
         Instant lastFailedAccessAt
-) {
+) implements DashboardWidgetData {
 }

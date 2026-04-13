@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { ArrowUpDown, KeyRound, Pencil, PlayCircle, Power } from 'lucide-react'
+import { ArrowUpDown, KeyRound, Pencil, Power, Trash2 } from 'lucide-react'
 import { Badge } from '@/shared/components/ui/badge'
 import { Button } from '@/shared/components/ui/button'
 import { DataTable } from '@/shared/components/ui/data-table'
@@ -41,9 +41,9 @@ type AdminsTableProps = {
   onPageChange: (page: number) => void
   onPageSizeChange: (size: number) => void
   onEdit: (admin: AdminManagementRow) => void
-  onDeactivate: (admin: AdminManagementRow) => void
-  onActivate: (admin: AdminManagementRow) => void
   onResetPassword: (admin: AdminManagementRow) => void
+  onDeactivate: (admin: AdminManagementRow) => void
+  onDelete: (admin: AdminManagementRow) => void
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -80,9 +80,9 @@ export function AdminsTable({
   onPageChange,
   onPageSizeChange,
   onEdit,
-  onDeactivate,
-  onActivate,
   onResetPassword,
+  onDeactivate,
+  onDelete,
 }: AdminsTableProps) {
   const pageCount = Math.max(totalPages, 1)
 
@@ -241,7 +241,7 @@ export function AdminsTable({
                           variant="ghost"
                           size="icon-xs"
                           className="text-muted-foreground hover:bg-muted hover:text-foreground"
-                          title="Restablecer contraseña"
+                          title="Cambiar contraseña"
                           onClick={() => onResetPassword(admin)}
                         >
                           <KeyRound className="h-4 w-4" />
@@ -252,23 +252,22 @@ export function AdminsTable({
                             variant="ghost"
                             size="icon-xs"
                             className="text-success hover:bg-destructive/10 hover:text-destructive"
-                            title="Desactivar"
+                            title="Deshabilitar"
                             onClick={() => onDeactivate(admin)}
                           >
                             <Power className="h-4 w-4" />
                           </Button>
-                        ) : (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon-xs"
-                            className="text-muted-foreground hover:bg-success/10 hover:text-success"
-                            title="Activar"
-                            onClick={() => onActivate(admin)}
-                          >
-                            <PlayCircle className="h-4 w-4" />
-                          </Button>
-                        )}
+                        ) : null}
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-xs"
+                          className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                          title="Eliminar"
+                          onClick={() => onDelete(admin)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
                     </td>
                   </tr>
@@ -318,15 +317,17 @@ export function AdminsTable({
                     <Button type="button" variant="ghost" size="icon-xs" onClick={() => onEdit(admin)}>
                       <Pencil className="h-4 w-4" />
                     </Button>
+                    <Button type="button" variant="ghost" size="icon-xs" onClick={() => onResetPassword(admin)}>
+                      <KeyRound className="h-4 w-4" />
+                    </Button>
                     {isActive ? (
                       <Button type="button" variant="ghost" size="icon-xs" onClick={() => onDeactivate(admin)}>
                         <Power className="h-4 w-4" />
                       </Button>
-                    ) : (
-                      <Button type="button" variant="ghost" size="icon-xs" onClick={() => onActivate(admin)}>
-                        <PlayCircle className="h-4 w-4" />
-                      </Button>
-                    )}
+                    ) : null}
+                    <Button type="button" variant="ghost" size="icon-xs" onClick={() => onDelete(admin)}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
               </div>

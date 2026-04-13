@@ -13,20 +13,21 @@ import {
   Search,
   ServerCrash,
 } from 'lucide-react'
-import { Card, CardContent, CardHeader } from '@/shared/components/ui/card'
+import { Area, AreaChart, CartesianGrid, Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card'
 import { Button } from '@/shared/components/ui/button'
 import { Input } from '@/shared/components/ui/input'
 import { Badge } from '@/shared/components/ui/badge'
 import { DataTable } from '@/shared/components/ui/data-table'
 import { DataTableFiltersShell } from '@/shared/components/ui/data-table-filters-shell'
-import { ExportFormatDialog } from '@/shared/components/ui/export-format-dialog'
+import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/popover'
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/shared/components/ui/dialog'
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from '@/shared/components/ui/sheet'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select'
 import StatusCard from '@/shared/components/data-display/status-card'
 import { SectionHeader } from '@/shared/components/ui/section-header'
@@ -35,7 +36,9 @@ import { useTableFilterState } from '@/shared/hooks/use-table-filter-state'
 import {
   exportAccessLogsReport,
   getAccessLogs,
+  getAccessLogMetrics,
   type AccessLogExportFormat,
+  type AccessLogMetricsDto,
   type AccessLogQueryParams,
 } from '@/features/access-logs/api/access-logs-api'
 import type {
@@ -46,6 +49,13 @@ import type {
 } from '@/shared/types/api'
 
 const PAGE_SIZE = 20
+const CHART_COLORS = ['#6366f1', '#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#f97316', '#14b8a6']
+const tooltipStyle = {
+  background: 'hsl(var(--card))',
+  border: '1px solid hsl(var(--border))',
+  borderRadius: '8px',
+  fontSize: '12px',
+} as const
 
 type FilterState = {
   actorType: AccessLogActorType
@@ -190,8 +200,13 @@ const AccessLogs = () => {
   const [loading, setLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [exporting, setExporting] = useState(false)
-  const [exportDialogOpen, setExportDialogOpen] = useState(false)
+  const [isHeaderExportOpen, setIsHeaderExportOpen] = useState(false)
   const [selectedLog, setSelectedLog] = useState<UnifiedAccessLogRecord | null>(null)
+  const [metrics, setMetrics] = useState<AccessLogMetricsDto | null>(null)
+  const [metricsLoading, setMetricsLoading] = useState(false)
+  /** Serie horaria de hoy desde API sin filtros de tabla (mismo endpoint, universo completo). */
+  const [volumeTodayBuckets, setVolumeTodayBuckets] = useState<AccessLogMetricsDto['hourlyVolumeToday'] | undefined>(undefined)
+  const [volumeTodayLoading, setVolumeTodayLoading] = useState(true)
   const {
     filtersOpen,
     setFiltersOpen,
@@ -241,9 +256,47 @@ const AccessLogs = () => {
     }
   }, [showToast])
 
+  const loadMetrics = useCallback(async (params: AccessLogQueryParams) => {
+    setMetricsLoading(true)
+    try {
+      const response = await getAccessLogMetrics(params, 7)
+      setMetrics(response)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'No se pudieron cargar las métricas de access logs.'
+      showToast({
+        severity: 'warning',
+        title: 'Métricas no disponibles',
+        description: message,
+      })
+      setMetrics(null)
+    } finally {
+      setMetricsLoading(false)
+    }
+  }, [showToast])
+
+  const loadVolumeToday = useCallback(async () => {
+    setVolumeTodayLoading(true)
+    try {
+      const response = await getAccessLogMetrics({}, 7)
+      setVolumeTodayBuckets(response.hourlyVolumeToday ?? [])
+    } catch {
+      setVolumeTodayBuckets(undefined)
+    } finally {
+      setVolumeTodayLoading(false)
+    }
+  }, [])
+
   useEffect(() => {
     void loadAccessLogs(queryParams)
   }, [loadAccessLogs, queryParams])
+
+  useEffect(() => {
+    void loadMetrics(queryParams)
+  }, [loadMetrics, queryParams])
+
+  useEffect(() => {
+    void loadVolumeToday()
+  }, [loadVolumeToday])
 
   useEffect(() => {
     setPage(0)
@@ -255,7 +308,32 @@ const AccessLogs = () => {
   const visibleFrom = totalElements === 0 ? 0 : page * PAGE_SIZE + 1
   const visibleTo = totalElements === 0 ? 0 : Math.min((page + 1) * PAGE_SIZE, totalElements)
 
+  const volumeData = useMemo(() => {
+    const buckets = volumeTodayBuckets ?? metrics?.hourlyVolumeToday ?? []
+    return buckets.map((p) => ({
+      t: p.t,
+      total: Number(p.total) || 0,
+      exitosos: Number(p.successful) || 0,
+      fallidos: Number(p.failed) || 0,
+    }))
+  }, [volumeTodayBuckets, metrics])
+
+  const pieData = useMemo(() => {
+    const rows = metrics?.careerDistribution ?? []
+    const total = rows.reduce((acc, r) => acc + (r.total ?? 0), 0)
+    return rows
+      .slice(0, 6)
+      .map((r, index) => ({
+        name: r.careerCode || r.careerName || 'N/D',
+        value: r.total,
+        color: CHART_COLORS[index % CHART_COLORS.length],
+        pct: total > 0 ? Math.round((r.total / total) * 100) : 0,
+      }))
+  }, [metrics])
+
   const handleRefresh = () => {
+    void loadVolumeToday()
+    void loadMetrics(queryParams)
     void loadAccessLogs(queryParams)
       .then(() => {
         showToast({
@@ -337,7 +415,7 @@ const AccessLogs = () => {
     void exportAccessLogsReport(queryParams, format)
       .then(({ blob, filename }) => {
         downloadBlob(blob, filename)
-        setExportDialogOpen(false)
+        setIsHeaderExportOpen(false)
         showToast({
           severity: 'success',
           title: 'Exportación completada',
@@ -367,23 +445,47 @@ const AccessLogs = () => {
               <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
               Actualizar
             </Button>
-            <Button variant="outline" size="md" className="gap-2" disabled={exporting} onClick={() => setExportDialogOpen(true)}>
-              <Download className={`w-3.5 h-3.5 ${exporting ? 'animate-pulse' : ''}`} />
-              Exportar
-            </Button>
+            <Popover open={isHeaderExportOpen} onOpenChange={setIsHeaderExportOpen}>
+              <PopoverTrigger asChild>
+                <Button disabled={exporting} variant="outline" size="md" className="gap-2">
+                  <Download className={`w-3.5 h-3.5 ${exporting ? 'animate-pulse' : ''}`} />
+                  Exportar
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-[180px] p-2">
+                <div className="space-y-1">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="w-full justify-start gap-2"
+                    onClick={() => {
+                      setIsHeaderExportOpen(false)
+                      handleExport('csv')
+                    }}
+                  >
+                    <FileText className="size-4" />
+                    Descargar CSV
+                  </Button>
+                  <div className="my-1 h-px bg-border" />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="w-full justify-start gap-2"
+                    onClick={() => {
+                      setIsHeaderExportOpen(false)
+                      handleExport('xlsx')
+                    }}
+                  >
+                    <FileText className="size-4" />
+                    Descargar XLSX
+                  </Button>
+                </div>
+              </PopoverContent>
+            </Popover>
           </>
         }
-      />
-
-      <ExportFormatDialog
-        open={exportDialogOpen}
-        title="Exportar access logs"
-        description="Selecciona el formato de descarga para la consulta actual de access logs."
-        loading={exporting}
-        onClose={() => !exporting && setExportDialogOpen(false)}
-        onSelect={(format) => {
-          handleExport(format as AccessLogExportFormat)
-        }}
       />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -392,8 +494,7 @@ const AccessLogs = () => {
           value={totalElements.toLocaleString()}
           subtitle="Coincide con la consulta actual"
           icon={Activity}
-          iconBg="bg-indigo-500/10"
-          iconFg="text-indigo-600"
+          variant="info"
           delay={0}
         />
         <StatusCard
@@ -401,8 +502,7 @@ const AccessLogs = () => {
           value={successesOnPage}
           subtitle="En la página actual"
           icon={CheckCircle2}
-          iconBg="bg-emerald-500/10"
-          iconFg="text-emerald-600"
+          variant="success"
           delay={0.05}
         />
         <StatusCard
@@ -410,8 +510,7 @@ const AccessLogs = () => {
           value={failuresOnPage}
           subtitle="Resultados no exitosos"
           icon={ServerCrash}
-          iconBg="bg-red-500/10"
-          iconFg="text-red-600"
+          variant="destructive"
           delay={0.1}
         />
         <StatusCard
@@ -419,37 +518,77 @@ const AccessLogs = () => {
           value={actorsOnPage}
           subtitle="En la página actual"
           icon={Clock3}
-          iconBg="bg-sky-500/10"
-          iconFg="text-sky-600"
+          variant="primary"
           delay={0.15}
         />
       </div>
 
-      <Card>
-        <CardHeader className="pb-3">
-          <p className="text-sm font-semibold text-foreground">Leyenda de resultados</p>
-          <p className="text-xs text-muted-foreground">Referencia rápida de todos los outcomes posibles que puede devolver el log unificado.</p>
-        </CardHeader>
-        <CardContent className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-          {RESULT_OPTIONS.map((result) => {
-            const badge = formatResultBadge(result)
-            const Icon = badge.icon
-            return (
-              <div key={result} className="rounded-xl border border-border/70 bg-secondary/10 px-3 py-2">
-                <div className="flex items-center gap-2">
-                  <Badge variant="outlined" className={badge.className}>
-                    <Icon className="mr-1 h-3 w-3" />
-                    {result === 'SUCCESS' ? 'SUCCESS' : result}
-                  </Badge>
-                </div>
-                <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-                  {resultDescriptions[result]}
-                </p>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <Card className="lg:col-span-2">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-semibold">Volumen de Accesos — Hoy</CardTitle>
+            <CardDescription className="text-xs">
+              Solicitudes reales agregadas por hora (día UTC en servidor). No depende de los filtros de la tabla.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {volumeTodayLoading ? (
+              <div className="h-[180px] grid place-items-center text-sm text-muted-foreground">
+                Cargando volumen del día...
               </div>
-            )
-          })}
-        </CardContent>
-      </Card>
+            ) : volumeData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={180}>
+                <AreaChart data={volumeData} margin={{ top: 5, right: 8, left: -16, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="gTotal" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#6366f1" stopOpacity={0.15} />
+                      <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.15)" />
+                  <XAxis dataKey="t" tick={{ fill: '#64748b', fontSize: 11 }} tickLine={false} axisLine={false} />
+                  <YAxis tick={{ fill: '#64748b', fontSize: 11 }} tickLine={false} axisLine={false} allowDecimals={false} />
+                  <Tooltip contentStyle={tooltipStyle} />
+                  <Area type="monotone" dataKey="total" stroke="#6366f1" strokeWidth={2} fill="url(#gTotal)" dot={false} name="Total" />
+                  <Area type="monotone" dataKey="exitosos" stroke="#10b981" strokeWidth={1.5} fill="none" strokeDasharray="4 2" dot={false} name="Exitosos" />
+                  <Area type="monotone" dataKey="fallidos" stroke="#ef4444" strokeWidth={1.5} fill="none" dot={false} name="Fallidos" />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-[180px] grid place-items-center text-sm text-muted-foreground">
+                Sin datos para graficar.
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <p className="text-sm font-semibold text-foreground">Distribución por Carrera</p>
+          </CardHeader>
+          <CardContent>
+            {metricsLoading ? (
+              <div className="h-[180px] grid place-items-center text-sm text-muted-foreground">
+                Cargando métricas...
+              </div>
+            ) : pieData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={180}>
+                <PieChart>
+                  <Pie data={pieData} cx="50%" cy="45%" innerRadius={48} outerRadius={72} paddingAngle={3} dataKey="value">
+                    {pieData.map((e, i) => <Cell key={i} fill={e.color} />)}
+                  </Pie>
+                  <Tooltip contentStyle={tooltipStyle} />
+                  <Legend iconType="circle" iconSize={7} wrapperStyle={{ fontSize: '11px' }} />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-[180px] grid place-items-center text-sm text-muted-foreground">
+                Sin datos para graficar.
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
 
       <DataTable
         title="Access logs"
@@ -658,59 +797,114 @@ const AccessLogs = () => {
         }}
       />
 
-      <Dialog open={Boolean(selectedLog)} onOpenChange={(open) => { if (!open) setSelectedLog(null) }}>
-        <DialogContent size="3">
-          <DialogHeader>
-            <DialogTitle>Detalle del access log</DialogTitle>
-            <DialogDescription>
-              Contexto técnico saneado y campos opcionales del evento seleccionado.
-            </DialogDescription>
-          </DialogHeader>
-
+      <Sheet open={Boolean(selectedLog)} onOpenChange={(o) => { if (!o) setSelectedLog(null) }}>
+        <SheetContent side="right" className="w-[min(100vw,420px)] sm:max-w-[420px] overflow-y-auto p-0">
           {selectedLog ? (
-            <div className="grid gap-4 py-2">
-              <div className="grid gap-3 md:grid-cols-2">
-                <DetailItem label="Fecha/hora" value={formatDateTime(selectedLog.occurredAt)} />
-                <DetailItem label="Actor" value={formatActor(selectedLog)} />
-                <DetailItem label="Correo" value={selectedLog.actorEmail || 'Sin correo'} />
-                <DetailItem label="Tipo" value={actorLabels[selectedLog.actorType]} />
-                <DetailItem label="Scope" value={scopeLabels[selectedLog.scope]} />
-                <DetailItem label="Resultado" value={selectedLog.result} />
-                <DetailItem label="Razón" value={selectedLog.reason || 'Sin razón registrada'} />
-                <DetailItem label="SessionId" value={selectedLog.sessionId || 'Sin sessionId'} />
-                <DetailItem label="RequestId" value={selectedLog.requestId || 'Sin requestId'} />
-                <DetailItem label="CorrelationId" value={selectedLog.correlationId || 'Sin correlationId'} />
-                <DetailItem label="IP saneada" value={selectedLog.ipAddressMasked || 'Sin IP'} />
-                <DetailItem label="User-Agent saneado" value={selectedLog.userAgentSanitized || 'Sin user-agent'} />
-                <DetailItem label="Latency (ms)" value={selectedLog.latencyMs != null ? String(selectedLog.latencyMs) : 'Sin latencia'} />
-                <DetailItem label="Channel" value={selectedLog.channelName || 'Sin canal'} />
-                <DetailItem label="Next URL" value={selectedLog.nextUrl || 'Sin nextUrl'} />
-                <DetailItem label="Redirect URL" value={selectedLog.redirectUrl || 'Sin redirectUrl'} />
-                <DetailItem label="Provider status" value={selectedLog.providerStatusCode != null ? String(selectedLog.providerStatusCode) : 'Sin status'} />
-                <DetailItem label="Provider error code" value={selectedLog.providerErrorCode || 'Sin código'} />
-                <DetailItem label="Provider error message" value={selectedLog.providerErrorMessage || 'Sin mensaje'} />
-              </div>
-
-              <div className="space-y-2">
-                <p className="text-sm font-semibold text-foreground">Metadata</p>
-                <pre className="max-h-72 overflow-auto rounded-lg border border-border bg-muted/30 p-4 text-xs text-muted-foreground">
-                  {renderMetadata(selectedLog.metadata)}
-                </pre>
-              </div>
-            </div>
+            <AccessLogDetailDrawerContent log={selectedLog} />
           ) : null}
-        </DialogContent>
-      </Dialog>
+        </SheetContent>
+      </Sheet>
     </motion.div>
   )
 }
 
-function DetailItem({ label, value }: { label: string; value: string }) {
+function AccessLogDetailDrawerContent({ log }: { log: UnifiedAccessLogRecord }) {
+  const ok = log.result === 'SUCCESS'
+  const latencyLabel = log.latencyMs != null ? `${log.latencyMs}ms` : '—'
+
+  const sections = [
+    {
+      title: 'Actor',
+      items: [
+        { l: 'Nombre', v: formatActor(log) },
+        { l: 'Correo', v: log.actorEmail || '—' },
+        { l: 'Tipo', v: actorLabels[log.actorType] },
+      ],
+    },
+    {
+      title: 'Evento',
+      items: [
+        { l: 'Fecha', v: formatDateTime(log.occurredAt) },
+        { l: 'Scope', v: scopeLabels[log.scope] },
+        { l: 'Resultado', v: log.result },
+        { l: 'Razón', v: log.reason || '—' },
+        { l: 'Latencia', v: latencyLabel },
+        { l: 'Next URL', v: log.nextUrl || '—' },
+        { l: 'Redirect URL', v: log.redirectUrl || '—' },
+      ],
+    },
+    {
+      title: 'Conexión',
+      items: [
+        { l: 'IP', v: log.ipAddressMasked || '—' },
+        { l: 'User-Agent', v: log.userAgentSanitized || '—' },
+        { l: 'Canal', v: log.channelName || '—' },
+        { l: 'Session', v: log.sessionId || '—' },
+        { l: 'Request', v: log.requestId || '—' },
+        { l: 'Correlation', v: log.correlationId || '—' },
+      ],
+    },
+    {
+      title: 'Proveedor',
+      items: [
+        { l: 'Status', v: log.providerStatusCode != null ? String(log.providerStatusCode) : '—' },
+        { l: 'Error Code', v: log.providerErrorCode || '—' },
+        { l: 'Error Msg', v: log.providerErrorMessage || '—' },
+      ],
+    },
+  ]
+
   return (
-    <div className="rounded-lg border border-border bg-muted/20 p-3">
-      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
-      <p className="mt-1 text-sm text-foreground break-words">{value}</p>
-    </div>
+    <>
+      <SheetHeader className="border-b border-border px-6 py-5 pb-4 text-left">
+        <SheetTitle className="text-lg">Detalle del access log</SheetTitle>
+        <SheetDescription>
+          Contexto técnico saneado y campos opcionales del evento seleccionado.
+        </SheetDescription>
+      </SheetHeader>
+      <div className="space-y-6 px-6 py-4 pb-8">
+        <div
+          className={
+            ok
+              ? 'flex items-center gap-3 rounded-lg border border-success-border bg-success-soft p-3'
+              : 'flex items-center gap-3 rounded-lg border border-destructive/25 bg-destructive/10 p-3'
+          }
+        >
+          <div
+            className={
+              ok ? 'h-2 w-2 shrink-0 rounded-full bg-[hsl(var(--success))]' : 'h-2 w-2 shrink-0 rounded-full bg-destructive'
+            }
+          />
+          <span className="text-sm font-medium text-foreground">{log.result}</span>
+          <span className="ml-auto text-xs text-muted-foreground">{latencyLabel}</span>
+        </div>
+
+        {sections.map((sec) => (
+          <div key={sec.title}>
+            <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              {sec.title}
+            </p>
+            <div className="space-y-3">
+              {sec.items.map((item) => (
+                <div key={item.l} className="flex justify-between gap-4">
+                  <span className="shrink-0 text-xs text-muted-foreground">{item.l}</span>
+                  <span className="truncate text-right text-sm text-foreground" title={item.v}>
+                    {item.v}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+
+        <div>
+          <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Metadata</p>
+          <pre className="max-h-48 overflow-auto rounded-lg border border-border bg-muted/30 p-3 font-mono text-xs text-muted-foreground">
+            {renderMetadata(log.metadata)}
+          </pre>
+        </div>
+      </div>
+    </>
   )
 }
 

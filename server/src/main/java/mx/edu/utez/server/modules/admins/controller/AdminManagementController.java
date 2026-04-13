@@ -28,6 +28,7 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -157,5 +158,17 @@ public class AdminManagementController {
         Admin actor = adminContextService.requireCurrentAdmin(authentication);
         adminManagementService.resetPassword(adminId, request, actor, httpRequest);
         return new ApiResponse<>(true, "Contraseña restablecida.", null, HttpStatus.OK.value());
+    }
+
+    @DeleteMapping("/{adminId}")
+    @Operation(summary = "Eliminar administrador")
+    public ApiResponse<Void> delete(
+            @PathVariable UUID adminId,
+            Authentication authentication,
+            HttpServletRequest httpRequest
+    ) {
+        Admin actor = adminContextService.requireCurrentAdmin(authentication);
+        adminManagementService.delete(adminId, actor, httpRequest);
+        return new ApiResponse<>(true, "Administrador eliminado.", null, HttpStatus.OK.value());
     }
 }

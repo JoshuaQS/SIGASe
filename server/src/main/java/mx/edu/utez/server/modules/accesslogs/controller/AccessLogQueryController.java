@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import java.time.Instant;
 import java.util.UUID;
 import mx.edu.utez.server.modules.accesslogs.dto.AccessLogActorType;
+import mx.edu.utez.server.modules.accesslogs.dto.AccessLogMetricsResponse;
 import mx.edu.utez.server.modules.accesslogs.dto.AccessLogQueryFilters;
 import mx.edu.utez.server.modules.accesslogs.dto.AccessLogResponse;
 import mx.edu.utez.server.modules.accesslogs.dto.AccessLogScope;
@@ -70,5 +71,42 @@ public class AccessLogQueryController {
                 sort
         ));
         return new ApiResponse<>(true, "Listado de access logs.", response, HttpStatus.OK.value());
+    }
+
+    @GetMapping("/metrics")
+    @Operation(summary = "Métricas agregadas para access logs")
+    public ApiResponse<AccessLogMetricsResponse> metrics(
+            @RequestParam(required = false, defaultValue = "ALL") AccessLogActorType actorType,
+            @RequestParam(required = false, defaultValue = "ALL") AccessLogScope scope,
+            @RequestParam(required = false) String result,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant dateFrom,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant dateTo,
+            @RequestParam(required = false) UUID studentId,
+            @RequestParam(required = false) UUID adminId,
+            @RequestParam(required = false) UUID careerId,
+            @RequestParam(required = false) String search,
+            @RequestParam(defaultValue = "7") int windowDays,
+            Authentication authentication
+    ) {
+        adminContextService.requireCurrentAdmin(authentication);
+        Instant now = Instant.now();
+        Instant effectiveFrom = dateFrom != null ? dateFrom : now.minusSeconds(Math.max(1, windowDays) * 24L * 60L * 60L);
+        Instant effectiveTo = dateTo != null ? dateTo : now;
+
+        AccessLogMetricsResponse response = accessLogQueryService.metrics(new AccessLogQueryFilters(
+                actorType,
+                scope,
+                result,
+                effectiveFrom,
+                effectiveTo,
+                studentId,
+                adminId,
+                careerId,
+                search,
+                0,
+                1,
+                "occurredAt,desc"
+        ));
+        return new ApiResponse<>(true, "Métricas de access logs.", response, HttpStatus.OK.value());
     }
 }

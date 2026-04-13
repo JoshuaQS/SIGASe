@@ -1,5 +1,5 @@
-import type { ComponentType, ReactNode } from "react";
-import { FileSpreadsheet, Info, Sparkles } from "lucide-react";
+import { useRef, type ComponentType, type ReactNode } from "react";
+import { Download, FileSpreadsheet, Upload } from "lucide-react";
 import { Badge } from "@/shared/components/ui/badge";
 import { cn } from "@/shared/lib/utils";
 import { FileImportForm } from "./file-import-form";
@@ -10,10 +10,9 @@ const templateColumns = [
   { name: "nombre", type: "text", required: true, example: "Carlos" },
   { name: "apellido_paterno", type: "text", required: true, example: "Ramírez" },
   { name: "apellido_materno", type: "text", required: false, example: "Vega" },
-  { name: "sexo", type: "enum (M/F)", required: false, example: "M" },
-  { name: "cuatrimestre", type: "number", required: false, example: "3" },
+  { name: "sexo", type: "enum (M/F)", required: true, example: "M" },
+  { name: "cuatrimestre", type: "number", required: true, example: "3" },
   { name: "carrera", type: "enum", required: true, example: "IDS" },
-  { name: "estado", type: "enum", required: false, example: "ACTIVO" },
 ] as const;
 
 function SectionLabel({ children }: { children: ReactNode }) {
@@ -80,13 +79,19 @@ export function CsvImportTabLayout({
   onImport,
   onDownloadTemplate,
 }: CsvImportTabLayoutProps) {
+  const openPickerRef = useRef<(() => void) | null>(null);
+
   const uploadCell = (
     <div className="flex h-full min-h-0 min-w-0 flex-col gap-1.5">
       <SectionLabel>Cargar archivo</SectionLabel>
-      <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm">
         <FileImportForm
           fullWidth={fullWidth}
           importing={importing}
+          hideActions={true}
+          onOpenPickerReady={(fn) => {
+            openPickerRef.current = fn;
+          }}
           onImport={onImport}
           onDownloadTemplate={onDownloadTemplate}
         />
@@ -131,63 +136,23 @@ export function CsvImportTabLayout({
             </div>
           ))}
         </div>
-      </div>
-    </div>
-  );
-
-  const guideCell = (
-    <div className="flex h-full min-h-0 min-w-0 flex-col gap-1.5">
-      <SectionLabel>Checklist de importación</SectionLabel>
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-        <CardHeader
-          compact
-          icon={Sparkles}
-          title="Antes de confirmar"
-          subtitle="Buenas prácticas para evitar errores de validación"
-        />
-        <div className="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain p-3">
-          {[
-            "Usa la plantilla oficial para respetar encabezados y orden de columnas.",
-            "Solo se aceptan archivos .csv y .xlsx.",
-            "Cada matrícula y correo institucional deben ser únicos.",
-            "La carrera debe existir y estar activa en el catálogo.",
-            "Si el backend detecta errores, la respuesta mostrará fila y causa exacta.",
-          ].map((item) => (
-            <div key={item} className="rounded-lg border border-border bg-muted/30 px-3 py-2 text-[11px] text-foreground">
-              {item}
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-
-  const formatNotesCell = (
-    <div className="flex h-full min-h-0 min-w-0 flex-col gap-1.5">
-      <SectionLabel>Formato del archivo</SectionLabel>
-      <div className="flex min-h-0 flex-1 flex-col rounded-xl border border-info/25 bg-info/10 p-3 shadow-sm">
-        <div className="flex items-start gap-2.5">
-          <div className="shrink-0 rounded-lg bg-info/15 p-1.5">
-            <Info className="h-3.5 w-3.5 text-info" />
-          </div>
-          <ul className="list-none space-y-1 text-[11px] leading-snug text-foreground">
-            <li>
-              <span className="font-semibold">Formato:</span>{" "}
-              <span className="text-muted-foreground">CSV o XLSX</span>
-            </li>
-            <li>
-              <span className="font-semibold">CSV:</span>{" "}
-              <span className="text-muted-foreground">UTF-8 con separador coma (,)</span>
-            </li>
-            <li>
-              <span className="font-semibold">Primera fila:</span>{" "}
-              <span className="text-muted-foreground">encabezados</span>
-            </li>
-            <li>
-              <span className="font-semibold">Estado:</span>{" "}
-              <span className="text-muted-foreground">opcional, por defecto ACTIVE</span>
-            </li>
-          </ul>
+        <div className="flex shrink-0 justify-end gap-2 border-t border-border bg-card px-3 py-2">
+          <button
+            type="button"
+            onClick={() => openPickerRef.current?.()}
+            className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg bg-primary px-3 text-xs font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
+          >
+            <Upload className="h-3.5 w-3.5 shrink-0" />
+            Iniciar importación
+          </button>
+          <button
+            type="button"
+            onClick={() => onDownloadTemplate?.()}
+            className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-primary/35 bg-card px-3 text-xs font-medium text-primary transition-colors hover:bg-accent"
+          >
+            <Download className="h-3.5 w-3.5 shrink-0" />
+            Descargar plantilla
+          </button>
         </div>
       </div>
     </div>
@@ -196,11 +161,7 @@ export function CsvImportTabLayout({
   return (
     <div
       className={cn(
-        "grid h-full min-h-0 w-full flex-1 grid-cols-1 gap-4 md:grid-rows-[minmax(0,1fr)_minmax(0,1fr)] md:items-stretch md:gap-4 lg:gap-5",
-        /* Columna estrecha: plantilla CSV + info; ancha: carga + historial */
-        invertedOrder
-          ? "md:grid-cols-[minmax(0,1fr)_minmax(0,17.5rem)]"
-          : "md:grid-cols-[minmax(0,17.5rem)_minmax(0,1fr)]",
+        "grid h-full min-h-0 w-full flex-1 grid-cols-1 gap-4 md:grid-cols-2 md:items-stretch md:gap-4 lg:gap-5",
         className
       )}
     >
@@ -208,15 +169,11 @@ export function CsvImportTabLayout({
         <>
           {uploadCell}
           {templateCell}
-          {guideCell}
-          {formatNotesCell}
         </>
       ) : (
         <>
           {templateCell}
           {uploadCell}
-          {formatNotesCell}
-          {guideCell}
         </>
       )}
     </div>

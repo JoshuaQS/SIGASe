@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { ArrowLeftRight, CheckCircle2, XCircle } from 'lucide-react'
 import { Badge } from '@/shared/components/ui/badge'
 import { Button } from '@/shared/components/ui/button'
@@ -62,6 +62,11 @@ export function StudentStatusChangeModal({
     [isDeactivate],
   )
 
+  useEffect(() => {
+    if (!open) return
+    setReason('')
+  }, [open, student?.id, nextStatus])
+
   if (!student) {
     return null
   }
@@ -123,7 +128,7 @@ export function StudentStatusChangeModal({
 
               <div className="pointer-events-none absolute inset-y-0 left-1/2 flex -translate-x-1/2 items-center">
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-destructive text-destructive-foreground shadow-md ring-2 ring-card">
-                  <ArrowLeftRight className="h-4 w-4 rotate-90" />
+                  <ArrowLeftRight className="h-4 w-4" />
                 </div>
               </div>
             </div>

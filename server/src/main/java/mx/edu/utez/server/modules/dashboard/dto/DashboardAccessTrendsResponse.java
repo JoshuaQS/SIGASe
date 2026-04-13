@@ -6,5 +6,5 @@ public record DashboardAccessTrendsResponse(
         String dateFrom,
         String dateTo,
         List<DashboardTrendPointResponse> points
-) {
+) implements DashboardWidgetData {
 }
