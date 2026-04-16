@@ -147,42 +147,23 @@ export function DataTable({
           <p className="text-xs text-muted-foreground">{pagination.summary ?? ""}</p>
           <div className="flex items-center gap-2">
             {typeof pagination.pageSize === "number" &&
-            pagination.pageSizeOptions?.length &&
             pagination.onPageSizeChange ? (
               <div className="flex items-center gap-2">
                 <span className="text-xs text-muted-foreground">Filas:</span>
-                <div className="flex items-center gap-2">
-                  <input
-                    value={String(pagination.pageSize)}
-                    onChange={(e) => {
-                      const raw = e.target.value;
-                      const n = Number(raw);
-                      if (!raw) return;
-                      if (!Number.isFinite(n)) return;
-                      const next = Math.max(1, Math.floor(n));
-                      pagination.onPageSizeChange?.(next);
-                    }}
-                    className="h-7 w-16 rounded-md border border-border bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                    inputMode="numeric"
-                    aria-label="Filas por página"
-                  />
-
-                  <select
-                    value={pagination.pageSizeOptions.includes(pagination.pageSize) ? pagination.pageSize : ""}
-                    onChange={(e) => pagination.onPageSizeChange?.(Number(e.target.value))}
-                    className="h-7 rounded-md border border-border bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                    aria-label="Filas por página (rápido)"
-                  >
-                    <option value="" disabled>
-                      Presets
-                    </option>
-                    {pagination.pageSizeOptions.map((opt) => (
-                      <option key={opt} value={opt}>
-                        {opt}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                <input
+                  value={String(pagination.pageSize)}
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    const n = Number(raw);
+                    if (!raw) return;
+                    if (!Number.isFinite(n)) return;
+                    const next = Math.max(1, Math.floor(n));
+                    pagination.onPageSizeChange?.(next);
+                  }}
+                  className="h-7 w-16 rounded-md border border-border bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  inputMode="numeric"
+                  aria-label="Filas por página"
+                />
               </div>
             ) : null}
 
@@ -236,13 +217,7 @@ export function DataTable({
             )}
 
             {pagination.pageJump ? (
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  pagination.pageJump?.onSubmit();
-                }}
-                className="flex items-center gap-2 ml-2"
-              >
+              <div className="flex items-center gap-2 ml-2">
                 <span className="text-xs text-muted-foreground">{pagination.pageJump.label ?? "Ir a:"}</span>
                 <input
                   value={pagination.pageJump.value}
@@ -251,12 +226,13 @@ export function DataTable({
                   inputMode="numeric"
                 />
                 <button
-                  type="submit"
+                  type="button"
+                  onClick={() => pagination.pageJump?.onSubmit()}
                   className="h-7 px-2 text-xs font-medium border border-border rounded-md hover:bg-accent transition-colors text-foreground"
                 >
                   Ir
                 </button>
-              </form>
+              </div>
             ) : null}
           </div>
         </div>

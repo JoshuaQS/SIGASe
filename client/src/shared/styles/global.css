@@ -25,8 +25,8 @@
    1) TOKENS BASE
    ========================================================= */
 :root {
-  /* Fonts (Inter + Geist Mono) */
-  --font-sans: "Inter", "Helvetica Neue", sans-serif;
+  /* Fonts (Poppins + Geist Mono) */
+  --font-sans: "Poppins", "Helvetica Neue", sans-serif;
   --font-mono: "Geist Mono", "Courier New", monospace;
   --font-sans-runtime: var(--font-sans);
   --font-mono-runtime: var(--font-mono);
@@ -869,6 +869,27 @@ tbody tr {
 
   100% {
     transform: scale(1);
+  }
+}
+
+@keyframes glare-sweep {
+  0% {
+    background-position: -100% -100%, 0 0;
+  }
+  100% {
+    background-position: 100% 100%, 0 0;
+  }
+}
+
+@keyframes glare-sweep-diagonal {
+  0% {
+    background-position: -120% -120%, 0 0;
+  }
+  70% {
+    background-position: 120% 120%, 0 0;
+  }
+  100% {
+    background-position: 120% 120%, 0 0;
   }
 }
 

@@ -42,6 +42,18 @@ public class Admin extends BaseAuditableEntity {
     @Column(name = "status", nullable = false, length = 16)
     private AdminStatus status = AdminStatus.ACTIVE;
 
+    @Column(name = "has_changed_temporary_password", nullable = false)
+    private boolean hasChangedTemporaryPassword = true;
+
+    @Column(name = "temporary_password_generated_at")
+    private Instant temporaryPasswordGeneratedAt;
+
+    @Column(name = "temporary_password_notified_at")
+    private Instant temporaryPasswordNotifiedAt;
+
+    @Column(name = "password_changed_at")
+    private Instant passwordChangedAt;
+
     @Column(name = "failed_login_attempts", nullable = false)
     private int failedLoginAttempts = 0;
 
@@ -110,14 +122,36 @@ public class Admin extends BaseAuditableEntity {
         this.status = status;
     }
 
-    /** Bridge para compatibilidad con llamadores existentes. */
-    public boolean isActive() {
-        return status == AdminStatus.ACTIVE;
+    public boolean isHasChangedTemporaryPassword() {
+        return hasChangedTemporaryPassword;
     }
 
-    /** Bridge para compatibilidad con llamadores existentes. */
-    public void setActive(boolean active) {
-        this.status = active ? AdminStatus.ACTIVE : AdminStatus.INACTIVE;
+    public void setHasChangedTemporaryPassword(boolean hasChangedTemporaryPassword) {
+        this.hasChangedTemporaryPassword = hasChangedTemporaryPassword;
+    }
+
+    public Instant getTemporaryPasswordGeneratedAt() {
+        return temporaryPasswordGeneratedAt;
+    }
+
+    public void setTemporaryPasswordGeneratedAt(Instant temporaryPasswordGeneratedAt) {
+        this.temporaryPasswordGeneratedAt = temporaryPasswordGeneratedAt;
+    }
+
+    public Instant getTemporaryPasswordNotifiedAt() {
+        return temporaryPasswordNotifiedAt;
+    }
+
+    public void setTemporaryPasswordNotifiedAt(Instant temporaryPasswordNotifiedAt) {
+        this.temporaryPasswordNotifiedAt = temporaryPasswordNotifiedAt;
+    }
+
+    public Instant getPasswordChangedAt() {
+        return passwordChangedAt;
+    }
+
+    public void setPasswordChangedAt(Instant passwordChangedAt) {
+        this.passwordChangedAt = passwordChangedAt;
     }
 
     public int getFailedLoginAttempts() {

@@ -8,10 +8,12 @@ import mx.edu.utez.server.modules.auth.dto.AuthTokenResponse;
 import mx.edu.utez.server.security.JwtTokenProvider;
 import mx.edu.utez.server.security.JwtTokenType;
 import mx.edu.utez.server.security.RoleConstants;
+import mx.edu.utez.server.shared.enums.AdminStatus;
 import mx.edu.utez.server.shared.enums.AdminAuthResult;
 import mx.edu.utez.server.shared.exception.BusinessException;
 import mx.edu.utez.server.shared.exception.ErrorCode;
 import mx.edu.utez.server.shared.util.EmailNormalizer;
+import mx.edu.utez.server.shared.validation.PasswordPolicy;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.Instant;
 import java.util.UUID;
@@ -67,7 +69,7 @@ public class AdminAuthService {
                 throw invalidCredentials();
             }
 
-            if (!admin.isActive()) {
+            if (admin.getStatus() != AdminStatus.ACTIVE) {
                 adminAccessLoggingFacade.log(
                         request,
                         admin,
@@ -167,8 +169,44 @@ public class AdminAuthService {
                 admin.getName(),
                 admin.getLastNamePaternal(),
                 admin.getLastNameMaternal(),
-                mapRole(admin)
+                mapRole(admin),
+                admin.isHasChangedTemporaryPassword(),
+                admin.getTemporaryPasswordGeneratedAt(),
+                admin.getTemporaryPasswordNotifiedAt(),
+                admin.getPasswordChangedAt()
         );
+    }
+
+    @Transactional
+    public void changePassword(UUID adminId, String currentPassword, String newPassword, String confirmNewPassword) {
+        Admin admin = adminRepository.findById(adminId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.UNAUTHORIZED, "Sesión inválida."));
+
+        if (admin.getStatus() != AdminStatus.ACTIVE) {
+            throw new BusinessException(ErrorCode.UNAUTHORIZED, "Usuario administrador desactivado.");
+        }
+
+        if (currentPassword == null || currentPassword.isBlank() || !passwordEncoder.matches(currentPassword, admin.getPasswordHash())) {
+            throw new BusinessException(ErrorCode.UNAUTHORIZED, "La contraseña actual no es correcta.");
+        }
+
+        PasswordPolicy.validateOrThrow(newPassword);
+        if (!newPassword.equals(confirmNewPassword)) {
+            throw new BusinessException(ErrorCode.BUSINESS_RULE_VIOLATION, "La confirmación no coincide con la nueva contraseña.");
+        }
+
+        if (passwordEncoder.matches(newPassword, admin.getPasswordHash())) {
+            throw new BusinessException(ErrorCode.BUSINESS_RULE_VIOLATION,
+                    "La nueva contraseña debe ser diferente a la actual.");
+        }
+
+        admin.setPasswordHash(passwordEncoder.encode(newPassword));
+        admin.setFailedLoginAttempts(0);
+        admin.setLockedUntil(null);
+        admin.setTokenVersion(admin.getTokenVersion() + 1);
+        admin.setHasChangedTemporaryPassword(true);
+        admin.setPasswordChangedAt(Instant.now());
+        adminRepository.save(admin);
     }
 
     public void logout() {

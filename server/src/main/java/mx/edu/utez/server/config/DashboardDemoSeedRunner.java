@@ -29,6 +29,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class DashboardDemoSeedRunner implements ApplicationRunner {
 
     private static final Logger log = LoggerFactory.getLogger(DashboardDemoSeedRunner.class);
+    private static final long SEED_RANGE_DAYS = 28L;
+    private static final int TARGET_SEED_STUDENTS = 160;
 
     private static final List<StudentSeedItem> STUDENT_SEEDS = List.of(
             new StudentSeedItem("Sofía", "Hernández", "García", Sex.FEMALE),
@@ -132,9 +134,10 @@ public class DashboardDemoSeedRunner implements ApplicationRunner {
 
         int createdStudents = 0;
         int createdLogs = 0;
+        int replacedLogs = 0;
 
-        for (int index = 0; index < STUDENT_SEEDS.size(); index++) {
-            StudentSeedItem item = STUDENT_SEEDS.get(index);
+        for (int index = 0; index < TARGET_SEED_STUDENTS; index++) {
+            StudentSeedItem item = seedItemFor(index);
             String enrollmentId = String.format("20263TN%03d", index + 1);
             String email = (enrollmentId + "@utez.edu.mx").toLowerCase(Locale.ROOT);
 
@@ -160,11 +163,9 @@ public class DashboardDemoSeedRunner implements ApplicationRunner {
             }
 
             String requestPrefix = "seed-dashboard-" + enrollmentId + "-";
-            long existingLogs = accessLogRepository.count((root, query, cb) ->
-                    cb.like(root.get("requestId"), requestPrefix + "%")
-            );
-            if (existingLogs > 0) {
-                continue;
+            long removed = accessLogRepository.deleteByRequestIdStartingWith(requestPrefix);
+            if (removed > 0) {
+                replacedLogs += (int) removed;
             }
 
             List<ElibroAccessLog> logs = buildSeedLogs(student, email, enrollmentId, index);
@@ -172,18 +173,39 @@ public class DashboardDemoSeedRunner implements ApplicationRunner {
             createdLogs += logs.size();
         }
 
-        log.info("Seed dashboard demo: {} estudiantes sincronizados, {} accesos creados.", createdStudents, createdLogs);
+        log.info(
+                "Seed dashboard demo: {} estudiantes sincronizados, {} accesos creados, {} accesos seed reemplazados.",
+                createdStudents,
+                createdLogs,
+                replacedLogs
+        );
+    }
+
+    private StudentSeedItem seedItemFor(int index) {
+        StudentSeedItem base = STUDENT_SEEDS.get(index % STUDENT_SEEDS.size());
+        int cohort = (index / STUDENT_SEEDS.size()) + 1;
+        if (cohort == 1) {
+            return base;
+        }
+        return new StudentSeedItem(
+                base.name() + " " + cohort,
+                base.lastNamePaternal(),
+                base.lastNameMaternal(),
+                base.sex()
+        );
     }
 
     private List<ElibroAccessLog> buildSeedLogs(Student student, String email, String enrollmentId, int index) {
         List<ElibroAccessLog> logs = new ArrayList<>();
-        int attempts = 4 + (index % 5);
-        Instant start = Instant.now()
-                .minus(210L - (index * 2L), ChronoUnit.DAYS)
+        int attempts = attemptsForIndex(index);
+        Instant end = Instant.now().truncatedTo(ChronoUnit.HOURS);
+        Instant start = end
+                .minus(SEED_RANGE_DAYS, ChronoUnit.DAYS)
+                .plus(index % 6, ChronoUnit.HOURS)
                 .truncatedTo(ChronoUnit.HOURS);
 
         for (int attempt = 0; attempt < attempts; attempt++) {
-            boolean successful = ((index + attempt) % 4) != 0;
+            boolean successful = isSuccessfulAttempt(index, attempt);
             ElibroAccessResult result = successful
                     ? ElibroAccessResult.SUCCESS
                     : FAILURE_RESULTS.get((index + attempt) % FAILURE_RESULTS.size());
@@ -212,11 +234,40 @@ public class DashboardDemoSeedRunner implements ApplicationRunner {
             logItem.setMetadataJson("{\"seed\":true,\"dataset\":\"dashboard-demo\"}");
             logItem.setNextUrl("https://www.elibro.net/es/lc/utez/");
             logItem.setRedirectUrl(successful ? "https://www.elibro.net/es/lc/utez/inicio" : null);
-            logItem.setOccurredAt(start.plus(attempt * 3L + (index % 3), ChronoUnit.DAYS).plus((index + attempt) % 9, ChronoUnit.HOURS));
+            Instant occurredAt = start
+                    .plus((attempt * 3L + (index % 3)) % (SEED_RANGE_DAYS - 1), ChronoUnit.DAYS)
+                    .plus((index + attempt) % 12, ChronoUnit.HOURS);
+            if (occurredAt.isAfter(end)) {
+                occurredAt = end.minus((index + attempt) % 6, ChronoUnit.HOURS);
+            }
+            logItem.setOccurredAt(occurredAt);
             logs.add(logItem);
         }
 
         return logs;
+    }
+
+    private int attemptsForIndex(int index) {
+        int bucket = index % 16;
+        if (bucket <= 3) {
+            return 2 + (index % 4); // 2..5 accesos
+        }
+        if (bucket <= 7) {
+            return 6 + (index % 9); // 6..14 accesos
+        }
+        if (bucket <= 11) {
+            return 15 + (index % 18); // 15..32 accesos
+        }
+        if (bucket <= 14) {
+            return 33 + (index % 28); // 33..60 accesos
+        }
+        return 70 + (index % 31); // 70..100 accesos (heavy users)
+    }
+
+    private boolean isSuccessfulAttempt(int index, int attempt) {
+        int reliability = (index % 9);
+        int failureStep = reliability <= 2 ? 5 : (reliability <= 6 ? 7 : 9);
+        return ((attempt + index) % failureStep) != 0;
     }
 
     private String requestPrefix(String enrollmentId, int attempt) {

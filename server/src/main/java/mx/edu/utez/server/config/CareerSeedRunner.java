@@ -2,6 +2,7 @@ package mx.edu.utez.server.config;
 
 import mx.edu.utez.server.modules.careers.entity.Career;
 import mx.edu.utez.server.modules.careers.repository.CareerRepository;
+import mx.edu.utez.server.shared.enums.CareerStatus;
 import java.util.List;
 import java.util.Locale;
 import org.slf4j.Logger;
@@ -47,7 +48,7 @@ public class CareerSeedRunner implements ApplicationRunner {
             Career career = careerRepository.findByCodeIgnoreCase(safeCode).orElseGet(Career::new);
             career.setCode(safeCode);
             career.setName(safeName);
-            career.setActive(true);
+            career.setStatus(CareerStatus.ACTIVE);
             careerRepository.save(career);
         }
 

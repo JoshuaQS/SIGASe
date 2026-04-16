@@ -45,6 +45,8 @@ public interface ElibroAccessLogRepository extends JpaRepository<ElibroAccessLog
 
     List<ElibroAccessLog> findByOccurredAtGreaterThanEqualOrderByOccurredAtAsc(Instant occurredAt);
 
+    long deleteByRequestIdStartingWith(String requestIdPrefix);
+
     @Query(
             value = """
                     SELECT DATE(occurred_at) AS activity_date, COUNT(*) AS total

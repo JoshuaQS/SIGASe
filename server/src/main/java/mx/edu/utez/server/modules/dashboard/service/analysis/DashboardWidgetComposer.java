@@ -17,7 +17,9 @@ import org.springframework.stereotype.Component;
 @Component
 public class DashboardWidgetComposer {
 
-    public static final int OVERVIEW_TOP_LIMIT = 10;
+    // Overview top widgets should expose the complete ranking by default.
+    // Frontend pagination handles visual chunking.
+    public static final int OVERVIEW_TOP_LIMIT = 1000;
     public static final int STUDENT_ACTIVITY_DEFAULT_PAGE = 0;
     public static final int STUDENT_ACTIVITY_DEFAULT_SIZE = 20;
     public static final int STUDENT_ACTIVITY_MAX_SIZE = 100;

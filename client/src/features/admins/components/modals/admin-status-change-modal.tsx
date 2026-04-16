@@ -43,7 +43,12 @@ export function AdminStatusChangeModal({
   const badges = useMemo(() => {
     if (!admin) return null
     return (
-      <Badge variant={admin.status === 'ACTIVE' ? 'success' : 'muted'}>
+      <Badge
+        variant={admin.status === 'ACTIVE' ? 'success' : 'muted'}
+        className={admin.status === 'ACTIVE'
+          ? 'dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-300'
+          : 'dark:border-border/80 dark:bg-muted/30 dark:text-muted-foreground'}
+      >
         {admin.status === 'ACTIVE' ? 'Activo' : 'Inactivo'}
       </Badge>
     )
@@ -76,7 +81,7 @@ export function AdminStatusChangeModal({
           <ModalFormBody>
             <div className="relative overflow-hidden rounded-xl border border-border">
               <div className="grid grid-cols-2">
-                <div className="border-r border-border bg-success/10">
+                <div className="border-r border-border bg-success/10 dark:bg-emerald-950/20">
                   <div className="flex flex-col items-center justify-center px-6 py-6 text-center">
                     <div className="mb-3 h-2 w-2 rounded-full bg-success" />
                     <p className="text-[10px] font-bold uppercase tracking-[0.35em] text-muted-foreground">
@@ -87,7 +92,7 @@ export function AdminStatusChangeModal({
                     </p>
                   </div>
                 </div>
-                <div className="bg-destructive/10">
+                <div className="bg-destructive/10 dark:bg-red-950/20">
                   <div className="flex flex-col items-center justify-center px-6 py-6 text-center">
                     <div className="mb-3 h-2 w-2 rounded-full bg-destructive" />
                     <p className="text-[10px] font-bold uppercase tracking-[0.35em] text-muted-foreground">
@@ -107,7 +112,7 @@ export function AdminStatusChangeModal({
               </div>
             </div>
 
-            <div className="mt-4 rounded-xl border border-border bg-secondary/20 p-4">
+            <div className="mt-4 rounded-xl border border-border bg-secondary/20 p-4 dark:bg-muted/20">
               <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Efecto
               </p>

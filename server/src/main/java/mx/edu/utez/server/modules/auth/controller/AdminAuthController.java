@@ -3,6 +3,7 @@ package mx.edu.utez.server.modules.auth.controller;
 import mx.edu.utez.server.modules.auth.dto.AdminLoginRequest;
 import mx.edu.utez.server.modules.auth.dto.AdminMeResponse;
 import mx.edu.utez.server.modules.auth.dto.AuthTokenResponse;
+import mx.edu.utez.server.modules.auth.dto.ChangePasswordRequest;
 import mx.edu.utez.server.modules.auth.dto.PasswordResetConfirmDto;
 import mx.edu.utez.server.modules.auth.dto.PasswordResetRequestDto;
 import mx.edu.utez.server.modules.auth.service.AdminAuthService;
@@ -66,6 +67,18 @@ public class AdminAuthController {
         return new ApiResponse<>(true, "Perfil obtenido exitosamente.", response, HttpStatus.OK.value());
     }
 
+    @PostMapping("/change-password")
+    @Operation(summary = "Cambio de contraseña del administrador autenticado")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN_TI','ROLE_ADMIN_BIBLIOTECA')")
+    public ApiResponse<Void> changePassword(
+            Authentication authentication,
+            @Valid @RequestBody ChangePasswordRequest request
+    ) {
+        UUID adminId = UUID.fromString(authentication.getName());
+        adminAuthService.changePassword(adminId, request.currentPassword(), request.newPassword(), request.confirmNewPassword());
+        return new ApiResponse<>(true, "Contraseña actualizada exitosamente.", null, HttpStatus.OK.value());
+    }
+
     // ── Public password reset flow ─────────────────────────────────────
 
     @PostMapping("/reset-password/request")
@@ -95,7 +108,7 @@ public class AdminAuthController {
             @Valid @RequestBody PasswordResetConfirmDto request,
             HttpServletRequest httpRequest
     ) {
-        passwordResetService.confirmReset(request.token(), request.newPassword(), httpRequest);
+        passwordResetService.confirmReset(request.token(), request.newPassword(), request.confirmNewPassword(), httpRequest);
         return new ApiResponse<>(true,
                 "Contraseña restablecida exitosamente.",
                 null, HttpStatus.OK.value());

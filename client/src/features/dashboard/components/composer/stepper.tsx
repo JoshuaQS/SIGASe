@@ -16,10 +16,6 @@ export interface StepperProps {
   onStepClick?: (index: number) => void
   orientation?: 'horizontal' | 'vertical'
   size?: 'sm' | 'md'
-  /**
-   * Vertical: solo rail sin textos.
-   * Horizontal: solo círculos + conectores; usar `StepperHorizontalLabels` debajo si hace falta.
-   */
   showLabels?: boolean
   className?: string
 }
@@ -37,7 +33,6 @@ function stepStatus(
   return i < currentStep ? 'completed' : i === currentStep ? 'active' : 'upcoming'
 }
 
-/** Fila de títulos / descripciones bajo el rail horizontal (mismas columnas que los círculos). */
 export function StepperHorizontalLabels({
   steps,
   currentStep,
@@ -95,7 +90,6 @@ export function StepperHorizontalLabels({
   )
 }
 
-/** Cap 1 / 2: completado = círculo primary + check; activo = fondo blanco, borde primary, icono; pendiente = borde gris + número */
 function StepIndicator({
   step,
   index,
@@ -128,20 +122,20 @@ function StepIndicator({
       )}
     >
       {status === 'completed' ? (
-        <Check className="h-4 w-4" strokeWidth={2.75} />
+        <Check className='h-4 w-4' strokeWidth={2.75} />
       ) : status === 'active' && Icon ? (
-        <Icon className="h-4 w-4" strokeWidth={2.25} />
+        <Icon className='h-4 w-4' strokeWidth={2.25} />
       ) : (
-        <span className="tabular-nums font-semibold">{index + 1}</span>
+        <span className='tabular-nums font-semibold'>{index + 1}</span>
       )}
     </div>
   )
 
   return isClickable ? (
     <button
-      type="button"
+      type='button'
       onClick={onClick}
-      className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+      className='rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2'
     >
       {indicator}
     </button>
@@ -161,7 +155,6 @@ export function Stepper({
 }: StepperProps) {
   const getStatus = (i: number) => stepStatus(i, currentStep)
 
-  /* Cap 2 — vertical: rail; opcionalmente textos a la derecha */
   if (orientation === 'vertical') {
     return (
       <div className={cn('flex flex-col', className)}>
@@ -172,7 +165,7 @@ export function Stepper({
               key={step.id}
               className={cn('flex', showLabels && 'gap-3.5')}
             >
-              <div className="flex flex-col items-center">
+              <div className='flex flex-col items-center'>
                 <StepIndicator
                   step={step}
                   index={i}
@@ -193,7 +186,7 @@ export function Stepper({
                 )}
               </div>
               {showLabels ? (
-                <div className="min-w-0 pb-7 pt-0.5">
+                <div className='min-w-0 pb-7 pt-0.5'>
                   <p
                     className={cn(
                       'text-sm font-semibold leading-tight',
@@ -205,7 +198,7 @@ export function Stepper({
                   >
                     {step.label}
                     {step.optional && (
-                      <span className="ml-1 text-xs font-normal text-muted-foreground">
+                      <span className='ml-1 text-xs font-normal text-muted-foreground'>
                         (opcional)
                       </span>
                     )}
@@ -231,10 +224,9 @@ export function Stepper({
     )
   }
 
-  /* Cap 1 — conectores cortos y fijos; columnas alineadas para textos centrados bajo cada paso */
   return (
     <div className={cn('w-full', className)}>
-      <div className="flex w-full items-center justify-center">
+      <div className='flex w-full items-center justify-center'>
         {steps.map((step, i) => (
           <React.Fragment key={step.id}>
             {i > 0 && (
@@ -264,10 +256,9 @@ export function Stepper({
         <StepperHorizontalLabels
           steps={steps}
           currentStep={currentStep}
-          className="mt-4"
+          className='mt-4'
         />
       ) : null}
     </div>
   )
 }
-

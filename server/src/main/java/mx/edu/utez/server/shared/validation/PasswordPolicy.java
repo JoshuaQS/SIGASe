@@ -11,10 +11,10 @@ import java.util.regex.Pattern;
 public final class PasswordPolicy {
 
     public static final String REQUIREMENTS_MESSAGE =
-            "La contraseña debe tener al menos 10 caracteres e incluir mayúscula, minúscula, número y símbolo";
+            "La contraseña debe tener entre 12 y 128 caracteres e incluir mayúscula, minúscula, número y símbolo";
 
     private static final Pattern PASSWORD_PATTERN =
-            Pattern.compile("^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^A-Za-z\\d]).{10,}$");
+            Pattern.compile("^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^A-Za-z\\d]).{12,128}$");
 
     private static final SecureRandom RANDOM = new SecureRandom();
 
@@ -36,13 +36,13 @@ public final class PasswordPolicy {
      * Contraseña temporal aleatoria que cumple {@link #validateOrThrow(String)}.
      */
     public static String generateCompliantTemporaryPassword() {
-        StringBuilder sb = new StringBuilder(14);
+        StringBuilder sb = new StringBuilder(16);
         sb.append(LOWER.charAt(RANDOM.nextInt(LOWER.length())));
         sb.append(UPPER.charAt(RANDOM.nextInt(UPPER.length())));
         sb.append(DIGITS.charAt(RANDOM.nextInt(DIGITS.length())));
         sb.append(SYMBOLS.charAt(RANDOM.nextInt(SYMBOLS.length())));
         String pool = LOWER + UPPER + DIGITS + SYMBOLS;
-        while (sb.length() < 14) {
+        while (sb.length() < 12) {
             sb.append(pool.charAt(RANDOM.nextInt(pool.length())));
         }
         char[] chars = sb.toString().toCharArray();

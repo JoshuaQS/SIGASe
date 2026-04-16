@@ -551,8 +551,8 @@ public class DashboardService {
             Boolean topEnabledRaw,
             Integer topN
     ) {
-        DashboardAnalysisType analysisType = DashboardAnalysisType.fromNullable(analysisTypeRaw);
-        DashboardAccessStatus accessStatus = DashboardAccessStatus.fromNullable(accessStatusRaw);
+        DashboardAnalysisType analysisType = parseAnalysisType(analysisTypeRaw);
+        DashboardAccessStatus accessStatus = parseAccessStatus(accessStatusRaw);
         String safeSortDir = resolveSortDirection(sortDir);
 
         List<String> normalizedCareerCodes = normalizeCareerCodes(careerCodesRaw);
@@ -682,6 +682,36 @@ public class DashboardService {
             throw new BusinessException(ErrorCode.VALIDATION_ERROR, "sortDir inválido.");
         }
         return normalized;
+    }
+
+    private DashboardAnalysisType parseAnalysisType(String raw) {
+        if (!StringUtils.hasText(raw)) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "analysisType es requerido.");
+        }
+        String normalized = raw.trim().toUpperCase(Locale.ROOT);
+        try {
+            return DashboardAnalysisType.valueOf(normalized);
+        } catch (IllegalArgumentException ex) {
+            throw new BusinessException(
+                    ErrorCode.VALIDATION_ERROR,
+                    "analysisType inválido. Valores permitidos: students_individual, students_all, careers."
+            );
+        }
+    }
+
+    private DashboardAccessStatus parseAccessStatus(String raw) {
+        if (!StringUtils.hasText(raw)) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "status es requerido.");
+        }
+        String normalized = raw.trim().toUpperCase(Locale.ROOT);
+        try {
+            return DashboardAccessStatus.valueOf(normalized);
+        } catch (IllegalArgumentException ex) {
+            throw new BusinessException(
+                    ErrorCode.VALIDATION_ERROR,
+                    "status inválido. Valores permitidos: ALL, SUCCESS, FAILED."
+            );
+        }
     }
 
     private List<String> normalizeCareerCodes(List<String> rawCodes) {

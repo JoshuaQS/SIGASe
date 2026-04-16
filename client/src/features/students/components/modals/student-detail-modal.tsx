@@ -22,6 +22,7 @@ import { getAccessLogs, type AccessLogQueryParams } from '@/features/access-logs
 import { getAuditLogs, type AuditLogDto, type AuditLogParams } from '@/features/audit-logs/api/audit-logs-api'
 import type { StudentResponseDto } from '@/features/students/api/students-api'
 import type { UnifiedAccessLogRecord } from '@/shared/types/api'
+import { cn } from '@/shared/lib/utils'
 
 type StudentDetailModalProps = {
   open: boolean
@@ -74,6 +75,22 @@ function mapStatusAction(action: string): StatusHistoryItem['status'] | null {
 
 function mapStatusLabel(status: StatusHistoryItem['status']) {
   return status === 'ACTIVE' ? 'Activado' : 'Desactivado'
+}
+
+function getCurrentStatusLabel(status: StudentResponseDto['status']) {
+  if (status === 'PENDING') return 'Pendiente'
+  if (status === 'ACTIVE') return 'Activo'
+  return 'Inactivo'
+}
+
+function getStatusBadgeClass(status: StudentResponseDto['status']) {
+  if (status === 'ACTIVE') {
+    return 'text-emerald-700 border-emerald-200 bg-emerald-50 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-300'
+  }
+  if (status === 'PENDING') {
+    return 'text-amber-700 border-amber-200 bg-amber-50 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-300'
+  }
+  return 'text-muted-foreground border-border bg-background dark:border-border/80 dark:bg-muted/30 dark:text-muted-foreground'
 }
 
 function extractReasonFromAudit(log: AuditLogDto): string | null {
@@ -220,9 +237,10 @@ export function StudentDetailModal({ open, student, onOpenChange }: StudentDetai
 
   if (!student) return null
 
-  const statusVariant = student.status === 'ACTIVE' ? 'success' : 'muted'
   const pendingBadge = student.mustChangePassword ? (
-    <Badge variant="warning">Cambio de contraseña pendiente</Badge>
+    <Badge variant="warning" className="dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-300">
+      Cambio de contraseña pendiente
+    </Badge>
   ) : null
 
   const currentStatusReason = statusHistory[0]?.reason ?? 'Sin motivo registrado'
@@ -240,11 +258,15 @@ export function StudentDetailModal({ open, student, onOpenChange }: StudentDetai
           <ModalFormHeader
             avatar={<span className="text-sm font-semibold text-primary">{buildInitials(student)}</span>}
             title={buildFullName(student)}
-            badges={(
-              <>
-                <Badge variant={statusVariant} dotClassName={student.status === 'ACTIVE' ? 'bg-success' : undefined}>
-                  {student.status === 'ACTIVE' ? 'Activo' : 'Inactivo'}
-                </Badge>
+              badges={(
+                <>
+                  <Badge
+                    variant="outlined"
+                    className={cn('gap-1', getStatusBadgeClass(student.status))}
+                    dotClassName={student.status === 'ACTIVE' ? 'bg-success' : student.status === 'PENDING' ? 'bg-amber-500' : undefined}
+                  >
+                    {getCurrentStatusLabel(student.status)}
+                  </Badge>
                 {pendingBadge}
               </>
             )}
@@ -287,10 +309,22 @@ export function StudentDetailModal({ open, student, onOpenChange }: StudentDetai
                 <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                   Estado actual
                 </p>
-                <div className={`rounded-xl border p-4 ${student.status === 'ACTIVE' ? 'border-success-border bg-success-soft' : 'border-border bg-muted/30'}`}>
+                <div
+                  className={`rounded-xl border p-4 ${
+                    student.status === 'ACTIVE'
+                      ? 'border-emerald-200 bg-emerald-50 dark:border-emerald-900/60 dark:bg-emerald-950/20'
+                      : student.status === 'PENDING'
+                        ? 'border-amber-200 bg-amber-50/80 dark:border-amber-900/60 dark:bg-amber-950/20'
+                        : 'border-border bg-muted/30 dark:border-border/80 dark:bg-muted/30'
+                  }`}
+                >
                   <div className="mb-1.5 flex items-center justify-between">
-                    <Badge variant={statusVariant} dotClassName={student.status === 'ACTIVE' ? 'bg-success' : undefined}>
-                      {student.status === 'ACTIVE' ? 'Activo' : 'Inactivo'}
+                    <Badge
+                      variant="outlined"
+                      className={cn('gap-1', getStatusBadgeClass(student.status))}
+                      dotClassName={student.status === 'ACTIVE' ? 'bg-success' : student.status === 'PENDING' ? 'bg-amber-500' : undefined}
+                    >
+                      {getCurrentStatusLabel(student.status)}
                     </Badge>
                     <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
                       <Clock className="h-3 w-3" aria-hidden />

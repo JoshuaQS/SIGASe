@@ -18,13 +18,16 @@ import mx.edu.utez.server.modules.students.entity.Student;
 import mx.edu.utez.server.modules.students.mapper.StudentMapper;
 import mx.edu.utez.server.modules.students.repository.StudentAuthEventRepository;
 import mx.edu.utez.server.modules.students.repository.StudentRepository;
+import mx.edu.utez.server.modules.notifications.service.EmailDispatchService;
 import mx.edu.utez.server.shared.api.PageResponse;
 import mx.edu.utez.server.shared.enums.AuditOutcome;
+import mx.edu.utez.server.shared.enums.EmailDispatchJobType;
 import mx.edu.utez.server.shared.enums.Sex;
 import mx.edu.utez.server.shared.enums.StudentStatus;
 import mx.edu.utez.server.shared.exception.BusinessException;
 import mx.edu.utez.server.shared.exception.ErrorCode;
 import mx.edu.utez.server.shared.util.EmailNormalizer;
+import mx.edu.utez.server.shared.validation.DomainTextPolicy;
 import jakarta.servlet.http.HttpServletRequest;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -41,6 +44,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -52,6 +57,8 @@ import org.springframework.util.StringUtils;
 
 @Service
 public class StudentService {
+
+    private static final Logger log = LoggerFactory.getLogger(StudentService.class);
 
     private static final Set<String> ALLOWED_SORT_FIELDS = Set.of(
             "createdAt", "updatedAt", "name", "lastNamePaternal", "lastNameMaternal", "enrollmentId", "career", "status", "lastLoginAt"
@@ -65,6 +72,7 @@ public class StudentService {
     private final StudentAuthEventRepository studentAuthEventRepository;
     private final StudentPasswordResetTokenRepository studentPasswordResetTokenRepository;
     private final StudentPasswordResetNotifier studentPasswordResetNotifier;
+    private final EmailDispatchService emailDispatchService;
     private final CareerService careerService;
 
     public StudentService(
@@ -76,6 +84,7 @@ public class StudentService {
             StudentAuthEventRepository studentAuthEventRepository,
             StudentPasswordResetTokenRepository studentPasswordResetTokenRepository,
             StudentPasswordResetNotifier studentPasswordResetNotifier,
+            EmailDispatchService emailDispatchService,
             CareerService careerService
     ) {
         this.studentRepository = studentRepository;
@@ -86,26 +95,32 @@ public class StudentService {
         this.studentAuthEventRepository = studentAuthEventRepository;
         this.studentPasswordResetTokenRepository = studentPasswordResetTokenRepository;
         this.studentPasswordResetNotifier = studentPasswordResetNotifier;
+        this.emailDispatchService = emailDispatchService;
         this.careerService = careerService;
     }
 
     @Transactional
     public StudentResponse create(CreateStudentRequest request, Admin actorAdmin, HttpServletRequest httpRequest) {
         String normalizedEmail = emailNormalizer.normalize(request.institutionalEmail());
-        validateCreateRules(request.enrollmentId(), normalizedEmail);
-        Career career = careerService.resolveCareer(request.careerId(), request.careerCode());
+        String normalizedEnrollmentId = DomainTextPolicy.normalizeEnrollmentId(request.enrollmentId());
+        String expectedInstitutionalEmail = emailNormalizer.buildInstitutionalEmailFromEnrollmentId(normalizedEnrollmentId);
+        String normalizedName = DomainTextPolicy.normalizeHumanNameWithInitialCaps(request.name());
+        String normalizedLastNamePaternal = DomainTextPolicy.normalizeHumanNameWithInitialCaps(request.lastNamePaternal());
+        String normalizedLastNameMaternal = DomainTextPolicy.normalizeHumanNameWithInitialCaps(request.lastNameMaternal());
+        validateCreateRules(normalizedEnrollmentId, normalizedEmail, expectedInstitutionalEmail);
+        Career career = careerService.resolveCareer(request.careerId(), null);
 
         Student student = new Student();
-        student.setEnrollmentId(request.enrollmentId().trim());
-        student.setName(request.name().trim());
-        student.setLastNamePaternal(request.lastNamePaternal().trim());
-        student.setLastNameMaternal(trimToNull(request.lastNameMaternal()));
+        student.setEnrollmentId(normalizedEnrollmentId);
+        student.setName(normalizedName);
+        student.setLastNamePaternal(normalizedLastNamePaternal);
+        student.setLastNameMaternal(normalizedLastNameMaternal);
         student.setSex(request.sex());
         student.setQuarter(request.quarter());
-        student.setInstitutionalEmail(request.institutionalEmail().trim());
-        student.setInstitutionalEmailNormalized(normalizedEmail);
+        student.setInstitutionalEmail(expectedInstitutionalEmail);
+        student.setInstitutionalEmailNormalized(expectedInstitutionalEmail);
         student.setCareer(career);
-        student.setStatus(StudentStatus.ACTIVE);
+        student.setStatus(StudentStatus.PENDING);
         student.setMustChangePassword(true);
         student.setCreatedByAdmin(actorAdmin);
         student.setUpdatedByAdmin(actorAdmin);
@@ -132,17 +147,22 @@ public class StudentService {
     public StudentResponse update(UUID studentId, UpdateStudentRequest request, Admin actorAdmin, HttpServletRequest httpRequest) {
         Student student = findByIdOrThrow(studentId);
         String normalizedEmail = emailNormalizer.normalize(request.institutionalEmail());
-        validateUpdateRules(studentId, request.enrollmentId(), normalizedEmail);
-        Career career = careerService.resolveCareer(request.careerId(), request.careerCode());
+        String normalizedEnrollmentId = DomainTextPolicy.normalizeEnrollmentId(request.enrollmentId());
+        String expectedInstitutionalEmail = emailNormalizer.buildInstitutionalEmailFromEnrollmentId(normalizedEnrollmentId);
+        String normalizedName = DomainTextPolicy.normalizeHumanNameWithInitialCaps(request.name());
+        String normalizedLastNamePaternal = DomainTextPolicy.normalizeHumanNameWithInitialCaps(request.lastNamePaternal());
+        String normalizedLastNameMaternal = DomainTextPolicy.normalizeHumanNameWithInitialCaps(request.lastNameMaternal());
+        validateUpdateRules(studentId, normalizedEnrollmentId, normalizedEmail, expectedInstitutionalEmail);
+        Career career = careerService.resolveCareer(request.careerId(), null);
 
-        student.setEnrollmentId(request.enrollmentId().trim());
-        student.setName(request.name().trim());
-        student.setLastNamePaternal(request.lastNamePaternal().trim());
-        student.setLastNameMaternal(trimToNull(request.lastNameMaternal()));
+        student.setEnrollmentId(normalizedEnrollmentId);
+        student.setName(normalizedName);
+        student.setLastNamePaternal(normalizedLastNamePaternal);
+        student.setLastNameMaternal(normalizedLastNameMaternal);
         student.setSex(request.sex());
         student.setQuarter(request.quarter());
-        student.setInstitutionalEmail(request.institutionalEmail().trim());
-        student.setInstitutionalEmailNormalized(normalizedEmail);
+        student.setInstitutionalEmail(expectedInstitutionalEmail);
+        student.setInstitutionalEmailNormalized(expectedInstitutionalEmail);
         student.setCareer(career);
         student.setUpdatedByAdmin(actorAdmin);
 
@@ -190,8 +210,8 @@ public class StudentService {
         if (page < 0 || size <= 0 || size > 500) {
             throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Parámetros de paginación inválidos.");
         }
-        if (quarter != null && (quarter < 1 || quarter > 12)) {
-            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "quarter debe estar entre 1 y 12.");
+        if (quarter != null && (quarter < 1 || quarter > 11)) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "quarter debe estar entre 1 y 11.");
         }
         Pageable pageable = PageRequest.of(page, size, buildSort(sortBy, sortDir));
         Specification<Student> spec = buildSpecification(
@@ -329,6 +349,42 @@ public class StudentService {
                 Map.of("reason", request.reason().trim()),
                 httpRequest
         );
+        return toResponseWithAccessMetrics(saved);
+    }
+
+    @Transactional
+    public StudentResponse resendOnboardingEmail(
+            UUID studentId,
+            Admin actorAdmin,
+            HttpServletRequest httpRequest
+    ) {
+        Student student = findByIdOrThrow(studentId);
+        if (student.getStatus() != StudentStatus.PENDING) {
+            throw new BusinessException(
+                    ErrorCode.BUSINESS_RULE_VIOLATION,
+                    "Solo se puede reenviar el correo de onboarding a estudiantes pendientes."
+            );
+        }
+
+        student.setMustChangePassword(true);
+        student.setUpdatedByAdmin(actorAdmin);
+        Student saved = studentRepository.save(student);
+        issueStudentOnboardingReset(saved);
+
+        auditTrailService.auditAdminAction(
+                actorAdmin,
+                "STUDENT_RESEND_ONBOARDING",
+                "STUDENT",
+                saved.getId().toString(),
+                AuditOutcome.SUCCESS,
+                Map.of(
+                        "enrollmentId", saved.getEnrollmentId(),
+                        "institutionalEmailNormalized", saved.getInstitutionalEmailNormalized(),
+                        "status", saved.getStatus().name()
+                ),
+                httpRequest
+        );
+
         return toResponseWithAccessMetrics(saved);
     }
 
@@ -525,20 +581,38 @@ public class StudentService {
         return summary;
     }
 
-    private void validateCreateRules(String enrollmentId, String normalizedEmail) {
-        if (studentRepository.existsByEnrollmentId(enrollmentId.trim())) {
+    private void validateCreateRules(String enrollmentId, String normalizedEmail, String expectedInstitutionalEmail) {
+        if (!DomainTextPolicy.isValidEnrollmentId(enrollmentId)) {
+            throw new BusinessException(ErrorCode.BUSINESS_RULE_VIOLATION, "La matrícula tiene un formato inválido.");
+        }
+        if (!StringUtils.hasText(expectedInstitutionalEmail) || !expectedInstitutionalEmail.equals(normalizedEmail)) {
+            throw new BusinessException(
+                    ErrorCode.BUSINESS_RULE_VIOLATION,
+                    "El correo institucional debe generarse a partir de la matrícula."
+            );
+        }
+        if (studentRepository.existsByEnrollmentId(enrollmentId)) {
             throw new BusinessException(ErrorCode.BUSINESS_RULE_VIOLATION, "El enrollmentId ya existe.");
         }
-        if (studentRepository.existsByInstitutionalEmailNormalized(normalizedEmail)) {
+        if (studentRepository.existsByInstitutionalEmailNormalized(expectedInstitutionalEmail)) {
             throw new BusinessException(ErrorCode.BUSINESS_RULE_VIOLATION, "El correo institucional ya existe.");
         }
     }
 
-    private void validateUpdateRules(UUID studentId, String enrollmentId, String normalizedEmail) {
-        if (studentRepository.existsByEnrollmentIdAndIdNot(enrollmentId.trim(), studentId)) {
+    private void validateUpdateRules(UUID studentId, String enrollmentId, String normalizedEmail, String expectedInstitutionalEmail) {
+        if (!DomainTextPolicy.isValidEnrollmentId(enrollmentId)) {
+            throw new BusinessException(ErrorCode.BUSINESS_RULE_VIOLATION, "La matrícula tiene un formato inválido.");
+        }
+        if (!StringUtils.hasText(expectedInstitutionalEmail) || !expectedInstitutionalEmail.equals(normalizedEmail)) {
+            throw new BusinessException(
+                    ErrorCode.BUSINESS_RULE_VIOLATION,
+                    "El correo institucional debe generarse a partir de la matrícula."
+            );
+        }
+        if (studentRepository.existsByEnrollmentIdAndIdNot(enrollmentId, studentId)) {
             throw new BusinessException(ErrorCode.BUSINESS_RULE_VIOLATION, "El enrollmentId ya está en uso.");
         }
-        if (studentRepository.existsByInstitutionalEmailNormalizedAndIdNot(normalizedEmail, studentId)) {
+        if (studentRepository.existsByInstitutionalEmailNormalizedAndIdNot(expectedInstitutionalEmail, studentId)) {
             throw new BusinessException(ErrorCode.BUSINESS_RULE_VIOLATION, "El correo institucional ya está en uso.");
         }
     }
@@ -548,13 +622,6 @@ public class StudentService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.RESOURCE_NOT_FOUND, "Estudiante no encontrado."));
     }
 
-    private String trimToNull(String value) {
-        if (!StringUtils.hasText(value)) {
-            return null;
-        }
-        return value.trim();
-    }
-
     private void issueStudentOnboardingReset(Student student) {
         studentPasswordResetTokenRepository.invalidatePendingByStudentId(student.getId(), Instant.now());
         String rawToken = UUID.randomUUID().toString();
@@ -562,15 +629,49 @@ public class StudentService {
         studentPasswordResetTokenRepository.save(
                 new StudentPasswordResetToken(tokenHash, student, Instant.now().plus(24, ChronoUnit.HOURS))
         );
-        boolean emailSent = studentPasswordResetNotifier.sendStudentOnboardingPasswordSetup(
-                student.getInstitutionalEmail(),
-                rawToken
-        );
-        if (!emailSent) {
-            throw new BusinessException(
-                    ErrorCode.SERVICE_UNAVAILABLE,
-                    "No se pudo enviar el correo para establecer la contraseña del estudiante."
+        enqueueStudentOnboardingEmail(student, rawToken);
+    }
+
+    private void enqueueStudentOnboardingEmail(Student student, String rawToken) {
+        try {
+            String onboardingLink = studentPasswordResetNotifier.buildStudentOnboardingLink(rawToken);
+            String plainText = """
+                    Hola,
+
+                    Se creó tu acceso en SIGASe y necesitas establecer tu contraseña.
+
+                    Usa este enlace para crearla:
+                    %s
+
+                    Equipo SIGASe
+                    """.formatted(onboardingLink);
+            String html = """
+                    <!doctype html>
+                    <html lang="es">
+                      <body style="margin:0;padding:24px;background:#f3f4f6;font-family:Arial,sans-serif;color:#111827;">
+                        <div style="max-width:560px;margin:0 auto;background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:24px;">
+                          <h1 style="margin:0 0 12px 0;font-size:22px;">Configura tu contraseña</h1>
+                          <p style="margin:0 0 16px 0;line-height:1.6;">Tu cuenta en SIGASe ya fue creada. Para activar tu acceso, configura tu contraseña con el siguiente botón.</p>
+                          <a href="%s" style="display:inline-block;padding:12px 18px;border-radius:10px;background:#2563eb;color:#fff;text-decoration:none;font-weight:700;">Configurar contraseña</a>
+                        </div>
+                      </body>
+                    </html>
+                    """.formatted(onboardingLink);
+            emailDispatchService.enqueue(
+                    EmailDispatchJobType.STUDENT_ONBOARDING_PASSWORD,
+                    student.getInstitutionalEmail(),
+                    "SIGASe | Configura tu contraseña",
+                    plainText,
+                    html,
+                    "STUDENT",
+                    student.getId().toString()
             );
+        } catch (Exception enqueueEx) {
+            log.warn("No se pudo encolar el correo de onboarding para el estudiante {}: {}", student.getId(), enqueueEx.getMessage());
+            boolean sent = studentPasswordResetNotifier.sendStudentOnboardingPasswordSetup(student.getInstitutionalEmail(), rawToken);
+            if (!sent) {
+                log.error("Fallback directo falló para el correo de onboarding del estudiante {}", student.getId());
+            }
         }
     }
 

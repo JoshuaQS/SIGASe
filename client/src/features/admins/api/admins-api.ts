@@ -30,6 +30,10 @@ export type AdminResponseDto = {
   lastNameMaternal: string | null;
   role: AdminBackendRole;
   status: AdminBackendStatus;
+  hasChangedTemporaryPassword: boolean;
+  temporaryPasswordGeneratedAt: string | null;
+  temporaryPasswordNotifiedAt: string | null;
+  passwordChangedAt: string | null;
   failedLoginAttempts: number;
   lockedUntil: string | null;
   lastLoginAt: string | null;
@@ -42,9 +46,7 @@ export type CreateAdminInput = {
   name: string;
   lastNamePaternal: string;
   lastNameMaternal?: string | null;
-  password: string;
   role: AdminBackendRole;
-  status: AdminBackendStatus;
 };
 
 export type UpdateAdminInput = {
@@ -60,7 +62,7 @@ export type AdminStatusChangeInput = {
 };
 
 export type ResetAdminPasswordInput = {
-  newPassword: string;
+  // Endpoint does not require manual password input.
 };
 
 function buildAdminListQuery(params: AdminListParams) {

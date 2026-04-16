@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'react'
 import {
+  Area,
   Bar,
   BarChart,
   CartesianGrid,
   Cell,
   ComposedChart,
-  Line,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -56,7 +56,7 @@ import { cn } from '@/shared/lib/utils'
 import { CardsButtonGroup } from '@/features/dashboard/components/cards-button-group'
 
 type LocalTableControlKey = 'studentActivityTable' | 'careerStudentTable'
-type TrendGranularityId = '7d' | '15d' | '1m' | '3m' | '6m' | '12m'
+type TrendGranularityId = 'today' | '7d' | '1m' | '3m' | '6m' | '12m'
 
 type DashboardAnalysisRendererProps = {
   analysis: DashboardAnalysisResponse | null
@@ -76,6 +76,7 @@ type DashboardAnalysisRendererProps = {
 type AccessChartPoint = { label: string; total: number; permitidos: number; denegados: number }
 type TopCarreraPoint = { codigo: string; carrera: string; accesos: number; successful: number; failed: number }
 type TopUsuarioPoint = {
+  studentId: string
   codigo: string
   nombre: string
   accesos: number
@@ -87,13 +88,16 @@ type TopUsuarioPoint = {
   pctFailed: number
 }
 
-const ACCESS_COLORS = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))']
+const TOP_CAREERS_PALETTE = ['#15ac8c', '#0891b2', '#f59e0b', '#22c55e', '#a855f7', '#ef4444'] as const
+const TREND_TOTAL_COLOR = '#15ac8c'
+const TREND_SUCCESS_COLOR = '#0891b2'
+const TREND_FAILED_COLOR = '#38bdf8'
 const TOP_STUDENTS_PAGE_SIZE = 5
 const TOP_CAREERS_PAGE_SIZES = [7, 6] as const
 const DEFAULT_TREND_GRANULARITY: TrendGranularityId = '3m'
 const TREND_GRANULARITY_OPTIONS: Array<{ id: TrendGranularityId; label: string }> = [
+  { id: 'today', label: 'Hoy' },
   { id: '7d', label: '7 días' },
-  { id: '15d', label: '15 días' },
   { id: '1m', label: '1 mes' },
   { id: '3m', label: '3 meses' },
   { id: '6m', label: '6 meses' },
@@ -182,71 +186,163 @@ function parseTrendDate(dayIso: string) {
   return new Date(safeIso)
 }
 
-function startOfUtcWeek(date: Date) {
-  const utcDate = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()))
-  const currentDay = utcDate.getUTCDay()
-  const diff = currentDay === 0 ? -6 : 1 - currentDay
-  utcDate.setUTCDate(utcDate.getUTCDate() + diff)
-  return utcDate
+function addUtcDays(date: Date, days: number) {
+  const next = new Date(date)
+  next.setUTCDate(next.getUTCDate() + days)
+  return next
 }
 
-function endOfUtcWeek(date: Date) {
-  const end = new Date(date)
-  end.setUTCDate(end.getUTCDate() + 6)
-  return end
+function monthStartUtc(date: Date) {
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1))
 }
 
-function formatWeeklyTrendLabel(start: Date, end: Date) {
-  const startLabel = start.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', timeZone: 'UTC' }).replace('.', '')
-  const endLabel = end.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', timeZone: 'UTC' }).replace('.', '')
-  return `${startLabel} - ${endLabel}`
+function nextMonthUtc(date: Date) {
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 1))
 }
 
-function buildAccessChartData(points: DashboardAccessTrendWidgetData['points'], dateFrom?: string, dateTo?: string): AccessChartPoint[] {
-  const isHistorical = !dateFrom || !dateTo
+function monthKeyUtc(date: Date) {
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`
+}
 
-  if (!isHistorical) {
-    return points.map((point) => {
-      const permitidos = point.successful
-      const denegados = point.failed
-      return {
-        label: formatTrendLabel(point.day, dateFrom, dateTo),
-        permitidos,
-        denegados,
-        total: permitidos + denegados,
-      }
-    })
-  }
+function buildDailyAccessChartData(
+  points: DashboardAccessTrendWidgetData['points'],
+  dateFrom?: string,
+  dateTo?: string,
+): AccessChartPoint[] {
+  return points.map((point) => {
+    const permitidos = point.successful
+    const denegados = point.failed
+    return {
+      label: formatTrendLabel(point.day, dateFrom, dateTo),
+      permitidos,
+      denegados,
+      total: permitidos + denegados,
+    }
+  })
+}
 
-  const weeklyBuckets = new Map<string, AccessChartPoint>()
+function buildGroupedByFixedBucketsData(
+  points: DashboardAccessTrendWidgetData['points'],
+  windowStart: Date,
+  windowEnd: Date,
+  bucketCount: number,
+  labelBuilder: (index: number, start: Date, end: Date) => string,
+): AccessChartPoint[] {
+  const safeBucketCount = Math.max(1, bucketCount)
+  const totalDays = Math.max(1, Math.floor((windowEnd.getTime() - windowStart.getTime()) / 86_400_000) + 1)
+  const daysPerBucket = Math.max(1, Math.ceil(totalDays / safeBucketCount))
+  const buckets: AccessChartPoint[] = Array.from({ length: safeBucketCount }, (_, index) => {
+    const start = addUtcDays(windowStart, index * daysPerBucket)
+    const rawEnd = addUtcDays(start, daysPerBucket - 1)
+    const end = rawEnd > windowEnd ? windowEnd : rawEnd
+    return {
+      label: labelBuilder(index, start, end),
+      permitidos: 0,
+      denegados: 0,
+      total: 0,
+    }
+  })
 
   for (const point of points) {
     const date = parseTrendDate(point.day)
-    if (Number.isNaN(date.getTime())) continue
+    if (Number.isNaN(date.getTime()) || date < windowStart || date > windowEnd) continue
+    const dayOffset = Math.floor((date.getTime() - windowStart.getTime()) / 86_400_000)
+    const bucketIndex = Math.min(buckets.length - 1, Math.max(0, Math.floor(dayOffset / daysPerBucket)))
+    const bucket = buckets[bucketIndex]
+    bucket.permitidos += point.successful
+    bucket.denegados += point.failed
+    bucket.total = bucket.permitidos + bucket.denegados
+  }
 
-    const weekStart = startOfUtcWeek(date)
-    const weekEnd = endOfUtcWeek(weekStart)
-    const bucketKey = weekStart.toISOString()
-    const current = weeklyBuckets.get(bucketKey)
+  return buckets
+}
 
-    if (current) {
-      current.permitidos += point.successful
-      current.denegados += point.failed
-      current.total = current.permitidos + current.denegados
-      continue
-    }
+function buildTodayBy4HoursData(points: DashboardAccessTrendWidgetData['points'], windowStart: Date, windowEnd: Date): AccessChartPoint[] {
+  const buckets: AccessChartPoint[] = Array.from({ length: 6 }, (_, index) => ({
+    label: `${String(index * 4).padStart(2, '0')}:00`,
+    permitidos: 0,
+    denegados: 0,
+    total: 0,
+  }))
 
-    weeklyBuckets.set(bucketKey, {
-      label: formatWeeklyTrendLabel(weekStart, weekEnd),
-      permitidos: point.successful,
-      denegados: point.failed,
-      total: point.successful + point.failed,
+  for (const point of points) {
+    const date = parseTrendDate(point.day)
+    if (Number.isNaN(date.getTime()) || date < windowStart || date > windowEnd) continue
+    const bucketIndex = Math.min(5, Math.max(0, Math.floor(date.getUTCHours() / 4)))
+    const bucket = buckets[bucketIndex]
+    bucket.permitidos += point.successful
+    bucket.denegados += point.failed
+    bucket.total = bucket.permitidos + bucket.denegados
+  }
+
+  return buckets
+}
+
+function buildGroupedByMonthData(
+  points: DashboardAccessTrendWidgetData['points'],
+  windowStart: Date,
+  windowEnd: Date,
+): AccessChartPoint[] {
+  const monthBuckets = new Map<string, AccessChartPoint>()
+
+  for (let cursor = monthStartUtc(windowStart); cursor <= windowEnd; cursor = nextMonthUtc(cursor)) {
+    const key = monthKeyUtc(cursor)
+    monthBuckets.set(key, {
+      label: cursor.toLocaleDateString('es-MX', { month: 'short', year: '2-digit', timeZone: 'UTC' }).replace('.', ''),
+      permitidos: 0,
+      denegados: 0,
+      total: 0,
     })
   }
 
-  return Array.from(weeklyBuckets.entries())
+  for (const point of points) {
+    const date = parseTrendDate(point.day)
+    if (Number.isNaN(date.getTime()) || date < windowStart || date > windowEnd) continue
+    const key = monthKeyUtc(date)
+    const bucket = monthBuckets.get(key)
+    if (!bucket) continue
+    bucket.permitidos += point.successful
+    bucket.denegados += point.failed
+    bucket.total = bucket.permitidos + bucket.denegados
+  }
+
+  return Array.from(monthBuckets.entries())
     .sort(([left], [right]) => left.localeCompare(right))
-    .map(([, value]) => ({ ...value, total: value.permitidos + value.denegados }))
+    .map(([, value]) => value)
+}
+
+function buildHistoricalAccessChartData(
+  points: DashboardAccessTrendWidgetData['points'],
+  windowStart: Date,
+  windowEnd: Date,
+  granularity: TrendGranularityId,
+): AccessChartPoint[] {
+  if (granularity === 'today') {
+    return buildTodayBy4HoursData(points, windowStart, windowEnd)
+  }
+
+  if (granularity === '1m') {
+    return buildGroupedByFixedBucketsData(
+      points,
+      windowStart,
+      windowEnd,
+      4,
+      (index) => `Semana ${index + 1}`,
+    )
+  }
+  if (granularity === '3m') {
+    return buildGroupedByFixedBucketsData(
+      points,
+      windowStart,
+      windowEnd,
+      6,
+      (index) => `Quincena ${index + 1}`,
+    )
+  }
+  if (granularity === '6m' || granularity === '12m') {
+    return buildGroupedByMonthData(points, windowStart, windowEnd)
+  }
+  return buildDailyAccessChartData(points, windowStart.toISOString(), windowEnd.toISOString())
 }
 
 function getTrendWindowBounds(
@@ -256,17 +352,28 @@ function getTrendWindowBounds(
 ): { windowStart: Date; windowEnd: Date } {
   const anchorEnd = endOfDay(dataMax)
 
-  if (granularity === '7d' || granularity === '15d') {
-    const dayCount = granularity === '7d' ? 7 : 15
+  if (granularity === 'today') {
+    const windowEnd = endOfDay(subDays(anchorEnd, offsetBack))
+    const windowStart = startOfDay(windowEnd)
+    return { windowStart, windowEnd }
+  }
+
+  if (granularity === '7d') {
+    const dayCount = 7
+    const windowEnd = endOfDay(subDays(anchorEnd, offsetBack * dayCount))
+    const windowStart = startOfDay(subDays(windowEnd, dayCount - 1))
+    return { windowStart, windowEnd }
+  }
+
+  if (granularity === '1m') {
+    const dayCount = 30
     const windowEnd = endOfDay(subDays(anchorEnd, offsetBack * dayCount))
     const windowStart = startOfDay(subDays(windowEnd, dayCount - 1))
     return { windowStart, windowEnd }
   }
 
   const months =
-    granularity === '1m'
-      ? 1
-      : granularity === '3m'
+    granularity === '3m'
         ? 3
         : granularity === '6m'
           ? 6
@@ -301,7 +408,7 @@ function buildTrendWindowHistoricalChart(
     return date >= windowStart && date <= windowEnd
   })
 
-  const chartData = buildAccessChartData(filtered, windowStart.toISOString(), windowEnd.toISOString())
+  const chartData = buildHistoricalAccessChartData(filtered, windowStart, windowEnd, granularity)
 
   const hasOlderData = points.some((point) => {
     const date = parseTrendDate(point.day)
@@ -313,7 +420,10 @@ function buildTrendWindowHistoricalChart(
 
   return {
     chartData,
-    periodLabel: `${formatter(windowStart)} – ${formatter(windowEnd)}`,
+    periodLabel:
+      granularity === 'today'
+        ? `Hoy · ${formatter(windowStart)}`
+        : `${formatter(windowStart)} – ${formatter(windowEnd)}`,
     canGoOlder: hasOlderData,
     canGoNewer: offsetBack > 0,
   }
@@ -373,12 +483,45 @@ function HistoricalTrendTooltip({
 
 function renderOverviewKpiGroup(widget: DashboardWidgetResponse) {
   const data = widget.data as DashboardSummaryWidgetData
+  const totalAccesses = data.successfulAccessesInRange + data.failedAccessesInRange
+  const successfulPct = totalAccesses > 0 ? (data.successfulAccessesInRange / totalAccesses) * 100 : 0
+  const failedPct = totalAccesses > 0 ? (data.failedAccessesInRange / totalAccesses) * 100 : 0
+  const activeStudentPct = data.totalStudents > 0 ? (data.activeStudents / data.totalStudents) * 100 : 0
+
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-      <StatCard title="Alumnos totales" value={formatNumber(data.totalStudents)} icon={Users} variant="primary" />
-      <StatCard title="Accesos totales" value={formatNumber(data.successfulAccessesInRange + data.failedAccessesInRange)} icon={TrendingUp} variant="info" />
-      <StatCard title="Accesos exitosos" value={formatNumber(data.successfulAccessesInRange)} icon={ShieldCheck} variant="success" />
-      <StatCard title="Accesos fallidos" value={formatNumber(data.failedAccessesInRange)} icon={ShieldAlert} variant="destructive" />
+      <StatCard
+        title="Alumnos totales"
+        value={formatNumber(data.totalStudents)}
+        icon={Users}
+        variant="primary"
+        trend={activeStudentPct}
+        trendLabel="activos"
+      />
+      <StatCard
+        title="Accesos totales"
+        value={formatNumber(totalAccesses)}
+        icon={TrendingUp}
+        variant="info"
+        trend={successfulPct}
+        trendLabel="exitosos"
+      />
+      <StatCard
+        title="Accesos exitosos"
+        value={formatNumber(data.successfulAccessesInRange)}
+        icon={ShieldCheck}
+        variant="success"
+        trend={successfulPct}
+        trendLabel="del total"
+      />
+      <StatCard
+        title="Accesos fallidos"
+        value={formatNumber(data.failedAccessesInRange)}
+        icon={ShieldAlert}
+        variant="destructive"
+        trend={failedPct}
+        trendLabel="del total"
+      />
     </div>
   )
 }
@@ -453,17 +596,17 @@ function OverviewTrendCard({ widget }: { widget: DashboardWidgetResponse }) {
               </Button>
             </div>
           </div>
-          <div className="flex flex-wrap gap-2 text-xs sm:justify-end">
-            <Badge variant="outlined" className="gap-1 border-sky-500/20 bg-sky-500/5 text-sky-700">
-              <span className="inline-block h-2 w-2 rounded-full bg-sky-500" />
+        <div className="flex flex-wrap gap-2 text-xs sm:justify-end">
+            <Badge variant="outlined" className="gap-1 border-emerald-500/20 bg-emerald-500/5 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-300">
+              <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: TREND_TOTAL_COLOR }} />
               Ambos
             </Badge>
-            <Badge variant="outlined" className="gap-1 border-violet-500/20 bg-violet-500/5 text-violet-700">
-              <span className="inline-block h-2 w-2 rounded-full bg-violet-500" />
+            <Badge variant="outlined" className="gap-1 border-cyan-600/20 bg-cyan-600/5 text-cyan-700 dark:border-cyan-900/60 dark:bg-cyan-950/30 dark:text-cyan-300">
+              <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: TREND_SUCCESS_COLOR }} />
               Exitosos
             </Badge>
-            <Badge variant="outlined" className="gap-1 border-cyan-500/20 bg-cyan-500/5 text-cyan-700">
-              <span className="inline-block h-2 w-2 rounded-full bg-cyan-500" />
+            <Badge variant="outlined" className="gap-1 border-sky-400/30 bg-sky-400/10 text-sky-700 dark:border-sky-900/60 dark:bg-sky-950/30 dark:text-sky-300">
+              <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: TREND_FAILED_COLOR }} />
               Fallidos
             </Badge>
           </div>
@@ -472,13 +615,27 @@ function OverviewTrendCard({ widget }: { widget: DashboardWidgetResponse }) {
       <CardContent className="min-w-0">
         <ResponsiveContainer width="100%" height={320} minWidth={1} minHeight={320}>
           <ComposedChart data={historicalChartNav.chartData} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
+            <defs>
+              <linearGradient id="trendTotalGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={TREND_TOTAL_COLOR} stopOpacity={0.28} />
+                <stop offset="100%" stopColor={TREND_TOTAL_COLOR} stopOpacity={0.04} />
+              </linearGradient>
+              <linearGradient id="trendSuccessGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={TREND_SUCCESS_COLOR} stopOpacity={0.24} />
+                <stop offset="100%" stopColor={TREND_SUCCESS_COLOR} stopOpacity={0.03} />
+              </linearGradient>
+              <linearGradient id="trendFailedGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={TREND_FAILED_COLOR} stopOpacity={0.2} />
+                <stop offset="100%" stopColor={TREND_FAILED_COLOR} stopOpacity={0.02} />
+              </linearGradient>
+            </defs>
             <CartesianGrid vertical={false} stroke="rgba(128,128,128,0.14)" />
             <XAxis dataKey="label" tickLine={false} axisLine={false} />
             <YAxis tick={{ fill: '#64748b', fontSize: 11 }} tickLine={false} axisLine={false} allowDecimals={false} domain={[0, 'auto']} />
             <Tooltip content={<HistoricalTrendTooltip />} />
-            <Line type="monotone" dataKey="total" name="Ambos" stroke="hsl(var(--chart-1))" strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} isAnimationActive={false} />
-            <Line type="monotone" dataKey="permitidos" name="Exitosos" stroke="hsl(var(--chart-2))" strokeWidth={2} dot={false} isAnimationActive={false} />
-            <Line type="monotone" dataKey="denegados" name="Fallidos" stroke="hsl(var(--chart-3))" strokeWidth={2} strokeDasharray="4 3" dot={false} isAnimationActive={false} />
+            <Area type="monotone" dataKey="total" name="Ambos" stroke={TREND_TOTAL_COLOR} fill="url(#trendTotalGradient)" strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} isAnimationActive={false} />
+            <Area type="monotone" dataKey="permitidos" name="Exitosos" stroke={TREND_SUCCESS_COLOR} fill="url(#trendSuccessGradient)" strokeWidth={2} dot={false} isAnimationActive={false} />
+            <Area type="monotone" dataKey="denegados" name="Fallidos" stroke={TREND_FAILED_COLOR} fill="url(#trendFailedGradient)" strokeWidth={2} strokeDasharray="4 3" dot={false} isAnimationActive={false} />
           </ComposedChart>
         </ResponsiveContainer>
       </CardContent>
@@ -513,42 +670,63 @@ function OverviewTopSection({
   )
 
   const studentData = useMemo<TopUsuarioPoint[]>(() => {
-    const maxHistoricalAccesses = topStudents.students[0]?.totalAccesses ?? 1
-    const maxHistoricalSuccessful = topStudents.students[0]?.successfulAccesses ?? 1
-    const maxHistoricalFailed = topStudents.students[0]?.failedAccesses ?? 1
     return topStudents.students.map((student) => ({
+      studentId: student.studentId,
       codigo: student.careerCode,
       nombre: student.name,
       accesos: student.totalAccesses,
       carrera: student.careerName,
       successful: student.successfulAccesses,
       failed: student.failedAccesses,
-      pct: Math.max(3, Math.round((student.totalAccesses / maxHistoricalAccesses) * 100)),
-      pctSuccessful: Math.max(3, Math.round((student.successfulAccesses / maxHistoricalSuccessful) * 100)),
-      pctFailed: Math.max(3, Math.round((student.failedAccesses / maxHistoricalFailed) * 100)),
+      pct: 0,
+      pctSuccessful: 0,
+      pctFailed: 0,
     }))
   }, [topStudents])
 
+  const topCareersMetricKey = topCareersStatus === 'ALL' ? 'accesos' : topCareersStatus === 'SUCCESS' ? 'successful' : 'failed'
+  const topStudentsMetricKey = topStudentsStatus === 'ALL' ? 'accesos' : topStudentsStatus === 'SUCCESS' ? 'successful' : 'failed'
+
+  const topCareersRanked = useMemo(
+    () =>
+      [...careerData]
+        .sort((a, b) => (b[topCareersMetricKey] ?? 0) - (a[topCareersMetricKey] ?? 0) || a.carrera.localeCompare(b.carrera, 'es-MX'))
+        .map((item, idx) => ({
+          ...item,
+          value: item[topCareersMetricKey] ?? 0,
+          fill: TOP_CAREERS_PALETTE[idx % TOP_CAREERS_PALETTE.length],
+        })),
+    [careerData, topCareersMetricKey],
+  )
+
+  const topStudentsRanked = useMemo(() => {
+    const sorted = [...studentData].sort(
+      (a, b) => (b[topStudentsMetricKey] ?? 0) - (a[topStudentsMetricKey] ?? 0) || a.nombre.localeCompare(b.nombre, 'es-MX'),
+    )
+    const maxValue = Math.max(1, ...sorted.map((student) => student[topStudentsMetricKey] ?? 0))
+
+    return sorted.map((student) => {
+      const selectedValue = student[topStudentsMetricKey] ?? 0
+      const computedPct = Math.max(3, Math.round((selectedValue / maxValue) * 100))
+      return {
+        ...student,
+        pct: computedPct,
+        pctSuccessful: computedPct,
+        pctFailed: computedPct,
+      }
+    })
+  }, [studentData, topStudentsMetricKey])
+
   const topCareersPagination = useMemo(
-    () => getPagedSlice(careerData, topCareersPage, TOP_CAREERS_PAGE_SIZES),
-    [careerData, topCareersPage],
+    () => getPagedSlice(topCareersRanked, topCareersPage, TOP_CAREERS_PAGE_SIZES),
+    [topCareersRanked, topCareersPage],
   )
 
   const topStudentsPagination = useMemo(
-    () => getPagedSlice(studentData, topStudentsPage, [TOP_STUDENTS_PAGE_SIZE]),
-    [studentData, topStudentsPage],
+    () => getPagedSlice(topStudentsRanked, topStudentsPage, [TOP_STUDENTS_PAGE_SIZE]),
+    [topStudentsRanked, topStudentsPage],
   )
-  const topCareersMetricKey = topCareersStatus === 'ALL' ? 'accesos' : topCareersStatus === 'SUCCESS' ? 'successful' : 'failed'
-  const topCareerPageItems = useMemo(
-    () => [...topCareersPagination.items]
-      .sort((a, b) => (b[topCareersMetricKey] ?? 0) - (a[topCareersMetricKey] ?? 0))
-      .map((item, idx) => ({
-        ...item,
-        value: item[topCareersMetricKey] ?? 0,
-        fill: ACCESS_COLORS[idx % ACCESS_COLORS.length],
-      })),
-    [topCareersMetricKey, topCareersPagination.items],
-  )
+  const topCareerPageItems = topCareersPagination.items
 
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.35fr_0.75fr]">
@@ -561,11 +739,17 @@ function OverviewTopSection({
             </CardTitle>
             <p className="mt-1 text-xs text-muted-foreground">Carreras con más accesos históricos</p>
           </div>
-          <CardsButtonGroup value={topCareersStatus} onValueChange={setTopCareersStatus} />
+          <CardsButtonGroup
+            value={topCareersStatus}
+            onValueChange={(value) => {
+              setTopCareersStatus(value)
+              setTopCareersPage(1)
+            }}
+          />
         </CardHeader>
         <CardContent className="flex min-w-0 flex-1 flex-col">
           <div className="min-h-0 flex-1">
-            <ResponsiveContainer width="100%" height={280}>
+            <ResponsiveContainer width="100%" height="100%">
               <BarChart data={topCareerPageItems} margin={{ top: 12, right: 12, left: -12, bottom: 0 }}>
                 <CartesianGrid vertical={false} stroke="rgba(128,128,128,0.14)" />
                 <XAxis dataKey="codigo" tickLine={false} axisLine={false} />
@@ -588,7 +772,13 @@ function OverviewTopSection({
             </ResponsiveContainer>
           </div>
           <div className="mt-auto flex items-center justify-end gap-2 pt-3">
-            <Button variant="outline" size="sm" disabled={topCareersPagination.safePage <= 1} onClick={() => setTopCareersPage((current) => Math.max(1, current - 1))}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-border/40 hover:border-border/60"
+              disabled={topCareersPagination.safePage <= 1}
+              onClick={() => setTopCareersPage((current) => Math.max(1, current - 1))}
+            >
               Anterior
             </Button>
             <span className="text-xs text-muted-foreground">
@@ -597,6 +787,7 @@ function OverviewTopSection({
             <Button
               variant="outline"
               size="sm"
+              className="border-border/40 hover:border-border/60"
               disabled={topCareersPagination.safePage >= topCareersPagination.totalPages}
               onClick={() => setTopCareersPage((current) => Math.min(topCareersPagination.totalPages, current + 1))}
             >
@@ -615,19 +806,20 @@ function OverviewTopSection({
             </CardTitle>
             <p className="mt-1 text-xs text-muted-foreground">Estudiantes con mayor actividad histórica</p>
           </div>
-          <CardsButtonGroup value={topStudentsStatus} onValueChange={setTopStudentsStatus} />
+          <CardsButtonGroup
+            value={topStudentsStatus}
+            onValueChange={(value) => {
+              setTopStudentsStatus(value)
+              setTopStudentsPage(1)
+            }}
+          />
         </CardHeader>
         <CardContent className="flex min-w-0 flex-1 flex-col">
           <div className="mt-1 flex-1 space-y-2.5">
-            {topStudentsPagination.items.map((student, index) => {
-              const rank = (topStudentsPagination.safePage - 1) * TOP_STUDENTS_PAGE_SIZE + index + 1
-              const isPodium = rank <= 3
-              const progressValue =
-                topStudentsStatus === 'ALL'
-                  ? student.pct
-                  : topStudentsStatus === 'SUCCESS'
-                    ? student.pctSuccessful
-                    : student.pctFailed
+              {topStudentsPagination.items.map((student, index) => {
+                const rank = (topStudentsPagination.safePage - 1) * TOP_STUDENTS_PAGE_SIZE + index + 1
+                const isPodium = rank <= 3
+                const progressValue = student.pct
 
               const badgeValue =
                 topStudentsStatus === 'ALL'
@@ -637,7 +829,7 @@ function OverviewTopSection({
                     : `${student.failed} accesos`
 
               return (
-                <div key={`${student.nombre}-${rank}`} className="rounded-2xl border border-border/60 bg-card/50 px-3 py-2.5">
+                <div key={student.studentId} className="rounded-2xl border border-border/60 bg-card/50 px-3 py-2.5">
                   <div className="flex items-center gap-3">
                     <div className="flex h-10 w-10 shrink-0 items-center justify-center">
                       {isPodium ? (
@@ -664,14 +856,14 @@ function OverviewTopSection({
                         <div className="flex items-center gap-2">
                           <Badge
                             variant="outlined"
-                            className="h-5 gap-1 border-emerald-500/20 bg-emerald-500/5 px-2 py-0 text-[10px] font-semibold text-emerald-700"
+                            className="h-5 gap-1 border-emerald-500/20 bg-emerald-500/5 px-2 py-0 text-[10px] font-semibold text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-300"
                           >
                             <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" />
                             {badgeValue}
                           </Badge>
                           <Badge
                             variant="outlined"
-                            className="h-5 border-border/70 bg-secondary/30 px-1.5 py-0 text-[9px] font-semibold uppercase tracking-wide"
+                            className="h-5 rounded-full border-border/70 bg-secondary/30 px-2.5 py-0 text-[9px] font-semibold uppercase tracking-wide text-foreground dark:border-border/80 dark:bg-secondary/50 dark:text-foreground"
                           >
                             {student.codigo}
                           </Badge>
@@ -704,7 +896,13 @@ function OverviewTopSection({
           </div>
 
           <div className="mt-auto flex items-center justify-end gap-2 pt-3">
-            <Button variant="outline" size="sm" disabled={topStudentsPagination.safePage <= 1} onClick={() => setTopStudentsPage((current) => Math.max(1, current - 1))}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-border/40 hover:border-border/60"
+              disabled={topStudentsPagination.safePage <= 1}
+              onClick={() => setTopStudentsPage((current) => Math.max(1, current - 1))}
+            >
               Anterior
             </Button>
             <span className="text-xs text-muted-foreground">
@@ -713,6 +911,7 @@ function OverviewTopSection({
             <Button
               variant="outline"
               size="sm"
+              className="border-border/40 hover:border-border/60"
               disabled={topStudentsPagination.safePage >= topStudentsPagination.totalPages}
               onClick={() => setTopStudentsPage((current) => Math.min(topStudentsPagination.totalPages, current + 1))}
             >
@@ -882,7 +1081,7 @@ function renderBreakdown(widget: DashboardWidgetResponse) {
                   className="h-full rounded-full"
                   style={{
                     width: `${Math.max(4, percentage)}%`,
-                    backgroundColor: ACCESS_COLORS[index % ACCESS_COLORS.length],
+                    backgroundColor: TOP_CAREERS_PALETTE[index % TOP_CAREERS_PALETTE.length],
                   }}
                 />
               </div>

@@ -73,7 +73,7 @@ public class StudentAuthController {
             HttpServletRequest httpRequest
     ) {
         UUID studentId = UUID.fromString(authentication.getName());
-        studentAuthService.changePassword(studentId, request.currentPassword(), request.newPassword(), httpRequest);
+        studentAuthService.changePassword(studentId, request.currentPassword(), request.newPassword(), request.confirmNewPassword(), httpRequest);
         return ResponseEntity.noContent().build();
     }
 
@@ -93,7 +93,7 @@ public class StudentAuthController {
             @Valid @RequestBody ResetPasswordConfirm request,
             HttpServletRequest httpRequest
     ) {
-        studentAuthService.confirmPasswordReset(request.token(), request.newPassword(), httpRequest);
+        studentAuthService.confirmPasswordReset(request.token(), request.newPassword(), request.confirmNewPassword(), httpRequest);
         return ResponseEntity.noContent().build();
     }
 

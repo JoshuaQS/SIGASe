@@ -121,7 +121,7 @@ public class AuditLogReportService {
             filterMeta.put("entityType", filters.entityType());
         }
         if (filters.resolvedOutcome() != null) {
-            filterMeta.put("result", filters.resolvedOutcome().name());
+            filterMeta.put("outcome", filters.resolvedOutcome().name());
         }
         if (StringUtils.hasText(filters.requestId())) {
             filterMeta.put("requestId", filters.requestId());

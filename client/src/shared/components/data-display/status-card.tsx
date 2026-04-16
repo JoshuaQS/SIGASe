@@ -1,4 +1,4 @@
-import { TrendingUp, TrendingDown } from 'lucide-react'
+import { ArrowDownRight, ArrowUpRight } from 'lucide-react'
 import { cn } from '@/shared/lib/utils'
 import { Card } from '@/shared/components/ui/card'
 import { motion } from 'framer-motion'
@@ -33,6 +33,9 @@ export default function StatCard({
   const v = variantStyles[variant]
   const isPositive = trend !== undefined && trend > 0
   const isNegative = trend !== undefined && trend < 0
+  const trendTone = isPositive ? 'text-emerald-600 dark:text-emerald-400' : isNegative ? 'text-destructive' : 'text-muted-foreground'
+  const TrendIcon = isPositive ? ArrowUpRight : ArrowDownRight
+  const trendValue = `${isPositive ? '+' : isNegative ? '-' : ''}${Math.abs(trend ?? 0).toFixed(1)}%`
 
   return (
     <motion.div
@@ -40,7 +43,7 @@ export default function StatCard({
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay, duration: 0.3 }}
     >
-      <Card className={cn('p-5 hover:shadow-md transition-all duration-200 group', className)}>
+      <Card className={cn('group p-5 transition-all duration-200 hover:shadow-lg', className)}>
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
             <p className="text-xs text-muted-foreground font-semibold uppercase tracking-widest truncate">
@@ -53,17 +56,11 @@ export default function StatCard({
               <p className="text-xs text-muted-foreground mt-1.5 leading-tight">{subtitle}</p>
             )}
             {trend !== undefined && (
-              <div className={cn(
-                'flex items-center gap-1 mt-2 text-xs font-semibold',
-                isPositive ? 'text-success' : isNegative ? 'text-destructive' : 'text-muted-foreground'
-              )}>
-                {isPositive
-                  ? <TrendingUp className="w-3 h-3" />
-                  : <TrendingDown className="w-3 h-3" />
-                }
-                <span>{isPositive ? '+' : ''}{trend}%</span>
+              <div className={cn('mt-3 inline-flex items-center gap-1.5 text-sm font-semibold tabular-nums leading-none', trendTone)}>
+                <TrendIcon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                <span>{trendValue}</span>
                 {trendLabel && (
-                  <span className="text-muted-foreground font-normal ml-0.5">{trendLabel}</span>
+                  <span className="font-medium text-muted-foreground">{trendLabel}</span>
                 )}
               </div>
             )}

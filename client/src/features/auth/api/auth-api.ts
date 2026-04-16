@@ -23,6 +23,10 @@ type AdminMeResponse = {
   lastNamePaternal: string;
   lastNameMaternal: string | null;
   role: AdminRole;
+  hasChangedTemporaryPassword: boolean;
+  temporaryPasswordGeneratedAt: string | null;
+  temporaryPasswordNotifiedAt: string | null;
+  passwordChangedAt: string | null;
 };
 
 type StudentLoginResponse = {
@@ -66,12 +70,24 @@ export async function logoutAdmin() {
   await api.post('/auth/admin/logout');
 }
 
+export async function changeAdminPassword(currentPassword: string, newPassword: string) {
+  await api.post<ApiEnvelope<null>>('/auth/admin/change-password', {
+    currentPassword,
+    newPassword,
+    confirmNewPassword: newPassword,
+  });
+}
+
 export async function requestAdminPasswordReset(email: string) {
   await api.post<ApiEnvelope<null>>('/auth/admin/reset-password/request', { email });
 }
 
 export async function confirmAdminPasswordReset(token: string, newPassword: string) {
-  await api.post<ApiEnvelope<null>>('/auth/admin/reset-password/confirm', { token, newPassword });
+  await api.post<ApiEnvelope<null>>('/auth/admin/reset-password/confirm', {
+    token,
+    newPassword,
+    confirmNewPassword: newPassword,
+  });
 }
 
 export async function loginStudent(email: string, password: string) {
@@ -98,6 +114,7 @@ export async function changeStudentPassword(newPassword: string, currentPassword
   await api.post<null>('/auth/student/change-password', {
     currentPassword,
     newPassword,
+    confirmNewPassword: newPassword,
   });
 }
 
@@ -110,5 +127,9 @@ export async function requestStudentPasswordReset(email: string) {
 }
 
 export async function confirmStudentPasswordReset(token: string, newPassword: string) {
-  await api.post<null>('/auth/student/reset-password/confirm', { token, newPassword });
+  await api.post<null>('/auth/student/reset-password/confirm', {
+    token,
+    newPassword,
+    confirmNewPassword: newPassword,
+  });
 }

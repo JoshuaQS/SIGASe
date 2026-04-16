@@ -92,7 +92,12 @@ export function StudentStatusChangeModal({
               </>
             )}
             badges={(
-              <Badge variant={student.status === 'ACTIVE' ? 'success' : 'muted'}>
+              <Badge
+                variant={student.status === 'ACTIVE' ? 'success' : 'muted'}
+                className={student.status === 'ACTIVE'
+                  ? 'dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-300'
+                  : 'dark:border-border/80 dark:bg-muted/30 dark:text-muted-foreground'}
+              >
                 {student.status === 'ACTIVE' ? 'Activo' : 'Deshabilitado'}
               </Badge>
             )}
@@ -102,7 +107,7 @@ export function StudentStatusChangeModal({
           <ModalFormBody>
             <div className="relative overflow-hidden rounded-xl border border-border">
               <div className="grid grid-cols-2">
-                <div className="border-r border-border bg-success/10">
+                <div className="border-r border-border bg-success/10 dark:bg-emerald-950/20">
                   <div className="flex flex-col items-center justify-center px-6 py-6 text-center">
                     <div className="mb-3 h-2 w-2 rounded-full bg-success" />
                     <p className="text-[10px] font-bold uppercase tracking-[0.35em] text-muted-foreground">
@@ -113,7 +118,7 @@ export function StudentStatusChangeModal({
                     </p>
                   </div>
                 </div>
-                <div className="bg-destructive/10">
+                <div className="bg-destructive/10 dark:bg-red-950/20">
                   <div className="flex flex-col items-center justify-center px-6 py-6 text-center">
                     <div className="mb-3 h-2 w-2 rounded-full bg-destructive" />
                     <p className="text-[10px] font-bold uppercase tracking-[0.35em] text-muted-foreground">
@@ -137,8 +142,8 @@ export function StudentStatusChangeModal({
               className={cn(
                 'rounded-xl border px-4 py-4 text-sm',
                 isDeactivate
-                  ? 'border-destructive/20 bg-destructive/10 text-destructive'
-                  : 'border-success/20 bg-success/10 text-success',
+                  ? 'border-destructive/20 bg-destructive/10 text-destructive dark:bg-red-950/20'
+                  : 'border-success/20 bg-success/10 text-success dark:bg-emerald-950/20',
               )}
             >
               <div className="mb-2 flex items-center gap-2 font-semibold">

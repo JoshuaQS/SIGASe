@@ -104,7 +104,7 @@ public class StudentGoogleLoginService {
             throw new BusinessException(ErrorCode.FORBIDDEN, "No autorizado.");
         }
 
-        if (student.getStatus() != StudentStatus.ACTIVE) {
+        if (student.getStatus() == StudentStatus.INACTIVE) {
             studentAccessLoggingFacade.log(
                     request,
                     student,
@@ -117,6 +117,10 @@ public class StudentGoogleLoginService {
                     "Estudiante inactivo."
             );
             throw new BusinessException(ErrorCode.FORBIDDEN, "Estudiante inactivo.");
+        }
+
+        if (student.getStatus() == StudentStatus.PENDING) {
+            student.setMustChangePassword(true);
         }
 
         if (authLockoutPolicy.isLocked(student.getLockedUntil())) {
@@ -161,7 +165,7 @@ public class StudentGoogleLoginService {
         }
 
         student.setLastLoginAt(Instant.now());
-        if (student.getPasswordHash() == null || student.getPasswordHash().isBlank()) {
+        if (student.getPasswordHash() == null || student.getPasswordHash().isBlank() || student.getStatus() == StudentStatus.PENDING) {
             student.setMustChangePassword(true);
         }
         studentRepository.save(student);

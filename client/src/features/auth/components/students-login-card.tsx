@@ -204,7 +204,8 @@ const googleClientId = useMemo(() => {
     formState: { errors, isSubmitting },
   } = useForm<StudentPasswordLoginFields>({
     resolver: zodResolver(studentPasswordLoginSchema),
-    mode: 'onTouched',
+    mode: 'onChange',
+    reValidateMode: 'onChange',
   });
 
   const isBusy = isSubmitting || isGoogleSubmitting;

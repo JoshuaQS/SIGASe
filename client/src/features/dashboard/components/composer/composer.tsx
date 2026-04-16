@@ -1,48 +1,41 @@
 import { useDeferredValue, useEffect, useMemo, useState } from 'react'
 import {
-  Check,
+  BarChart3,
+  CalendarIcon,
   Filter,
   Layers,
   Loader2,
   RefreshCcw,
   Search,
   SlidersHorizontal,
+  Table,
+  TrendingUp,
 } from 'lucide-react'
+import { format } from 'date-fns'
 
 import {
-  resolveDashboardAnalysisOptions,
   searchDashboardCareers,
   searchDashboardStudents,
-  type DashboardAnalysisField,
-  type DashboardAnalysisOptionsResponse,
+  type DashboardAnalysisMetadataResponse,
+  type DashboardAnalysisRequest,
   type DashboardCareerSearchItem,
   type DashboardStudentSearchItem,
 } from '@/features/dashboard/api/dashboard-api'
-import { DateRangeSelector } from '@/features/dashboard/components/date-range/date-range-selector'
-import {
-  applyOptionsDefaults,
-  buildAnalysisRequest,
-  buildOptionsRequest,
-  getCurrentStep,
-  getCurrentStepFromBackend,
-  getVisualScopeChoice,
-  type FilterComposerProps,
-  type FilterState,
-} from '@/features/dashboard/components/composer/composer-types'
-import { useFilterComposer } from '@/features/dashboard/components/composer/useFilterComposer'
 import { Stepper, type Step } from '@/features/dashboard/components/composer/stepper'
+import {
+  ALUMNO_TOP_OPTIONS,
+  CARRERA_TOP_OPTIONS,
+  getCurrentStep,
+  type AccessType,
+  type FilterState,
+  supportsRankingForState,
+  useFilterComposer,
+} from '@/features/dashboard/components/composer/useFilterComposer'
 import { useAppToast } from '@/shared/components/ui/app-toast-provider'
 import { Badge } from '@/shared/components/ui/badge'
 import { Button } from '@/shared/components/ui/button'
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-  CommandSeparator,
-} from '@/shared/components/ui/command'
+import { Card, CardContent } from '@/shared/components/ui/card'
+import { Calendar } from '@/shared/components/ui/calendar'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog'
 import { Input } from '@/shared/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/popover'
@@ -52,862 +45,557 @@ import { Switch } from '@/shared/components/ui/switch'
 import { cn } from '@/shared/lib/utils'
 
 const COMPOSER_STEPPER_STEPS: Step[] = [
-  { id: 'scope', label: 'Tipo de análisis', description: 'Alumnos o carreras', icon: Filter },
-  { id: 'mode', label: 'Alcance', description: 'Cómo quieres verlo', icon: Layers },
-  { id: 'selection', label: 'Selección', description: 'Quién o qué quieres revisar', icon: Search },
-  { id: 'config', label: 'Configuración', description: 'Resultado, periodo y ranking', icon: SlidersHorizontal },
+  { id: 'type', label: 'Tipo de filtrado', description: 'Alumno o carrera', icon: Filter },
+  { id: 'scope', label: 'Alcance', description: 'Individual o grupos', icon: Layers },
+  { id: 'selection', label: 'Selección', description: 'Registros específicos', icon: Search },
+  { id: 'config', label: 'Configuración', description: 'Resultado, fechas y ranking', icon: SlidersHorizontal },
 ]
 
-const CAREER_WARMUP_QUERIES = ['in', 'li', 'de'] as const
+const PREVIEW_BAR_HEIGHTS_PCT = [38, 72, 45, 88, 52, 67, 41, 59] as const
 
-function SearchResultsPanel<T extends { id: string; displayLabel: string; subtitle: string }>({
-  query,
-  loading,
-  items,
-  emptyMessage,
-  onSelect,
-}: {
-  query: string
-  loading: boolean
-  items: T[]
-  emptyMessage: string
-  onSelect: (item: T) => void
-}) {
-  if (query.trim().length < 2) {
-    return (
-      <div className="flex min-h-36 items-center rounded-lg border border-dashed px-3 py-4 text-xs text-muted-foreground">
-        Escribe al menos 2 caracteres para buscar.
-      </div>
-    )
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-36 space-y-2 rounded-lg border p-3">
-        <Skeleton className="h-8 w-full" />
-        <Skeleton className="h-8 w-full" />
-        <Skeleton className="h-8 w-full" />
-      </div>
-    )
-  }
-
-  if (items.length === 0) {
-    return (
-      <div className="flex min-h-36 items-center rounded-lg border border-dashed px-3 py-4 text-xs text-muted-foreground">
-        {emptyMessage}
-      </div>
-    )
-  }
-
-  return (
-    <div className="min-h-36 max-h-52 overflow-auto rounded-lg border">
-      {items.map((item) => (
-        <button
-          key={item.id}
-          type="button"
-          onClick={() => onSelect(item)}
-          className="flex w-full flex-col items-start gap-0.5 border-b px-3 py-2 text-left transition-colors last:border-b-0 hover:bg-accent/60"
-        >
-          <span className="text-sm font-medium">{item.displayLabel}</span>
-          <span className="text-xs text-muted-foreground">{item.subtitle}</span>
-        </button>
-      ))}
-    </div>
-  )
+type ComposerProps = {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  metadata: DashboardAnalysisMetadataResponse
+  currentLayoutLabel?: string | null
+  lastAppliedSummary?: string | null
+  currentWidgets?: string[]
+  onApply: (request: DashboardAnalysisRequest) => Promise<boolean> | boolean
+  onReset: () => Promise<void> | void
 }
 
-function mergeCareerResults(responses: DashboardCareerSearchItem[][], maxItems = 12) {
-  const merged = new Map<string, DashboardCareerSearchItem>()
+function mapAccessType(accessType: AccessType): 'ALL' | 'SUCCESS' | 'FAILED' {
+  if (accessType === 'exitoso') return 'SUCCESS'
+  if (accessType === 'fallido') return 'FAILED'
+  return 'ALL'
+}
 
-  responses.flat().forEach((item) => {
-    if (!merged.has(item.id)) {
-      merged.set(item.id, item)
+function toDashboardRequest(
+  state: FilterState,
+  defaultSortDirection: DashboardAnalysisRequest['sortDirection'],
+): DashboardAnalysisRequest | null {
+  if (!state.filterType || !state.scope) return null
+
+  if (state.filterType === 'alumno') {
+    if (state.scope === 'individual' && !state.selectedStudent) return null
+    const supportsRanking = supportsRankingForState(state)
+
+    return {
+      scope: 'STUDENTS',
+      mode: state.scope === 'todos' ? 'ALL' : 'INDIVIDUAL',
+      studentId: state.scope === 'individual' ? state.selectedStudent : null,
+      careerIds: null,
+      accessResult: mapAccessType(state.accessType),
+      dateFilterType: state.dateFilter ? 'CUSTOM_RANGE' : 'NONE',
+      dateFrom: state.dateFilter && state.dateRange.from ? state.dateRange.from.toISOString() : null,
+      dateTo: state.dateFilter && state.dateRange.to ? state.dateRange.to.toISOString() : null,
+      rankingMode: supportsRanking && state.ranking ? 'TOP' : 'NONE',
+      topN: supportsRanking && state.ranking ? state.topN : null,
+      sortDirection: state.sortOrder === 'asc' ? 'ASC' : defaultSortDirection,
+      widgetControls: null,
     }
-  })
-
-  return Array.from(merged.values())
-    .sort((left, right) => left.displayLabel.localeCompare(right.displayLabel, 'es'))
-    .slice(0, maxItems)
-}
-
-function hasResolvedSelection(state: FilterState) {
-  if (!state.scope) return false
-
-  if (state.scope === 'STUDENTS') {
-    if (state.studentScopeChoice === 'ALL') return true
-    if (state.studentScopeChoice === 'INDIVIDUAL') return Boolean(state.selectedStudent)
-    return false
   }
 
-  if (state.careerScopeChoice === 'INDIVIDUAL') {
-    return state.selectedCareers.length > 0
-  }
+  if (state.scope === 'individual' && state.selectedCareers.length === 0) return null
+  if (state.scope === 'varias' && state.selectedCareers.length < 2) return null
+  const supportsRanking = supportsRankingForState(state)
 
-  if (state.careerScopeChoice === 'MULTIPLE') {
-    return state.allCareersSelected || state.selectedCareers.length > 0
-  }
-
-  return false
-}
-
-function getNextStepMessage(field: DashboardAnalysisField | null, optionsLoading: boolean, isReadyToApply: boolean) {
-  if (optionsLoading) {
-    return 'Ajustando la siguiente parte del análisis…'
-  }
-
-  if (isReadyToApply) {
-    return 'Ya puedes aplicar el análisis.'
-  }
-
-  switch (field) {
-    case 'SCOPE':
-      return 'Empieza eligiendo el tipo de análisis.'
-    case 'MODE':
-      return 'Ahora define el alcance.'
-    case 'STUDENT_ID':
-      return 'Selecciona el alumno que quieres revisar.'
-    case 'CAREER_IDS':
-      return 'Selecciona una o varias carreras.'
-    case 'ACCESS_RESULT':
-      return 'Elige el resultado que quieres ver.'
-    case 'DATE_FILTER_TYPE':
-    case 'DATE_FROM':
-    case 'DATE_TO':
-      return 'Si quieres, ajusta el periodo.'
-    case 'RANKING_MODE':
-    case 'TOP_N':
-    case 'SORT_DIRECTION':
-      return 'Termina de configurar el ranking.'
-    default:
-      return 'Sigue construyendo el análisis.'
+  return {
+    scope: 'CAREERS',
+    mode: state.scope === 'todas' ? 'ALL' : state.scope === 'varias' ? 'MULTI' : 'INDIVIDUAL',
+    studentId: null,
+    careerIds: state.scope === 'todas' ? null : state.selectedCareers,
+    accessResult: mapAccessType(state.accessType),
+    dateFilterType: state.dateFilter ? 'CUSTOM_RANGE' : 'NONE',
+    dateFrom: state.dateFilter && state.dateRange.from ? state.dateRange.from.toISOString() : null,
+    dateTo: state.dateFilter && state.dateRange.to ? state.dateRange.to.toISOString() : null,
+    rankingMode: supportsRanking && state.ranking ? 'TOP' : 'NONE',
+    topN: supportsRanking && state.ranking ? state.topN : null,
+    sortDirection: state.sortOrder === 'asc' ? 'ASC' : defaultSortDirection,
+    widgetControls: null,
   }
 }
 
-function CareerMultiSelectCombobox({
-  query,
-  onQueryChange,
-  loading,
-  items,
-  selectedItems,
-  allSelected,
-  onToggleItem,
-  onToggleAll,
-}: {
-  query: string
-  onQueryChange: (value: string) => void
-  loading: boolean
-  items: DashboardCareerSearchItem[]
-  selectedItems: DashboardCareerSearchItem[]
-  allSelected: boolean
-  onToggleItem: (item: DashboardCareerSearchItem) => void
-  onToggleAll: (enabled: boolean) => void
-}) {
-  const [open, setOpen] = useState(false)
-  const selectedIds = useMemo(() => new Set(selectedItems.map((item) => item.id)), [selectedItems])
-  const triggerLabel = allSelected
-    ? 'Todas las carreras'
-    : selectedItems.length > 0
-      ? `${selectedItems.length} carreras seleccionadas`
-      : 'Abrir selector de carreras'
+function getPreviewStage(state: FilterState) {
+  if (!state.filterType) return 'initial'
+  if (!state.scope) return 'initial'
+
+  const hasSelection =
+    (state.filterType === 'alumno' && (state.scope === 'todos' || Boolean(state.selectedStudent)))
+    || (state.filterType === 'carrera' && (
+      state.scope === 'todas'
+      || (state.scope === 'individual' && state.selectedCareers.length > 0)
+      || (state.scope === 'varias' && state.selectedCareers.length > 0)
+    ))
+
+  if (!hasSelection) return 'partial'
+  return 'advanced'
+}
+
+function PreviewPanel({ state }: { state: FilterState }) {
+  const stage = getPreviewStage(state)
+  const supportsRanking = supportsRankingForState(state)
+
+  const showSplit = state.accessType === 'ambos'
+  const showRanking = supportsRanking && state.ranking
+  const showTable = !showRanking && (state.filterType === 'carrera' || state.scope === 'todos' || state.scope === 'todas' || state.scope === 'varias')
 
   return (
-    <div className="space-y-3">
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <Button type="button" variant="outline" className="w-full justify-between">
-            <span className={cn('truncate', !allSelected && selectedItems.length === 0 && 'text-muted-foreground')}>
-              {triggerLabel}
-            </span>
-            <Search className="size-4 text-muted-foreground" />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent align="start" className="w-[min(420px,calc(100vw-2rem))] p-0">
-          <Command shouldFilter={false}>
-            <CommandInput
-              value={query}
-              onValueChange={onQueryChange}
-              placeholder="Buscar por clave o nombre"
-            />
-            <CommandList>
-              <CommandGroup heading="Acciones">
-                <CommandItem
-                  data-checked={allSelected}
-                  onSelect={() => onToggleAll(!allSelected)}
-                >
-                  <Check className={cn('size-4', allSelected ? 'opacity-100' : 'opacity-0')} />
-                  <div className="flex min-w-0 flex-col">
-                    <span>Seleccionar todas</span>
-                    <span className="text-xs text-muted-foreground">Resuelve `mode=ALL` sin depender de un catálogo exhaustivo.</span>
-                  </div>
-                </CommandItem>
-              </CommandGroup>
+    <div className='w-[45%] space-y-4'>
+      <p className='text-xs font-medium text-muted-foreground uppercase tracking-wide'>Vista previa del dashboard</p>
+      <div className='rounded-xl border bg-muted/30 p-4 space-y-4'>
+        <div className='grid grid-cols-3 gap-3'>
+          {[1, 2, 3].map((id) => (
+            <div key={id} className='rounded-lg border bg-card p-3 space-y-2'>
+              <Skeleton className={cn('h-3 w-16', stage !== 'initial' && 'bg-primary/20')} />
+              <Skeleton className={cn('h-6 w-12', stage === 'advanced' && 'bg-primary/35')} />
+            </div>
+          ))}
+        </div>
 
-              <CommandSeparator />
+        <div className='rounded-lg border bg-card p-4'>
+          <div className='mb-3 flex items-center gap-2'>
+            <BarChart3 className={cn('h-4 w-4', stage === 'advanced' ? 'text-primary' : 'text-muted-foreground')} />
+            <Skeleton className='h-3 w-24' />
+          </div>
+          <div className='flex h-24 items-end gap-1'>
+            {PREVIEW_BAR_HEIGHTS_PCT.map((pct, i) => (
+              <div
+                key={i}
+                className={cn('flex-1 rounded-t transition-all', stage === 'advanced' ? 'bg-primary/40' : 'bg-muted')}
+                style={{ height: `${pct}%` }}
+              />
+            ))}
+          </div>
+        </div>
 
-              {loading ? (
-                <div className="space-y-2 px-3 py-3">
-                  <Skeleton className="h-8 w-full" />
-                  <Skeleton className="h-8 w-full" />
-                  <Skeleton className="h-8 w-full" />
-                </div>
-              ) : (
-                <>
-                  <CommandGroup heading={query.trim().length >= 2 ? 'Resultados' : 'Opciones sugeridas'}>
-                    {items.map((item) => {
-                      const checked = selectedIds.has(item.id)
-                      return (
-                        <CommandItem
-                          key={item.id}
-                          data-checked={checked}
-                          onSelect={() => onToggleItem(item)}
-                        >
-                          <Check className={cn('size-4', checked ? 'opacity-100' : 'opacity-0')} />
-                          <div className="flex min-w-0 flex-col">
-                            <span className="truncate">{item.displayLabel}</span>
-                            <span className="truncate text-xs text-muted-foreground">{item.subtitle}</span>
-                          </div>
-                        </CommandItem>
-                      )
-                    })}
-                  </CommandGroup>
-                  <CommandEmpty>
-                    {query.trim().length >= 2
-                      ? 'No encontramos carreras para esa búsqueda.'
-                      : 'Abre el selector y usa la búsqueda para acotar carreras específicas.'}
-                  </CommandEmpty>
-                </>
-              )}
-            </CommandList>
-          </Command>
-        </PopoverContent>
-      </Popover>
+        {showSplit ? (
+          <div className='grid grid-cols-2 gap-3'>
+            <div className='rounded-lg border bg-card p-3 space-y-2'>
+              <Skeleton className='h-3 w-20 bg-emerald-100' />
+              <Skeleton className='h-16 w-full' />
+            </div>
+            <div className='rounded-lg border bg-card p-3 space-y-2'>
+              <Skeleton className='h-3 w-20 bg-rose-100' />
+              <Skeleton className='h-16 w-full' />
+            </div>
+          </div>
+        ) : null}
 
-      <div className="flex flex-wrap gap-2">
-        {allSelected ? (
-          <Badge variant="default">Todas las carreras</Badge>
-        ) : selectedItems.length > 0 ? (
-          selectedItems.map((career) => (
-            <Badge key={career.id} variant="outlined" className="gap-1 px-2 py-1">
-              {career.displayLabel}
-              <button
-                type="button"
-                className="text-muted-foreground hover:text-foreground"
-                onClick={() => onToggleItem(career)}
-              >
-                ×
-              </button>
-            </Badge>
-          ))
-        ) : (
-          <span className="text-xs text-muted-foreground">
-            Aún no has agregado carreras. Puedes abrir el combobox y seleccionar varias sin escribir desde cero.
-          </span>
-        )}
+        {showRanking ? (
+          <div className='rounded-lg border bg-card p-4'>
+            <div className='mb-3 flex items-center gap-2'>
+              <TrendingUp className='h-4 w-4 text-primary' />
+              <span className='text-xs font-medium'>Top {state.topN}</span>
+            </div>
+            {Array.from({ length: Math.min(state.topN, 5) }).map((_, i) => (
+              <div key={i} className='flex items-center gap-2 py-1.5'>
+                <span className='w-4 text-xs text-muted-foreground'>{i + 1}</span>
+                <Skeleton className='h-3 flex-1 bg-primary/15' />
+              </div>
+            ))}
+          </div>
+        ) : null}
+
+        {showTable ? (
+          <div className='rounded-lg border bg-card p-4 space-y-3'>
+            <div className='flex items-center gap-2'>
+              <Table className='h-4 w-4 text-muted-foreground' />
+              <Skeleton className='h-3 w-20' />
+            </div>
+            {Array.from({ length: stage === 'initial' ? 2 : 4 }).map((_, row) => (
+              <div key={row} className='grid grid-cols-4 gap-2'>
+                <Skeleton className='h-2.5' />
+                <Skeleton className='h-2.5' />
+                <Skeleton className='h-2.5' />
+                <Skeleton className='h-2.5' />
+              </div>
+            ))}
+          </div>
+        ) : null}
       </div>
     </div>
   )
 }
 
-function ComposerBody({
+export default function Composer({
+  open,
+  onOpenChange,
   metadata,
   onApply,
   onReset,
-  onRequestClose,
-}: FilterComposerProps & { onRequestClose?: () => void }) {
-  const composer = useFilterComposer(metadata)
+}: ComposerProps) {
+  const composer = useFilterComposer()
   const { showToast } = useAppToast()
-  const { state, setState } = composer
-  const [studentQuery, setStudentQuery] = useState('')
-  const [careerQuery, setCareerQuery] = useState('')
-  const deferredStudentQuery = useDeferredValue(studentQuery)
-  const deferredCareerQuery = useDeferredValue(careerQuery)
-  const [studentResults, setStudentResults] = useState<DashboardStudentSearchItem[]>([])
-  const [careerResults, setCareerResults] = useState<DashboardCareerSearchItem[]>([])
-  const [studentSearchLoading, setStudentSearchLoading] = useState(false)
-  const [careerSearchLoading, setCareerSearchLoading] = useState(false)
-  const [options, setOptions] = useState<DashboardAnalysisOptionsResponse | null>(null)
-  const [optionsLoading, setOptionsLoading] = useState(false)
-  const [applyLoading, setApplyLoading] = useState(false)
-  const [resetLoading, setResetLoading] = useState(false)
 
-  const optionsRequest = useMemo(() => buildOptionsRequest(state), [state])
-  const analysisRequest = useMemo(() => buildAnalysisRequest(state, options), [state, options])
-  const currentStep = useMemo(
-    () => getCurrentStepFromBackend(options?.nextStep, state),
-    [options?.nextStep, state],
+  const [studentSearch, setStudentSearch] = useState('')
+  const [careerSearch, setCareerSearch] = useState('')
+  const [studentsLoading, setStudentsLoading] = useState(false)
+  const [careersLoading, setCareersLoading] = useState(false)
+  const [students, setStudents] = useState<DashboardStudentSearchItem[]>([])
+  const [careers, setCareers] = useState<DashboardCareerSearchItem[]>([])
+
+  const deferredStudentSearch = useDeferredValue(studentSearch)
+  const deferredCareerSearch = useDeferredValue(careerSearch)
+
+  const step = getCurrentStep(composer.state)
+  const selectedStudentItem = useMemo(
+    () => students.find((item) => item.id === composer.state.selectedStudent) ?? null,
+    [composer.state.selectedStudent, students],
   )
-  const isReadyToApply = Boolean(analysisRequest && options?.canSubmit)
-  const rankingLockedToTop =
-    options?.ranking.allowed === true
-    && options.ranking.allowedModes.length === 1
-    && options.ranking.allowedModes[0] === 'TOP'
-  const hasScope = Boolean(state.scope)
-  const hasScopeChoice = Boolean(getVisualScopeChoice(state))
-  const selectionResolved = hasResolvedSelection(state)
-  const showResultStep = selectionResolved
-  const showAdvancedStep = showResultStep && state.accessResult !== null
 
   useEffect(() => {
-    let cancelled = false
-    setOptionsLoading(true)
+    if (deferredStudentSearch.trim().length < 2 || composer.state.filterType !== 'alumno') return
 
-    void resolveDashboardAnalysisOptions(optionsRequest)
+    let active = true
+
+    void searchDashboardStudents(deferredStudentSearch.trim(), 12)
       .then((response) => {
-        if (cancelled) return
-        setOptions(response)
-        setState((prev) => {
-          const next = applyOptionsDefaults(prev, response)
-          if (
-            next.accessResult === prev.accessResult
-            && next.dateFilterType === prev.dateFilterType
-            && next.rankingMode === prev.rankingMode
-            && next.topN === prev.topN
-            && next.sortDirection === prev.sortDirection
-          ) {
-            return prev
-          }
-          return next
-        })
+        if (!active) return
+        setStudents(response.items)
       })
-      .catch((error) => {
-        if (cancelled) return
-        const description = error instanceof Error ? error.message : 'No se pudieron resolver las opciones del wizard.'
-        showToast({
-          severity: 'error',
-          title: 'Error resolviendo opciones',
-          description,
-        })
+      .catch(() => {
+        if (!active) return
+        setStudents([])
       })
       .finally(() => {
-        if (!cancelled) {
-          setOptionsLoading(false)
-        }
+        if (active) setStudentsLoading(false)
       })
 
     return () => {
-      cancelled = true
+      active = false
     }
-  }, [optionsRequest, setState, showToast])
+  }, [composer.state.filterType, deferredStudentSearch])
 
   useEffect(() => {
-    if (state.scope !== 'STUDENTS' || state.studentScopeChoice !== 'INDIVIDUAL') {
-      setStudentResults([])
-      return
-    }
+    if (deferredCareerSearch.trim().length < 2 || composer.state.filterType !== 'carrera') return
 
-    if (deferredStudentQuery.trim().length < 2) {
-      setStudentResults([])
-      return
-    }
+    let active = true
 
-    let cancelled = false
-    setStudentSearchLoading(true)
-
-    void searchDashboardStudents(deferredStudentQuery.trim(), 10)
+    void searchDashboardCareers(deferredCareerSearch.trim(), 20)
       .then((response) => {
-        if (!cancelled) {
-          setStudentResults(response.items)
-        }
+        if (!active) return
+        setCareers(response.items)
       })
-      .catch((error) => {
-        if (cancelled) return
-        const description = error instanceof Error ? error.message : 'No se pudo buscar alumnos.'
-        showToast({
-          severity: 'error',
-          title: 'Autocomplete de alumnos',
-          description,
-        })
+      .catch(() => {
+        if (!active) return
+        setCareers([])
       })
       .finally(() => {
-        if (!cancelled) {
-          setStudentSearchLoading(false)
-        }
+        if (active) setCareersLoading(false)
       })
 
     return () => {
-      cancelled = true
+      active = false
     }
-  }, [deferredStudentQuery, showToast, state.scope, state.studentScopeChoice])
-
-  useEffect(() => {
-    if (state.scope !== 'CAREERS' || !state.careerScopeChoice || state.allCareersSelected) {
-      setCareerResults([])
-      return
-    }
-
-    let cancelled = false
-    const normalizedQuery = deferredCareerQuery.trim()
-
-    if (state.careerScopeChoice === 'INDIVIDUAL') {
-      if (normalizedQuery.length < 2) {
-        setCareerResults([])
-        return
-      }
-
-      setCareerSearchLoading(true)
-      void searchDashboardCareers(normalizedQuery, 10)
-        .then((response) => {
-          if (!cancelled) {
-            setCareerResults(response.items)
-          }
-        })
-        .catch((error) => {
-          if (cancelled) return
-          const description = error instanceof Error ? error.message : 'No se pudo buscar carreras.'
-          showToast({
-            severity: 'error',
-            title: 'Autocomplete de carreras',
-            description,
-          })
-        })
-        .finally(() => {
-          if (!cancelled) {
-            setCareerSearchLoading(false)
-          }
-        })
-
-      return () => {
-        cancelled = true
-      }
-    }
-
-    setCareerSearchLoading(true)
-
-    if (normalizedQuery.length >= 2) {
-      void searchDashboardCareers(normalizedQuery, 12)
-        .then((response) => {
-          if (!cancelled) {
-            setCareerResults(response.items)
-          }
-        })
-        .catch((error) => {
-          if (cancelled) return
-          const description = error instanceof Error ? error.message : 'No se pudo buscar carreras.'
-          showToast({
-            severity: 'error',
-            title: 'Autocomplete de carreras',
-            description,
-          })
-        })
-        .finally(() => {
-          if (!cancelled) {
-            setCareerSearchLoading(false)
-          }
-        })
-
-      return () => {
-        cancelled = true
-      }
-    }
-
-    void Promise.all(CAREER_WARMUP_QUERIES.map((query) => searchDashboardCareers(query, 6)))
-      .then((responses) => {
-        if (!cancelled) {
-          setCareerResults(mergeCareerResults(responses.map((response) => response.items)))
-        }
-      })
-      .catch((error) => {
-        if (cancelled) return
-        const description = error instanceof Error ? error.message : 'No se pudieron cargar sugerencias iniciales de carreras.'
-        showToast({
-          severity: 'warning',
-          title: 'Sugerencias de carreras',
-          description,
-        })
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setCareerSearchLoading(false)
-        }
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [deferredCareerQuery, showToast, state.allCareersSelected, state.careerScopeChoice, state.scope])
+  }, [composer.state.filterType, deferredCareerSearch])
 
   const handleApply = async () => {
-    if (!analysisRequest) return
-    setApplyLoading(true)
-    try {
-      const applied = await onApply(analysisRequest)
-      if (applied) {
-        onRequestClose?.()
-      }
-    } finally {
-      setApplyLoading(false)
-    }
-  }
+    const request = toDashboardRequest(composer.state, metadata.defaults.sortDirection)
+    if (!request) return
 
-  const handleReset = async () => {
-    setResetLoading(true)
-    try {
-      composer.reset()
-      setStudentQuery('')
-      setCareerQuery('')
-      setStudentResults([])
-      setCareerResults([])
-      await onReset()
-    } finally {
-      setResetLoading(false)
+    const ok = await onApply(request)
+    if (ok) {
+      showToast({
+        severity: 'success',
+        title: 'Análisis preparado',
+        description: 'El dashboard se actualizó con la configuración seleccionada.',
+      })
+      onOpenChange(false)
     }
   }
 
   return (
-    <div className="min-h-[520px] w-full space-y-5">
-      <div className="w-full space-y-5">
-        <Stepper
-          steps={COMPOSER_STEPPER_STEPS}
-          currentStep={optionsLoading ? getCurrentStep(state) : currentStep}
-          orientation="horizontal"
-          size="md"
-        />
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent animation="fade" size='4' className='max-w-[1100px] p-0 overflow-hidden'>
+        <DialogHeader className='px-6 pt-6 pb-4 border-b'>
+          <DialogTitle className='text-lg'>Compositor de análisis</DialogTitle>
+          <DialogDescription>
+            Construye el dashboard en tiempo real antes de ejecutar el análisis.
+          </DialogDescription>
+        </DialogHeader>
 
-        <div className="space-y-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Tipo de análisis</label>
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      type="button"
-                      variant={state.scope === 'STUDENTS' ? 'primary' : 'outline'}
-                      size="sm"
-                      onClick={() => composer.setScope('STUDENTS')}
-                    >
-                      Alumnos
-                    </Button>
-                    <Button
-                      type="button"
-                      variant={state.scope === 'CAREERS' ? 'primary' : 'outline'}
-                      size="sm"
-                      onClick={() => composer.setScope('CAREERS')}
-                    >
-                      Carreras
-                    </Button>
-                  </div>
-                </div>
+        <div className='p-6'>
+          <div className='flex gap-6 w-full min-h-[520px]'>
+            <div className='w-[55%] space-y-6'>
+              <Stepper
+                steps={COMPOSER_STEPPER_STEPS}
+                currentStep={step}
+                orientation='horizontal'
+                size='md'
+                className='w-full'
+              />
 
-                {hasScope ? (
-                  <div className="space-y-2 border-t pt-4">
-                    <label className="text-sm font-medium">Alcance</label>
-
-                    {state.scope === 'STUDENTS' ? (
-                      <div className="flex flex-wrap gap-2">
-                        <Button
-                          type="button"
-                          variant={state.studentScopeChoice === 'INDIVIDUAL' ? 'primary' : 'outline'}
-                          size="sm"
-                          onClick={() => composer.setStudentScopeChoice('INDIVIDUAL')}
-                        >
-                          Individual
-                        </Button>
-                        <Button
-                          type="button"
-                          variant={state.studentScopeChoice === 'ALL' ? 'primary' : 'outline'}
-                          size="sm"
-                          onClick={() => composer.setStudentScopeChoice('ALL')}
-                        >
-                          Todos
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="space-y-2">
-                        <div className="flex flex-wrap gap-2">
-                          <Button
-                            type="button"
-                            variant={state.careerScopeChoice === 'INDIVIDUAL' ? 'primary' : 'outline'}
-                            size="sm"
-                            onClick={() => composer.setCareerScopeChoice('INDIVIDUAL')}
-                          >
-                            Individual
-                          </Button>
-                          <Button
-                            type="button"
-                            variant={state.careerScopeChoice === 'MULTIPLE' ? 'primary' : 'outline'}
-                            size="sm"
-                            onClick={() => composer.setCareerScopeChoice('MULTIPLE')}
-                          >
-                            Varias
-                          </Button>
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                          Dentro de “Varias” puedes elegir algunas carreras o usar “Seleccionar todas”.
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                ) : null}
-
-                {hasScope && hasScopeChoice ? (
-                  <div className="space-y-3 border-t pt-4">
-                    <div>
-                      <label className="text-sm font-medium">Selección</label>
+              <Card>
+                <CardContent className='p-5'>
+                  <div className='flex items-start gap-4'>
+                    <div className='flex shrink-0 flex-col items-center pt-7'>
+                      <Stepper
+                        steps={COMPOSER_STEPPER_STEPS}
+                        currentStep={step}
+                        orientation='vertical'
+                        size='sm'
+                        showLabels={false}
+                      />
                     </div>
 
-                    {state.scope === 'STUDENTS' && state.studentScopeChoice === 'INDIVIDUAL' ? (
-                      <div className="space-y-3">
-                        <div className="relative">
-                          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                          <Input
-                            value={studentQuery}
-                            placeholder="Buscar por matrícula o nombre"
-                            className="pl-9"
-                            onChange={(event) => {
-                              setStudentQuery(event.target.value)
-                              composer.setSelectedStudent(null)
-                            }}
-                          />
-                        </div>
-                        <SearchResultsPanel
-                          query={studentQuery}
-                          loading={studentSearchLoading}
-                          items={studentResults}
-                          emptyMessage="No encontramos alumnos para esa búsqueda."
-                          onSelect={(item) => {
-                            composer.setSelectedStudent(item)
-                            setStudentQuery(item.displayLabel)
-                          }}
-                        />
-                        {state.selectedStudent ? (
-                          <div className="rounded-lg border bg-muted/30 px-3 py-2">
-                            <p className="text-sm font-medium">{state.selectedStudent.displayLabel}</p>
-                            <p className="text-xs text-muted-foreground">{state.selectedStudent.subtitle}</p>
-                          </div>
-                        ) : null}
-                      </div>
-                    ) : null}
-
-                    {state.scope === 'CAREERS' && state.careerScopeChoice === 'INDIVIDUAL' ? (
-                      <div className="space-y-3">
-                        <div className="relative">
-                          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                          <Input
-                            value={careerQuery}
-                            placeholder="Buscar por clave o nombre"
-                            className="pl-9"
-                            onChange={(event) => {
-                              setCareerQuery(event.target.value)
-                              composer.setSelectedCareers([])
-                              composer.setAllCareersSelected(false)
-                            }}
-                          />
-                        </div>
-                        <SearchResultsPanel
-                          query={careerQuery}
-                          loading={careerSearchLoading}
-                          items={careerResults}
-                          emptyMessage="No encontramos carreras para esa búsqueda."
-                          onSelect={(item) => {
-                            composer.setSelectedCareers([item])
-                            setCareerQuery(item.displayLabel)
-                          }}
-                        />
-                        {state.selectedCareers[0] ? (
-                          <div className="rounded-lg border bg-muted/30 px-3 py-2">
-                            <p className="text-sm font-medium">{state.selectedCareers[0].displayLabel}</p>
-                            <p className="text-xs text-muted-foreground">{state.selectedCareers[0].subtitle}</p>
-                          </div>
-                        ) : null}
-                      </div>
-                    ) : null}
-
-                    {state.scope === 'CAREERS' && state.careerScopeChoice === 'MULTIPLE' ? (
-                      <div className="space-y-3">
-                        <CareerMultiSelectCombobox
-                          query={careerQuery}
-                          onQueryChange={setCareerQuery}
-                          loading={careerSearchLoading}
-                          items={careerResults}
-                          selectedItems={state.selectedCareers}
-                          allSelected={state.allCareersSelected}
-                          onToggleItem={composer.toggleCareer}
-                          onToggleAll={composer.setAllCareersSelected}
-                        />
-
-                        <div className="rounded-lg border border-dashed px-3 py-2 text-xs text-muted-foreground">
-                          {state.allCareersSelected
-                            ? 'La vista se preparará como un análisis global de carreras.'
-                            : state.selectedCareers.length === 1
-                              ? 'Con una sola carrera, el dashboard se enfocará en ese detalle.'
-                              : state.selectedCareers.length > 1
-                                ? 'Con varias carreras, el análisis se prepara como una vista comparativa.'
-                                : 'Selecciona una o varias carreras, o activa “Seleccionar todas”.'}
-                        </div>
-                      </div>
-                    ) : null}
-
-                    {state.scope === 'STUDENTS' && state.studentScopeChoice === 'ALL' ? (
-                      <div className="rounded-lg border bg-muted/20 px-3 py-3 text-sm text-muted-foreground">
-                        El análisis se construirá con todo el universo de alumnos.
-                      </div>
-                    ) : null}
-                  </div>
-                ) : null}
-
-                {showResultStep ? (
-                  <div className="space-y-4 border-t pt-4">
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Resultado</label>
-                      <Select
-                        value={state.accessResult ?? undefined}
-                        onValueChange={(value) => composer.setAccessResult(value as typeof state.accessResult)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecciona el resultado" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {(options?.allowedAccessResults ?? metadata.accessResults).map((result) => (
-                            <SelectItem key={result} value={result}>
-                              {result === 'ALL' ? 'Ambos' : result === 'SUCCESS' ? 'Exitosos' : 'Fallidos'}
-                            </SelectItem>
+                    <div className='min-w-0 flex-1 space-y-4'>
+                      <div className='space-y-2'>
+                        <label className='text-sm font-medium'>Tipo de filtrado</label>
+                        <div className='grid grid-cols-2 gap-2'>
+                          {(['alumno', 'carrera'] as const).map((type) => (
+                            <Button
+                              key={type}
+                              variant={composer.state.filterType === type ? 'primary' : 'outline'}
+                              size='sm'
+                              className='w-full'
+                              onClick={() => {
+                                composer.setFilterType(type)
+                                setStudentSearch('')
+                                setCareerSearch('')
+                                setStudents([])
+                                setCareers([])
+                                setStudentsLoading(false)
+                                setCareersLoading(false)
+                              }}
+                            >
+                              {type === 'alumno' ? 'Alumno(s)' : 'Carrera(s)'}
+                            </Button>
                           ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                ) : null}
-
-                {showAdvancedStep ? (
-                  <div className="space-y-4 border-t pt-4">
-                    <div className="space-y-3">
-                      <div className="flex items-start justify-between gap-4">
-                        <div>
-                          <label className="text-sm font-medium">Periodo</label>
                         </div>
-                        <Switch
-                          checked={state.dateFilterType === 'CUSTOM_RANGE'}
-                          onCheckedChange={(checked) => composer.setDateFilterType(checked ? 'CUSTOM_RANGE' : 'NONE')}
-                        />
                       </div>
 
-                      {state.dateFilterType === 'CUSTOM_RANGE' ? (
-                        <DateRangeSelector
-                          label="Rango de fechas"
-                          value={state.dateRange}
-                          onChange={(range) => composer.setDateRange({
-                            from: range?.from,
-                            to: range?.to,
-                          })}
-                        />
-                      ) : null}
-                    </div>
-
-                    {options?.ranking.allowed ? (
-                      <div className="space-y-2 border-t pt-4">
-                        <div className="flex items-center justify-between gap-3">
-                          <label className="text-sm font-medium">Ranking</label>
-                          {rankingLockedToTop ? (
-                            <Badge variant="default">Obligatorio</Badge>
-                          ) : null}
-                        </div>
-
-                        {!rankingLockedToTop ? (
-                          <div className="flex flex-wrap gap-2">
-                            {options.ranking.allowedModes.map((mode) => (
-                              <Button
-                                key={mode}
-                                type="button"
-                                size="sm"
-                                variant={state.rankingMode === mode ? 'primary' : 'outline'}
-                                onClick={() => composer.setRankingMode(mode)}
-                              >
-                                {mode === 'NONE' ? 'Sin ranking' : 'Top ranking'}
-                              </Button>
-                            ))}
+                      {composer.state.filterType ? (
+                        <div className='space-y-2'>
+                          <label className='text-sm font-medium'>Alcance</label>
+                          <div className={cn(
+                            'grid gap-2',
+                            composer.state.filterType === 'alumno' ? 'grid-cols-2' : 'grid-cols-3',
+                          )}>
+                            {composer.state.filterType === 'alumno' ? (
+                              <>
+                                <Button variant={composer.state.scope === 'individual' ? 'primary' : 'outline'} size='sm' className='w-full' onClick={() => composer.setScope('individual')}>Individual</Button>
+                                <Button variant={composer.state.scope === 'todos' ? 'primary' : 'outline'} size='sm' className='w-full' onClick={() => composer.setScope('todos')}>Todos</Button>
+                              </>
+                            ) : (
+                              <>
+                                <Button variant={composer.state.scope === 'individual' ? 'primary' : 'outline'} size='sm' className='w-full' onClick={() => composer.setScope('individual')}>Una</Button>
+                                <Button variant={composer.state.scope === 'varias' ? 'primary' : 'outline'} size='sm' className='w-full' onClick={() => composer.setScope('varias')}>Varias</Button>
+                                <Button variant={composer.state.scope === 'todas' ? 'primary' : 'outline'} size='sm' className='w-full' onClick={() => composer.setScope('todas')}>Todas</Button>
+                              </>
+                            )}
                           </div>
-                        ) : null}
+                        </div>
+                      ) : null}
 
-                        {state.rankingMode === 'TOP' && options.ranking.allowedTopN.length > 0 ? (
-                          <Select
-                            value={String(state.topN ?? options.ranking.defaultTopN ?? '')}
-                            onValueChange={(value) => composer.setTopN(Number(value))}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecciona el top N" />
-                            </SelectTrigger>
+                      {composer.state.scope ? (
+                        <div className='space-y-3 border-t pt-3'>
+                          {composer.state.filterType === 'alumno' && composer.state.scope === 'individual' ? (
+                            <div className='space-y-2'>
+                              <div className='relative'>
+                                <Search className='absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground' />
+                                <Input
+                                  placeholder='Buscar alumno...'
+                                  value={studentSearch}
+                                  onChange={(event) => {
+                                    const next = event.target.value
+                                    setStudentSearch(next)
+                                    const query = next.trim()
+                                    if (query.length < 2) {
+                                      setStudents([])
+                                      setStudentsLoading(false)
+                                      return
+                                    }
+                                    setStudentsLoading(true)
+                                  }}
+                                  className='h-8 pl-8 text-sm'
+                                />
+                              </div>
+                              <div className='max-h-32 overflow-auto rounded-md border'>
+                                {studentsLoading ? (
+                                  <div className='px-3 py-2 text-xs text-muted-foreground inline-flex items-center gap-2'>
+                                    <Loader2 className='h-3.5 w-3.5 animate-spin' />
+                                    Buscando alumnos...
+                                  </div>
+                                ) : students.length > 0 ? (
+                                  students.map((student) => (
+                                    <button
+                                      key={student.id}
+                                      type='button'
+                                      className={cn(
+                                        'w-full px-2.5 py-1.5 text-left text-xs hover:bg-accent',
+                                        composer.state.selectedStudent === student.id && 'bg-accent font-medium',
+                                      )}
+                                      onClick={() => composer.setSelectedStudent(student.id)}
+                                    >
+                                      {student.displayLabel}
+                                    </button>
+                                  ))
+                                ) : (
+                                  <div className='px-3 py-2 text-xs text-muted-foreground'>Escribe al menos 2 caracteres.</div>
+                                )}
+                              </div>
+                            </div>
+                          ) : null}
+
+                          {composer.state.filterType === 'carrera' && composer.state.scope !== 'todas' ? (
+                            <div className='space-y-2'>
+                              <div className='relative'>
+                                <Search className='absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground' />
+                                <Input
+                                  placeholder='Buscar carrera...'
+                                  value={careerSearch}
+                                  onChange={(event) => {
+                                    const next = event.target.value
+                                    setCareerSearch(next)
+                                    const query = next.trim()
+                                    if (query.length < 2) {
+                                      setCareers([])
+                                      setCareersLoading(false)
+                                      return
+                                    }
+                                    setCareersLoading(true)
+                                  }}
+                                  className='h-8 pl-8 text-sm'
+                                />
+                              </div>
+                              <div className='max-h-32 overflow-auto rounded-md border'>
+                                {careersLoading ? (
+                                  <div className='px-3 py-2 text-xs text-muted-foreground inline-flex items-center gap-2'>
+                                    <Loader2 className='h-3.5 w-3.5 animate-spin' />
+                                    Buscando carreras...
+                                  </div>
+                                ) : careers.length > 0 ? (
+                                  careers.map((career) => {
+                                    const selected = composer.state.selectedCareers.includes(career.id)
+                                    return (
+                                      <button
+                                        key={career.id}
+                                        type='button'
+                                        className={cn('w-full px-2.5 py-1.5 text-left text-xs hover:bg-accent', selected && 'bg-accent font-medium')}
+                                        onClick={() => {
+                                          if (composer.state.scope === 'individual') {
+                                            composer.setSelectedCareers([career.id])
+                                          } else {
+                                            composer.toggleCareer(career.id)
+                                          }
+                                        }}
+                                      >
+                                        {career.displayLabel}
+                                      </button>
+                                    )
+                                  })
+                                ) : (
+                                  <div className='px-3 py-2 text-xs text-muted-foreground'>Escribe al menos 2 caracteres.</div>
+                                )}
+                              </div>
+                              {composer.state.scope === 'varias' && composer.state.selectedCareers.length > 0 ? (
+                                <div className='flex flex-wrap gap-1.5'>
+                                  {composer.state.selectedCareers.map((careerId) => {
+                                    const label = careers.find((career) => career.id === careerId)?.displayLabel ?? careerId
+                                    return (
+                                      <Badge key={careerId} variant='outlined' className='cursor-pointer text-xs' onClick={() => composer.toggleCareer(careerId)}>
+                                        {label}
+                                      </Badge>
+                                    )
+                                  })}
+                                </div>
+                              ) : null}
+                            </div>
+                          ) : null}
+
+                          <Select onValueChange={(value) => composer.setAccessType(value as AccessType)} value={composer.state.accessType}>
+                            <SelectTrigger className='h-8 text-sm'><SelectValue /></SelectTrigger>
                             <SelectContent>
-                              {options.ranking.allowedTopN.map((topN) => (
-                                <SelectItem key={topN} value={String(topN)}>
-                                  Top {topN}
-                                </SelectItem>
-                              ))}
+                              <SelectItem value='exitoso'>Exitoso</SelectItem>
+                              <SelectItem value='fallido'>Fallido</SelectItem>
+                              <SelectItem value='ambos'>Ambos</SelectItem>
                             </SelectContent>
                           </Select>
-                        ) : null}
+
+                          {composer.isGroupScope ? (
+                            <div className='space-y-2'>
+                              <div className='flex items-center justify-between'>
+                                <span className='text-xs font-medium'>Ranking</span>
+                                <Switch checked={composer.state.ranking} onCheckedChange={composer.setRanking} />
+                              </div>
+                              {composer.state.ranking ? (
+                                <Select onValueChange={(value) => composer.setTopN(Number(value))} value={String(composer.state.topN)}>
+                                  <SelectTrigger className='h-8 text-sm'><SelectValue /></SelectTrigger>
+                                  <SelectContent>
+                                    {(composer.state.filterType === 'alumno' ? ALUMNO_TOP_OPTIONS : CARRERA_TOP_OPTIONS).map((n) => (
+                                      <SelectItem key={n} value={String(n)}>Top {n}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              ) : null}
+                            </div>
+                          ) : (
+                            <div className='space-y-2'>
+                              <div className='flex items-center justify-between'>
+                                <span className='text-xs font-medium'>Filtro de fecha</span>
+                                <Switch checked={composer.state.dateFilter} onCheckedChange={composer.setDateFilter} />
+                              </div>
+                              {composer.state.dateFilter ? (
+                                <div className='flex gap-2'>
+                                  <Popover>
+                                    <PopoverTrigger asChild>
+                                      <Button variant='outline' size='sm' className='flex-1 justify-start text-xs'>
+                                        <CalendarIcon className='mr-1 h-3 w-3' />
+                                        {composer.state.dateRange.from ? format(composer.state.dateRange.from, 'dd/MM/yy') : 'Desde'}
+                                      </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className='w-auto p-0'>
+                                      <Calendar mode='single' selected={composer.state.dateRange.from} onSelect={(date) => composer.setDateRange({ ...composer.state.dateRange, from: date })} />
+                                    </PopoverContent>
+                                  </Popover>
+                                  <Popover>
+                                    <PopoverTrigger asChild>
+                                      <Button variant='outline' size='sm' className='flex-1 justify-start text-xs'>
+                                        <CalendarIcon className='mr-1 h-3 w-3' />
+                                        {composer.state.dateRange.to ? format(composer.state.dateRange.to, 'dd/MM/yy') : 'Hasta'}
+                                      </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className='w-auto p-0'>
+                                      <Calendar mode='single' selected={composer.state.dateRange.to} onSelect={(date) => composer.setDateRange({ ...composer.state.dateRange, to: date })} />
+                                    </PopoverContent>
+                                  </Popover>
+                                </div>
+                              ) : null}
+                            </div>
+                          )}
+                        </div>
+                      ) : null}
+
+                      <div className='flex gap-2 pt-2'>
+                        <Button
+                          variant='outline'
+                          size='sm'
+                          onClick={() => {
+                            composer.reset()
+                            void onReset()
+                          }}
+                        >
+                          <RefreshCcw className='h-3.5 w-3.5' />
+                        </Button>
+                        <Button size='sm' className='flex-1' disabled={!composer.isComplete} onClick={() => void handleApply()}>
+                          Aplicar análisis
+                        </Button>
                       </div>
-                    ) : null}
-                  </div>
-                ) : null}
 
-                <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-4">
-                  <div className="text-sm text-muted-foreground">
-                    {getNextStepMessage(options?.nextStep ?? null, optionsLoading, isReadyToApply)}
+                      {selectedStudentItem ? (
+                        <p className='text-xs text-muted-foreground'>Seleccionado: {selectedStudentItem.displayLabel}</p>
+                      ) : null}
+                    </div>
                   </div>
-                  <div className="flex gap-2">
-                    <Button type="button" size="sm" variant="outline" disabled={resetLoading} onClick={handleReset}>
-                      {resetLoading ? <Loader2 className="size-4 animate-spin" /> : <RefreshCcw className="size-4" />}
-                      Reiniciar
-                    </Button>
-                    <Button type="button" size="sm" disabled={!isReadyToApply || applyLoading} onClick={handleApply}>
-                      {applyLoading ? <Loader2 className="size-4 animate-spin" /> : null}
-                      Aplicar análisis
-                    </Button>
-                  </div>
-                </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            <PreviewPanel state={composer.state} />
+          </div>
         </div>
-      </div>
-    </div>
-  )
-}
-
-export type ComposerModalProps = FilterComposerProps & {
-  open?: boolean
-  onOpenChange?: (open: boolean) => void
-  showDefaultTrigger?: boolean
-}
-
-export default function Composer(props: ComposerModalProps) {
-  const {
-    open: openProp,
-    onOpenChange,
-    showDefaultTrigger = false,
-    ...bodyProps
-  } = props
-  const [uncontrolledOpen, setUncontrolledOpen] = useState(false)
-
-  const open = openProp ?? uncontrolledOpen
-  const setOpen = (next: boolean) => {
-    onOpenChange?.(next)
-    if (openProp === undefined) {
-      setUncontrolledOpen(next)
-    }
-  }
-
-  return (
-    <>
-      {showDefaultTrigger ? (
-        <Button variant="primary" onClick={() => setOpen(true)}>
-          Abrir compositor
-        </Button>
-      ) : null}
-
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent animation="fade" className="max-w-[min(1240px,96vw)] p-0">
-          <div className="border-b px-6 py-4">
-            <DialogHeader className="space-y-1">
-              <DialogTitle>Compositor de análisis</DialogTitle>
-              <DialogDescription>
-                Construye el análisis paso por paso. El backend resolverá el layout final, los widgets y las restricciones válidas.
-              </DialogDescription>
-            </DialogHeader>
-          </div>
-          <div className="max-h-[84vh] overflow-auto px-6 py-5">
-            <ComposerBody
-              {...bodyProps}
-              onRequestClose={() => setOpen(false)}
-            />
-          </div>
-        </DialogContent>
-      </Dialog>
-    </>
+      </DialogContent>
+    </Dialog>
   )
 }

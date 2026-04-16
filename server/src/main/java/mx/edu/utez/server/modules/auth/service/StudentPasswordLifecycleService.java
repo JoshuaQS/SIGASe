@@ -11,6 +11,7 @@ import mx.edu.utez.server.modules.auth.entity.StudentPasswordResetToken;
 import mx.edu.utez.server.modules.auth.repository.StudentPasswordResetTokenRepository;
 import mx.edu.utez.server.modules.logs.audit.service.AuditLogCommand;
 import mx.edu.utez.server.modules.logs.audit.service.AuditLogService;
+import mx.edu.utez.server.modules.notifications.service.EmailDispatchService;
 import mx.edu.utez.server.modules.students.entity.Student;
 import mx.edu.utez.server.modules.students.repository.StudentRepository;
 import mx.edu.utez.server.shared.context.RequestContext;
@@ -18,6 +19,7 @@ import mx.edu.utez.server.shared.enums.AuditActorType;
 import mx.edu.utez.server.shared.enums.AuditOutcome;
 import mx.edu.utez.server.shared.enums.AuditSeverity;
 import mx.edu.utez.server.shared.enums.AuditSourceModule;
+import mx.edu.utez.server.shared.enums.EmailDispatchJobType;
 import mx.edu.utez.server.shared.enums.StudentStatus;
 import mx.edu.utez.server.shared.exception.BusinessException;
 import mx.edu.utez.server.shared.exception.ErrorCode;
@@ -39,6 +41,7 @@ public class StudentPasswordLifecycleService {
     private final PasswordEncoder passwordEncoder;
     private final EmailNormalizer emailNormalizer;
     private final StudentPasswordResetNotifier studentPasswordResetNotifier;
+    private final EmailDispatchService emailDispatchService;
     private final AuditLogService auditLogService;
     private final ClientIpResolver clientIpResolver;
 
@@ -48,6 +51,7 @@ public class StudentPasswordLifecycleService {
             PasswordEncoder passwordEncoder,
             EmailNormalizer emailNormalizer,
             StudentPasswordResetNotifier studentPasswordResetNotifier,
+            EmailDispatchService emailDispatchService,
             AuditLogService auditLogService,
             ClientIpResolver clientIpResolver
     ) {
@@ -56,12 +60,13 @@ public class StudentPasswordLifecycleService {
         this.passwordEncoder = passwordEncoder;
         this.emailNormalizer = emailNormalizer;
         this.studentPasswordResetNotifier = studentPasswordResetNotifier;
+        this.emailDispatchService = emailDispatchService;
         this.auditLogService = auditLogService;
         this.clientIpResolver = clientIpResolver;
     }
 
     @Transactional
-    public void changePassword(UUID studentId, String currentPassword, String newPassword, HttpServletRequest request) {
+    public void changePassword(UUID studentId, String currentPassword, String newPassword, String confirmNewPassword, HttpServletRequest request) {
         Student student = studentRepository.findById(studentId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.RESOURCE_NOT_FOUND, "Estudiante no encontrado"));
 
@@ -75,9 +80,13 @@ public class StudentPasswordLifecycleService {
         }
 
         PasswordPolicy.validateOrThrow(newPassword);
+        if (!newPassword.equals(confirmNewPassword)) {
+            throw new BusinessException(ErrorCode.BUSINESS_RULE_VIOLATION, "La confirmación no coincide con la nueva contraseña.");
+        }
 
         student.setPasswordHash(passwordEncoder.encode(newPassword));
         student.setMustChangePassword(false);
+        student.setStatus(StudentStatus.ACTIVE);
         student.setLastPasswordChangeAt(Instant.now());
         student.setTokenVersion(student.getTokenVersion() + 1);
         studentRepository.save(student);
@@ -107,19 +116,22 @@ public class StudentPasswordLifecycleService {
                     Instant.now().plus(RESET_TOKEN_EXPIRATION_HOURS, ChronoUnit.HOURS)
             ));
 
-            boolean emailSent = studentPasswordResetNotifier.sendStudentPasswordReset(student.getInstitutionalEmail(), rawToken);
+            enqueuePasswordResetEmail(student, rawToken);
             auditStudent(
                     httpRequest,
                     "STUDENT_RESET_PASSWORD_REQUESTED",
                     student.getId(),
-                    emailSent ? AuditOutcome.SUCCESS : AuditOutcome.FAILURE
+                    AuditOutcome.SUCCESS
             );
         });
     }
 
     @Transactional
-    public void confirmPasswordReset(String rawToken, String newPassword, HttpServletRequest httpRequest) {
+    public void confirmPasswordReset(String rawToken, String newPassword, String confirmNewPassword, HttpServletRequest httpRequest) {
         PasswordPolicy.validateOrThrow(newPassword);
+        if (!newPassword.equals(confirmNewPassword)) {
+            throw new BusinessException(ErrorCode.BUSINESS_RULE_VIOLATION, "La confirmación no coincide con la nueva contraseña.");
+        }
 
         String tokenHash = sha256Hex(rawToken);
 
@@ -133,6 +145,7 @@ public class StudentPasswordLifecycleService {
         Student student = token.getStudent();
         student.setPasswordHash(passwordEncoder.encode(newPassword));
         student.setMustChangePassword(false);
+        student.setStatus(StudentStatus.ACTIVE);
         student.setLastPasswordChangeAt(Instant.now());
         student.setTokenVersion(student.getTokenVersion() + 1);
         studentRepository.save(student);
@@ -190,6 +203,45 @@ public class StudentPasswordLifecycleService {
             return HexFormat.of().formatHex(hash);
         } catch (Exception e) {
             throw new IllegalStateException("SHA-256 error", e);
+        }
+    }
+
+    private void enqueuePasswordResetEmail(Student student, String rawToken) {
+        try {
+            String resetLink = studentPasswordResetNotifier.buildStudentResetLink(rawToken);
+            String plainText = """
+                    Hola,
+
+                    Recibimos una solicitud para restablecer tu contraseña de SIGASe.
+
+                    Usa este enlace para crear una nueva contraseña:
+                    %s
+
+                    Si no solicitaste este cambio, ignora este correo.
+                    """.formatted(resetLink);
+            String html = """
+                    <!doctype html>
+                    <html lang="es">
+                      <body style="margin:0;padding:24px;background:#f3f4f6;font-family:Arial,sans-serif;color:#111827;">
+                        <div style="max-width:560px;margin:0 auto;background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:24px;">
+                          <h1 style="margin:0 0 12px 0;font-size:22px;">Restablece tu contraseña</h1>
+                          <p style="margin:0 0 16px 0;line-height:1.6;">Recibimos una solicitud para restablecer tu contraseña. Si fuiste tú, continúa con el siguiente botón.</p>
+                          <a href="%s" style="display:inline-block;padding:12px 18px;border-radius:10px;background:#059669;color:#fff;text-decoration:none;font-weight:700;">Restablecer contraseña</a>
+                        </div>
+                      </body>
+                    </html>
+                    """.formatted(resetLink);
+            emailDispatchService.enqueue(
+                    EmailDispatchJobType.STUDENT_PASSWORD_RESET,
+                    student.getInstitutionalEmail(),
+                    "SIGASe | Restablece tu contraseña",
+                    plainText,
+                    html,
+                    "STUDENT",
+                    student.getId().toString()
+            );
+        } catch (Exception ex) {
+            auditStudent(null, "STUDENT_RESET_PASSWORD_EMAIL_QUEUE_FAILED", student.getId(), AuditOutcome.FAILURE);
         }
     }
 }

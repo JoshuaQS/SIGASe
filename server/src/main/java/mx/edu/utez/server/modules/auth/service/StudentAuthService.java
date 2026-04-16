@@ -47,8 +47,8 @@ public class StudentAuthService {
     }
 
     @Transactional
-    public void changePassword(UUID studentId, String currentPassword, String newPassword, HttpServletRequest request) {
-        studentPasswordLifecycleService.changePassword(studentId, currentPassword, newPassword, request);
+    public void changePassword(UUID studentId, String currentPassword, String newPassword, String confirmNewPassword, HttpServletRequest request) {
+        studentPasswordLifecycleService.changePassword(studentId, currentPassword, newPassword, confirmNewPassword, request);
     }
 
     /**
@@ -60,8 +60,8 @@ public class StudentAuthService {
     }
 
     @Transactional
-    public void confirmPasswordReset(String rawToken, String newPassword, HttpServletRequest httpRequest) {
-        studentPasswordLifecycleService.confirmPasswordReset(rawToken, newPassword, httpRequest);
+    public void confirmPasswordReset(String rawToken, String newPassword, String confirmNewPassword, HttpServletRequest httpRequest) {
+        studentPasswordLifecycleService.confirmPasswordReset(rawToken, newPassword, confirmNewPassword, httpRequest);
     }
 
     @Transactional(readOnly = true)

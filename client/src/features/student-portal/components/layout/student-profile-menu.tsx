@@ -5,8 +5,10 @@ import { LogOut, Settings, User } from 'lucide-react';
 import { authSession } from '@/features/auth/store/auth-session-store';
 import { useAuthSession } from '@/features/auth/hooks/use-auth-user';
 import { StudentProfileModal } from '@/features/students/components/modals/student-profile-modal';
+import { useStudentPortalSummary } from '@/features/student-portal/hooks/use-student-portal-summary';
 import { useAppToast } from '@/shared/components/ui/app-toast-provider';
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
+import { AppConfirmDialog } from '@/shared/components/ui/confirmation-dialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,12 +20,15 @@ import {
 
 const StudentProfileMenu = () => {
   const { user, isInitializing } = useAuthSession();
+  const { data: summary } = useStudentPortalSummary();
   const navigate = useNavigate();
   const { showToast } = useAppToast();
   const [profileOpen, setProfileOpen] = useState(false);
+  const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
+  const [logoutLoading, setLogoutLoading] = useState(false);
 
-  const displayName = user?.displayName || 'Estudiante UTEZ';
   const email = user?.email || 'estudiante@utez.edu.mx';
+  const displayName = summary?.personalInfo.name || user?.displayName || email;
   const name = displayName.trim() || email;
   const initials =
     displayName
@@ -34,13 +39,17 @@ const StudentProfileMenu = () => {
       .join('') || email[0]?.toUpperCase() || 'E';
 
   const handleLogout = async () => {
+    if (logoutLoading) return;
+    setLogoutLoading(true);
     try {
       await authSession.logout();
+      setLogoutConfirmOpen(false);
       showToast({
         severity: 'success',
         title: 'Sesión cerrada',
         description: 'Tu sesión de estudiante ha finalizado.',
       });
+      navigate('/login?mode=student', { replace: true, state: { mode: 'student' } });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'No se pudo cerrar la sesión.';
       showToast({
@@ -49,7 +58,7 @@ const StudentProfileMenu = () => {
         description: message,
       });
     } finally {
-      navigate('/login?mode=student', { replace: true, state: { mode: 'student' } });
+      setLogoutLoading(false);
     }
   };
 
@@ -59,6 +68,18 @@ const StudentProfileMenu = () => {
 
   return (
     <>
+      <AppConfirmDialog
+        open={logoutConfirmOpen}
+        title="Cerrar sesión"
+        description="Se cerrará tu sesión de estudiante actual. ¿Deseas continuar?"
+        confirmText="Cerrar sesión"
+        cancelText="Cancelar"
+        confirmColor="warning"
+        isConfirming={logoutLoading}
+        onCancel={() => !logoutLoading && setLogoutConfirmOpen(false)}
+        onConfirm={() => { if (!logoutLoading) void handleLogout(); }}
+      />
+
       <StudentProfileModal open={profileOpen} onClose={() => setProfileOpen(false)} />
 
       <DropdownMenu>
@@ -97,10 +118,11 @@ const StudentProfileMenu = () => {
           <DropdownMenuItem
             variant="destructive"
             className="cursor-pointer"
-            onSelect={() => void handleLogout()}
+            disabled={logoutLoading}
+            onSelect={() => setLogoutConfirmOpen(true)}
           >
             <LogOut className="h-4 w-4" />
-            Cerrar sesión
+            {logoutLoading ? 'Cerrando sesión...' : 'Cerrar sesión'}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

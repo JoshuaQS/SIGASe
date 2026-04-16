@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState, type FocusEvent } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -33,6 +33,7 @@ import {
   type FormValues,
   sexoOptions,
 } from "@/features/students/schemas/create-student-schema";
+import { capitalizeHumanName, deriveInstitutionalEmailFromEnrollmentId } from "@/shared/lib/validation";
 
 export type StudentsCreateModalProps = {
   open: boolean;
@@ -55,8 +56,33 @@ export function StudentCreateModal({
   const [careers, setCareers] = useState<CareerDto[]>([]);
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
+    mode: "onChange",
+    reValidateMode: "onChange",
     defaultValues,
   });
+
+  const nombresField = form.register("nombres");
+  const apellidoPaternoField = form.register("apellidoPaterno");
+  const apellidoMaternoField = form.register("apellidoMaterno");
+
+  const matriculaValue = form.watch("matricula");
+  const correoValue = form.watch("correo");
+  const derivedCorreo = useMemo(
+    () => deriveInstitutionalEmailFromEnrollmentId(matriculaValue ?? ""),
+    [matriculaValue],
+  );
+
+  useEffect(() => {
+    if (!open) return;
+
+    if (correoValue !== derivedCorreo) {
+      form.setValue("correo", derivedCorreo, {
+        shouldDirty: true,
+        shouldTouch: true,
+        shouldValidate: true,
+      });
+    }
+  }, [correoValue, derivedCorreo, form, open]);
 
   useEffect(() => {
     if (!open) return;
@@ -84,14 +110,14 @@ export function StudentCreateModal({
   useEffect(() => {
     if (!open || mode !== "edit" || !student) return;
     form.reset({
-      nombres: student.name,
-      apellidoPaterno: student.lastNamePaternal,
-      apellidoMaterno: student.lastNameMaternal ?? "",
+      nombres: capitalizeHumanName(student.name),
+      apellidoPaterno: capitalizeHumanName(student.lastNamePaternal),
+      apellidoMaterno: student.lastNameMaternal ? capitalizeHumanName(student.lastNameMaternal) : "",
       matricula: student.enrollmentId,
-      correo: student.institutionalEmail,
+      correo: deriveInstitutionalEmailFromEnrollmentId(student.enrollmentId),
       sexo: student.sex,
       cuatrimestre: String(student.quarter),
-      carrera: student.career?.code ?? "",
+      careerId: student.career?.id ?? "",
     });
   }, [form, mode, open, student]);
 
@@ -101,18 +127,30 @@ export function StudentCreateModal({
     onClose();
   };
 
+  const syncCapitalizedName = (
+    fieldName: "nombres" | "apellidoPaterno" | "apellidoMaterno",
+    onBlur: (event: FocusEvent<HTMLInputElement>) => void,
+  ) => (event: FocusEvent<HTMLInputElement>) => {
+    onBlur(event);
+    form.setValue(fieldName, capitalizeHumanName(event.target.value), {
+      shouldDirty: true,
+      shouldTouch: true,
+      shouldValidate: true,
+    });
+  };
+
   const onSubmit = async (values: FormValues) => {
     setLoading(true);
     try {
       const payload = {
-        enrollmentId: values.matricula.trim().toUpperCase(),
-        name: values.nombres.trim(),
-        lastNamePaternal: values.apellidoPaterno.trim(),
-        lastNameMaternal: values.apellidoMaterno?.trim() ? values.apellidoMaterno.trim() : null,
+        enrollmentId: values.matricula,
+        name: capitalizeHumanName(values.nombres),
+        lastNamePaternal: capitalizeHumanName(values.apellidoPaterno),
+        lastNameMaternal: values.apellidoMaterno?.trim() ? capitalizeHumanName(values.apellidoMaterno) : null,
         sex: values.sexo as StudentBackendSex,
         quarter: Number(values.cuatrimestre),
-        institutionalEmail: values.correo.trim().toLowerCase(),
-        careerCode: values.carrera,
+        institutionalEmail: deriveInstitutionalEmailFromEnrollmentId(values.matricula),
+        careerId: values.careerId,
       };
 
       const savedStudent = mode === "edit" && student
@@ -184,24 +222,36 @@ export function StudentCreateModal({
         </div>
 
         <div className="max-h-[65vh] overflow-y-auto bg-background px-7 py-6">
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <form id="student-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <SectionLabel>Información personal</SectionLabel>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="sm:col-span-2">
                 <FieldLabel text="Nombres" required />
-                <Input placeholder="Ej. Ana Gabriela" {...form.register("nombres")} />
+                <Input
+                  placeholder="Ej. Ana Gabriela"
+                  {...nombresField}
+                  onBlur={syncCapitalizedName("nombres", nombresField.onBlur)}
+                />
                 <FieldError message={form.formState.errors.nombres?.message} />
               </div>
 
               <div>
                 <FieldLabel text="Apellido paterno" required />
-                <Input placeholder="Ej. Ramírez" {...form.register("apellidoPaterno")} />
+                <Input
+                  placeholder="Ej. Ramírez"
+                  {...apellidoPaternoField}
+                  onBlur={syncCapitalizedName("apellidoPaterno", apellidoPaternoField.onBlur)}
+                />
                 <FieldError message={form.formState.errors.apellidoPaterno?.message} />
               </div>
 
               <div>
                 <FieldLabel text="Apellido materno" />
-                <Input placeholder="Ej. Torres" {...form.register("apellidoMaterno")} />
+                <Input
+                  placeholder="Ej. Torres"
+                  {...apellidoMaternoField}
+                  onBlur={syncCapitalizedName("apellidoMaterno", apellidoMaternoField.onBlur)}
+                />
                 <FieldError message={form.formState.errors.apellidoMaterno?.message} />
               </div>
 
@@ -245,7 +295,15 @@ export function StudentCreateModal({
                       className="font-mono uppercase tracking-wide"
                       value={field.value}
                       onBlur={field.onBlur}
-                      onChange={(event) => field.onChange(event.target.value.toUpperCase())}
+                      onChange={(event) => {
+                        const nextValue = event.target.value.toUpperCase()
+                        field.onChange(nextValue)
+                        form.setValue("correo", deriveInstitutionalEmailFromEnrollmentId(nextValue), {
+                          shouldDirty: true,
+                          shouldTouch: true,
+                          shouldValidate: true,
+                        })
+                      }}
                     />
                   )}
                 />
@@ -256,10 +314,17 @@ export function StudentCreateModal({
                 <FieldLabel text="Correo institucional" required />
                 <InputWithIcon
                   icon={<Mail className="h-4 w-4" />}
-                  placeholder="a123@universidad.edu.mx"
+                  placeholder="Se genera automáticamente"
                   type="email"
+                  readOnly
+                  className="bg-muted/60 text-muted-foreground"
                   {...form.register("correo")}
                 />
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  {derivedCorreo
+                    ? `Se generará como ${derivedCorreo}`
+                    : 'Captura una matrícula válida para generar el correo institucional.'}
+                </p>
                 <FieldError message={form.formState.errors.correo?.message} />
               </div>
 
@@ -290,7 +355,7 @@ export function StudentCreateModal({
                 <FieldLabel text="Carrera" required />
                 <Controller
                   control={form.control}
-                  name="carrera"
+                name="careerId"
                   render={({ field }) => (
                     <Select value={field.value} onValueChange={field.onChange}>
                       <SelectTrigger>
@@ -307,8 +372,8 @@ export function StudentCreateModal({
                           </SelectItem>
                         ) : (
                           careers.map((career) => (
-                            <SelectItem key={career.id} value={career.code}>
-                              {career.name} ({career.code})
+                            <SelectItem key={career.id} value={career.id}>
+                              {career.code} · {career.name}
                             </SelectItem>
                           ))
                         )}
@@ -316,7 +381,7 @@ export function StudentCreateModal({
                     </Select>
                   )}
                 />
-                <FieldError message={form.formState.errors.carrera?.message} />
+                <FieldError message={form.formState.errors.careerId?.message} />
               </div>
             </div>
           </form>
@@ -327,8 +392,9 @@ export function StudentCreateModal({
             Cancelar
           </Button>
           <Button
-            onClick={form.handleSubmit(onSubmit)}
-            disabled={loading}
+            type="submit"
+            form="student-form"
+            disabled={loading || !form.formState.isValid}
             className="min-w-[140px]"
           >
             {loading ? (

@@ -1,9 +1,9 @@
 import { useMemo } from 'react'
-import { ArrowUpDown, KeyRound, Pencil, Power, Trash2 } from 'lucide-react'
+import { ArrowUpDown, KeyRound, Loader2, Pencil, Power, RotateCcw, Trash2 } from 'lucide-react'
 import { Badge } from '@/shared/components/ui/badge'
 import { Button } from '@/shared/components/ui/button'
 import { DataTable } from '@/shared/components/ui/data-table'
-import { DataTableFiltersShell, type DataTableFilterChip } from '@/shared/components/ui/data-table-filters-shell'
+import type { ReactNode } from 'react'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -24,17 +24,8 @@ type AdminsTableProps = {
   rows: AdminManagementRow[]
   searchInput: string
   onSearchInputChange: (value: string) => void
-  roleFilter: 'todos' | AdminRole
-  onRoleFilterChange: (value: 'todos' | AdminRole) => void
-  statusFilter: 'todos' | 'ACTIVE' | 'INACTIVE'
-  onStatusFilterChange: (value: 'todos' | 'ACTIVE' | 'INACTIVE') => void
-  filtersOpen: boolean
-  onFiltersToggle: () => void
-  onApplyFilters: () => void
-  onResetFilters: () => void
-  onClearFilters: () => void
-  activeFilterChips: DataTableFilterChip[]
   filteredCount: number
+  loading?: boolean
   page: number
   totalPages: number
   pageSize: number
@@ -43,14 +34,16 @@ type AdminsTableProps = {
   onEdit: (admin: AdminManagementRow) => void
   onResetPassword: (admin: AdminManagementRow) => void
   onDeactivate: (admin: AdminManagementRow) => void
+  onReactivate: (admin: AdminManagementRow) => void
   onDelete: (admin: AdminManagementRow) => void
+  toolbarRight?: ReactNode
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
 const roleStyles: Record<AdminRole, { badge: string; label: string }> = {
-  ADMIN_TI: { badge: 'text-violet-600 border-violet-200 bg-violet-50', label: 'Admin TI' },
-  ADMIN_BIBLIOTECA: { badge: 'text-cyan-600 border-cyan-200 bg-cyan-50', label: 'Admin Biblioteca' },
+  ADMIN_TI: { badge: 'text-violet-700 border-violet-200 bg-violet-50 dark:border-violet-900/60 dark:bg-violet-950/30 dark:text-violet-300', label: 'Admin TI' },
+  ADMIN_BIBLIOTECA: { badge: 'text-cyan-700 border-cyan-200 bg-cyan-50 dark:border-cyan-900/60 dark:bg-cyan-950/30 dark:text-cyan-300', label: 'Admin Biblioteca' },
 }
 
 function initials(name: string) {
@@ -63,17 +56,8 @@ export function AdminsTable({
   rows,
   searchInput,
   onSearchInputChange,
-  roleFilter,
-  onRoleFilterChange,
-  statusFilter,
-  onStatusFilterChange,
-  filtersOpen,
-  onFiltersToggle,
-  onApplyFilters,
-  onResetFilters,
-  onClearFilters,
-  activeFilterChips,
   filteredCount,
+  loading = false,
   page,
   totalPages,
   pageSize,
@@ -82,7 +66,9 @@ export function AdminsTable({
   onEdit,
   onResetPassword,
   onDeactivate,
+  onReactivate,
   onDelete,
+  toolbarRight,
 }: AdminsTableProps) {
   const pageCount = Math.max(totalPages, 1)
 
@@ -99,47 +85,14 @@ export function AdminsTable({
     return items
   }, [page, pageCount])
 
-  const filterPanel = (
-    <DataTableFiltersShell
-      open={filtersOpen}
-      chips={activeFilterChips}
-      onApply={onApplyFilters}
-      onReset={onResetFilters}
-      onClear={onClearFilters}
-    >
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:max-w-2xl">
-        <div className="space-y-1.5">
-          <label className="text-xs font-medium text-muted-foreground">Rol</label>
-          <select
-            value={roleFilter}
-            onChange={(e) => onRoleFilterChange(e.target.value as 'todos' | AdminRole)}
-            className="h-9 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-          >
-            <option value="todos">Todos los roles</option>
-            <option value="ADMIN_TI">Admin TI</option>
-            <option value="ADMIN_BIBLIOTECA">Admin Biblioteca</option>
-          </select>
-        </div>
-        <div className="space-y-1.5">
-          <label className="text-xs font-medium text-muted-foreground">Estado</label>
-          <select
-            value={statusFilter}
-            onChange={(e) => onStatusFilterChange(e.target.value as 'todos' | 'ACTIVE' | 'INACTIVE')}
-            className="h-9 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-          >
-            <option value="todos">Todos</option>
-            <option value="ACTIVE">Activos</option>
-            <option value="INACTIVE">Inactivos</option>
-          </select>
-        </div>
-      </div>
-    </DataTableFiltersShell>
-  )
-
   return (
     <DataTable
       title="Administradores"
-      meta={`${filteredCount} administradores, mostrando ${rows.length}`}
+      meta={
+        loading
+          ? `Cargando administradores... ${filteredCount} encontrados`
+          : `${filteredCount} administradores, mostrando ${rows.length}`
+      }
       search={{
         value: searchInput,
         onChange: onSearchInputChange,
@@ -148,19 +101,7 @@ export function AdminsTable({
       viewToggle={true}
       tableLabel="Table"
       cardsLabel="Cards"
-      toolbarRight={
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="h-8 gap-1.5 text-xs"
-          onClick={onFiltersToggle}
-        >
-          <ArrowUpDown className="h-3 w-3" />
-          Filtrar
-        </Button>
-      }
-      toolbarBelow={filterPanel}
+      toolbarRight={toolbarRight}
       renderTable={() => (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -182,7 +123,16 @@ export function AdminsTable({
               </tr>
             </thead>
             <tbody>
-              {rows.length === 0 ? (
+              {loading ? (
+                <tr>
+                  <td colSpan={7} className="px-4 py-8">
+                    <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Cargando administradores...
+                    </div>
+                  </td>
+                </tr>
+              ) : rows.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-4 py-8 text-center text-sm text-muted-foreground">
                     No hay administradores para los filtros seleccionados.
@@ -213,7 +163,10 @@ export function AdminsTable({
                     <td className="px-4 py-2.5">
                       <Badge
                         variant="outlined"
-                        className={`text-xs capitalize ${isActive ? 'text-emerald-600 border-emerald-200 bg-emerald-50' : 'text-muted-foreground border-border'}`}
+                        className={`text-xs capitalize ${isActive
+                          ? 'text-emerald-700 border-emerald-200 bg-emerald-50 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-300'
+                          : 'text-muted-foreground border-border bg-background dark:border-border/80 dark:bg-muted/30 dark:text-muted-foreground'
+                        }`}
                       >
                         {admin.estado}
                       </Badge>
@@ -233,6 +186,7 @@ export function AdminsTable({
                           className="text-muted-foreground hover:bg-muted hover:text-foreground"
                           title="Editar"
                           onClick={() => onEdit(admin)}
+                          disabled={loading}
                         >
                           <Pencil className="h-4 w-4" />
                         </Button>
@@ -243,6 +197,7 @@ export function AdminsTable({
                           className="text-muted-foreground hover:bg-muted hover:text-foreground"
                           title="Cambiar contraseña"
                           onClick={() => onResetPassword(admin)}
+                          disabled={loading}
                         >
                           <KeyRound className="h-4 w-4" />
                         </Button>
@@ -254,10 +209,23 @@ export function AdminsTable({
                             className="text-success hover:bg-destructive/10 hover:text-destructive"
                             title="Deshabilitar"
                             onClick={() => onDeactivate(admin)}
+                            disabled={loading}
                           >
                             <Power className="h-4 w-4" />
                           </Button>
-                        ) : null}
+                        ) : (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-xs"
+                            className="text-success hover:bg-success/10 hover:text-success"
+                            title="Reactivar"
+                            onClick={() => onReactivate(admin)}
+                            disabled={loading}
+                          >
+                            <RotateCcw className="h-4 w-4" />
+                          </Button>
+                        )}
                         <Button
                           type="button"
                           variant="ghost"
@@ -265,6 +233,7 @@ export function AdminsTable({
                           className="text-destructive hover:bg-destructive/10 hover:text-destructive"
                           title="Eliminar"
                           onClick={() => onDelete(admin)}
+                          disabled={loading}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -279,7 +248,12 @@ export function AdminsTable({
       )}
       renderCards={() => (
         <div className="grid grid-cols-1 gap-3 p-5 sm:grid-cols-2 xl:grid-cols-3">
-          {rows.length === 0 ? (
+          {loading ? (
+            <div className="col-span-full flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Cargando administradores...
+            </div>
+          ) : rows.length === 0 ? (
             <div className="col-span-full py-8 text-center text-sm text-muted-foreground">
               No hay administradores para los filtros seleccionados.
             </div>
@@ -303,7 +277,10 @@ export function AdminsTable({
                   </div>
                   <Badge
                     variant="outlined"
-                    className={`ml-2 flex-shrink-0 text-xs capitalize ${isActive ? 'text-emerald-600 border-emerald-200 bg-emerald-50' : 'text-muted-foreground border-border'}`}
+                    className={`ml-2 flex-shrink-0 text-xs capitalize ${isActive
+                      ? 'text-emerald-700 border-emerald-200 bg-emerald-50 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-300'
+                      : 'text-muted-foreground border-border bg-background dark:border-border/80 dark:bg-muted/30 dark:text-muted-foreground'
+                    }`}
                   >
                     {admin.estado}
                   </Badge>
@@ -314,18 +291,22 @@ export function AdminsTable({
                 <div className="mt-auto flex items-center justify-between">
                   <span className="text-xs text-muted-foreground">{admin.ultimaAccion}</span>
                   <div className="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                    <Button type="button" variant="ghost" size="icon-xs" onClick={() => onEdit(admin)}>
+                    <Button type="button" variant="ghost" size="icon-xs" onClick={() => onEdit(admin)} disabled={loading}>
                       <Pencil className="h-4 w-4" />
                     </Button>
-                    <Button type="button" variant="ghost" size="icon-xs" onClick={() => onResetPassword(admin)}>
+                    <Button type="button" variant="ghost" size="icon-xs" onClick={() => onResetPassword(admin)} disabled={loading}>
                       <KeyRound className="h-4 w-4" />
                     </Button>
                     {isActive ? (
-                      <Button type="button" variant="ghost" size="icon-xs" onClick={() => onDeactivate(admin)}>
+                      <Button type="button" variant="ghost" size="icon-xs" onClick={() => onDeactivate(admin)} disabled={loading}>
                         <Power className="h-4 w-4" />
                       </Button>
-                    ) : null}
-                    <Button type="button" variant="ghost" size="icon-xs" onClick={() => onDelete(admin)}>
+                    ) : (
+                      <Button type="button" variant="ghost" size="icon-xs" onClick={() => onReactivate(admin)} disabled={loading}>
+                        <RotateCcw className="h-4 w-4" />
+                      </Button>
+                    )}
+                    <Button type="button" variant="ghost" size="icon-xs" onClick={() => onDelete(admin)} disabled={loading}>
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
@@ -338,12 +319,11 @@ export function AdminsTable({
       pagination={{
         summary: `${filteredCount} administradores · ${rows.length} mostrados`,
         pageSize,
-        pageSizeOptions: [5, 10, 20],
         onPageSizeChange,
         items: pageItems,
         active: page + 1,
         onItemClick: (item) => {
-          if (typeof item === 'number') onPageChange(item - 1)
+          if (!loading && typeof item === 'number') onPageChange(item - 1)
         },
       }}
     />

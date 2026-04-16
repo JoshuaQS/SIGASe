@@ -58,7 +58,7 @@ public class Student extends BaseAuditableEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 16)
-    private StudentStatus status = StudentStatus.ACTIVE;
+    private StudentStatus status = StudentStatus.PENDING;
 
     @Column(name = "google_subject", unique = true, length = 255)
     private String googleSubject;

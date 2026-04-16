@@ -161,6 +161,18 @@ public class StudentController {
         return new ApiResponse<>(true, "Estudiante reactivado.", response, HttpStatus.OK.value());
     }
 
+    @PostMapping("/{studentId}/resend-onboarding")
+    @Operation(summary = "Reenviar correo de onboarding de estudiante")
+    public ApiResponse<StudentResponse> resendOnboarding(
+            @PathVariable UUID studentId,
+            Authentication authentication,
+            HttpServletRequest httpRequest
+    ) {
+        Admin actor = adminContextService.requireCurrentAdmin(authentication);
+        StudentResponse response = studentService.resendOnboardingEmail(studentId, actor, httpRequest);
+        return new ApiResponse<>(true, "Correo de onboarding reenviado.", response, HttpStatus.OK.value());
+    }
+
     @DeleteMapping("/{studentId}")
     @Operation(summary = "Eliminar estudiante")
     public ApiResponse<Void> delete(

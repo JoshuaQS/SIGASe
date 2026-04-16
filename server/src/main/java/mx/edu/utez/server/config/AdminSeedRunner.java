@@ -3,6 +3,7 @@ package mx.edu.utez.server.config;
 import mx.edu.utez.server.modules.admins.entity.Admin;
 import mx.edu.utez.server.modules.admins.repository.AdminRepository;
 import mx.edu.utez.server.shared.enums.AdminRole;
+import mx.edu.utez.server.shared.enums.AdminStatus;
 import mx.edu.utez.server.shared.util.EmailNormalizer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -94,7 +95,7 @@ public class AdminSeedRunner implements ApplicationRunner {
         admin.setLastNameMaternal(null);
         admin.setPasswordHash(passwordEncoder.encode(password));
         admin.setRole(role);
-        admin.setActive(true);
+        admin.setStatus(AdminStatus.ACTIVE);
         adminRepository.save(admin);
 
         log.info("Seed {}: admin creado con email {}.", roleName, normalizedEmail);

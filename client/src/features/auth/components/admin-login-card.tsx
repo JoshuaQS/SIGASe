@@ -51,7 +51,8 @@ export default function AdminLoginCard({
     formState: { errors, isSubmitting },
   } = useForm<AdminLoginFields>({
     resolver: zodResolver(adminLoginSchema),
-    mode: 'onTouched',
+    mode: 'onChange',
+    reValidateMode: 'onChange',
   });
 
   const onAdminLogin = async (data: AdminLoginFields) => {

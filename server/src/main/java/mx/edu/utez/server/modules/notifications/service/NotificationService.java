@@ -4,7 +4,6 @@ import jakarta.persistence.EntityManager;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import java.util.Set;
 import java.util.UUID;
 import mx.edu.utez.server.modules.admins.entity.Admin;
 import mx.edu.utez.server.modules.elibro.entity.ElibroAccessLog;
@@ -24,7 +23,6 @@ import mx.edu.utez.server.shared.api.PageResponse;
 import mx.edu.utez.server.shared.enums.AdminStatus;
 import mx.edu.utez.server.shared.enums.AuditOutcome;
 import mx.edu.utez.server.shared.enums.AuditSeverity;
-import mx.edu.utez.server.shared.enums.AuditSourceModule;
 import mx.edu.utez.server.shared.exception.BusinessException;
 import mx.edu.utez.server.shared.exception.ErrorCode;
 import mx.edu.utez.server.shared.util.SecurityLogSanitizer;
@@ -32,6 +30,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
@@ -39,8 +38,6 @@ import org.springframework.util.StringUtils;
 public class NotificationService {
 
     private static final int MAX_PAGE_SIZE = 100;
-    private static final Set<String> AUDIT_ENTITY_TYPES = Set.of("STUDENT", "ADMIN", "ELIBRO_CONFIG", "REPORT");
-
     private final NotificationRepository notificationRepository;
     private final NotificationPreferenceRepository notificationPreferenceRepository;
     private final SecurityLogSanitizer securityLogSanitizer;
@@ -132,7 +129,7 @@ public class NotificationService {
         }
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void handleAuditEvent(AuditLog auditLog) {
         if (auditLog == null || !shouldGenerateAuditNotification(auditLog)) {
             return;
@@ -140,7 +137,7 @@ public class NotificationService {
 
         List<Notification> notifications = new ArrayList<>();
         for (NotificationPreferenceRepository.AdminPreferenceView view :
-                notificationPreferenceRepository.findAdminPreferenceViewsByStatus(AdminStatus.ACTIVE)) {
+                notificationPreferenceRepository.findAdminPreferenceViewsByStatus(AdminStatus.ACTIVE.name())) {
             if (shouldSkipAuditRecipient(view.getAdminId(), auditLog)) {
                 continue;
             }
@@ -155,7 +152,7 @@ public class NotificationService {
         }
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void handleAccessEvent(ElibroAccessLog accessLog) {
         if (accessLog == null || !shouldGenerateAccessNotification(accessLog)) {
             return;
@@ -163,8 +160,8 @@ public class NotificationService {
 
         List<Notification> notifications = new ArrayList<>();
         for (NotificationPreferenceRepository.AdminPreferenceView view :
-                notificationPreferenceRepository.findAdminPreferenceViewsByStatus(AdminStatus.ACTIVE)) {
-            if (!Boolean.TRUE.equals(view.getNotifyAccessFailures())) {
+                notificationPreferenceRepository.findAdminPreferenceViewsByStatus(AdminStatus.ACTIVE.name())) {
+            if (!isEnabled(view.getNotifyAccessFailures())) {
                 continue;
             }
             notifications.add(buildAccessNotification(view.getAdminId(), accessLog));
@@ -188,41 +185,54 @@ public class NotificationService {
     }
 
     private boolean shouldGenerateAuditNotification(AuditLog auditLog) {
-        if ("STUDENT".equals(auditLog.getEntityType())
-                && auditLog.getSourceModule() == AuditSourceModule.AUTH
-                && auditLog.getOutcome() == AuditOutcome.SUCCESS) {
-            return false;
-        }
-        return auditLog.getSeverity() == AuditSeverity.CRITICAL
-                || auditLog.getSeverity() == AuditSeverity.SECURITY
-                || auditLog.getOutcome() == AuditOutcome.FAILURE
-                || AUDIT_ENTITY_TYPES.contains(auditLog.getEntityType());
+        return auditLog != null;
     }
 
     private boolean canReceiveAuditNotification(
             NotificationPreferenceRepository.AdminPreferenceView view,
             AuditLog auditLog
     ) {
-        boolean matchesCritical = auditLog.getSeverity() == AuditSeverity.CRITICAL
-                && Boolean.TRUE.equals(view.getNotifyCritical());
-        boolean matchesSecurity = auditLog.getSeverity() == AuditSeverity.SECURITY
-                && Boolean.TRUE.equals(view.getNotifySecurity());
-        boolean matchesStudent = "STUDENT".equals(auditLog.getEntityType())
-                && Boolean.TRUE.equals(view.getNotifyStudentChanges());
-        boolean matchesAdmin = "ADMIN".equals(auditLog.getEntityType())
-                && Boolean.TRUE.equals(view.getNotifyAdminChanges());
-        boolean matchesConfig = ("ELIBRO_CONFIG".equals(auditLog.getEntityType()) || "REPORT".equals(auditLog.getEntityType()))
-                && Boolean.TRUE.equals(view.getNotifyConfigChanges());
+        boolean isCriticalOrSecurity = auditLog.getSeverity() == AuditSeverity.CRITICAL
+                || auditLog.getSeverity() == AuditSeverity.SECURITY;
+        boolean isKnownEntity = "STUDENT".equals(auditLog.getEntityType())
+                || "ADMIN".equals(auditLog.getEntityType())
+                || "ELIBRO_CONFIG".equals(auditLog.getEntityType())
+                || "REPORT".equals(auditLog.getEntityType());
 
-        return matchesCritical || matchesSecurity || matchesStudent || matchesAdmin || matchesConfig;
+        boolean matchesCritical = auditLog.getSeverity() == AuditSeverity.CRITICAL
+                && isEnabled(view.getNotifyCritical());
+        boolean matchesSecurity = auditLog.getSeverity() == AuditSeverity.SECURITY
+                && isEnabled(view.getNotifySecurity());
+        boolean matchesStudent = "STUDENT".equals(auditLog.getEntityType())
+                && isEnabled(view.getNotifyStudentChanges());
+        boolean matchesAdmin = "ADMIN".equals(auditLog.getEntityType())
+                && isEnabled(view.getNotifyAdminChanges());
+        boolean matchesConfig = ("ELIBRO_CONFIG".equals(auditLog.getEntityType()) || "REPORT".equals(auditLog.getEntityType()))
+                && isEnabled(view.getNotifyConfigChanges());
+
+        if (matchesCritical || matchesSecurity || matchesStudent || matchesAdmin || matchesConfig) {
+            return true;
+        }
+
+        // For audit entities outside the current preference categories (for example, CAREER),
+        // deliver notifications when at least one category is enabled.
+        if (!isCriticalOrSecurity && !isKnownEntity) {
+            return isEnabled(view.getNotifyCritical())
+                    || isEnabled(view.getNotifySecurity())
+                    || isEnabled(view.getNotifyStudentChanges())
+                    || isEnabled(view.getNotifyConfigChanges())
+                    || isEnabled(view.getNotifyAdminChanges());
+        }
+
+        return false;
+    }
+
+    private boolean isEnabled(Integer value) {
+        return value == null || value != 0;
     }
 
     private boolean shouldGenerateAccessNotification(ElibroAccessLog accessLog) {
-        String resultName = accessLog.getResult().name();
-        return resultName.startsWith("FAILED_")
-                || "RATE_LIMIT".equals(resultName)
-                || "TOKEN_INVALID".equals(resultName)
-                || "ACCOUNT_LOCKED".equals(resultName);
+        return accessLog != null && accessLog.getResult() != null;
     }
 
     private boolean shouldSkipAuditRecipient(UUID adminId, AuditLog auditLog) {

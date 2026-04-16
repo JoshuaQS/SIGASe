@@ -1,141 +1,180 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 
-import type {
-  DashboardAccessResultFilter,
-  DashboardAnalysisMetadataResponse,
-  DashboardCareerSearchItem,
-  DashboardDateFilterType,
-  DashboardFilterScope,
-  DashboardRankingMode,
-  DashboardSortDirection,
-  DashboardStudentSearchItem,
-} from '@/features/dashboard/api/dashboard-api'
-import {
-  createDefaultFilterState,
-  deriveBackendMode,
-  type FilterState,
-} from '@/features/dashboard/components/composer/composer-types'
+export type FilterType = 'alumno' | 'carrera'
+export type AlumnoScope = 'individual' | 'todos'
+export type CarreraScope = 'individual' | 'varias' | 'todas'
+export type Scope = AlumnoScope | CarreraScope
+export type AccessType = 'exitoso' | 'fallido' | 'ambos'
+export type SortOrder = 'asc' | 'desc'
 
-export function useFilterComposer(metadata: DashboardAnalysisMetadataResponse) {
-  const [state, setState] = useState<FilterState>(() => createDefaultFilterState(metadata))
+export interface DateRange {
+  from: Date | undefined
+  to: Date | undefined
+}
 
-  const setScope = (scope: DashboardFilterScope | null) => {
+export interface FilterState {
+  filterType: FilterType | null
+  scope: Scope | null
+  selectedStudent: string | null
+  selectedCareers: string[]
+  accessType: AccessType
+  dateFilter: boolean
+  dateRange: DateRange
+  sortOrder: SortOrder
+  ranking: boolean
+  topN: number
+}
+
+export const ALUMNO_TOP_OPTIONS = [5, 10, 15, 20, 25, 30] as const
+export const CARRERA_TOP_OPTIONS = [3, 5, 10] as const
+
+export const DEFAULT_FILTER_STATE: FilterState = {
+  filterType: null,
+  scope: null,
+  selectedStudent: null,
+  selectedCareers: [],
+  accessType: 'ambos',
+  dateFilter: false,
+  dateRange: { from: undefined, to: undefined },
+  sortOrder: 'desc',
+  ranking: false,
+  topN: 10,
+}
+
+export function supportsRankingForState(state: Pick<FilterState, 'filterType' | 'scope'>): boolean {
+  if (state.filterType === 'alumno') {
+    return state.scope === 'todos'
+  }
+
+  if (state.filterType === 'carrera') {
+    return state.scope === 'varias' || state.scope === 'todas'
+  }
+
+  return false
+}
+
+export function getCurrentStep(state: FilterState): number {
+  if (!state.filterType) return 0
+  if (!state.scope) return 1
+
+  if (state.filterType === 'alumno' && state.scope === 'individual' && !state.selectedStudent) return 2
+  if (state.filterType === 'carrera' && state.scope === 'individual' && state.selectedCareers.length === 0) return 2
+  if (state.filterType === 'carrera' && state.scope === 'varias' && state.selectedCareers.length < 2) return 2
+
+  return 3
+}
+
+export function isFilterComplete(state: FilterState): boolean {
+  if (!state.filterType || !state.scope) return false
+
+  if (state.filterType === 'alumno') {
+    if (state.scope === 'individual' && !state.selectedStudent) return false
+  }
+
+  if (state.filterType === 'carrera') {
+    if (state.scope === 'individual' && state.selectedCareers.length === 0) return false
+    if (state.scope === 'varias' && state.selectedCareers.length < 2) return false
+  }
+
+  if (state.dateFilter && (!state.dateRange.from || !state.dateRange.to)) return false
+  if (state.ranking && !state.topN) return false
+
+  return true
+}
+
+export function useFilterComposer() {
+  const [state, setState] = useState<FilterState>({ ...DEFAULT_FILTER_STATE })
+
+  const setFilterType = useCallback((type: FilterType | null) => {
+    setState(() => ({
+      ...DEFAULT_FILTER_STATE,
+      filterType: type,
+    }))
+  }, [])
+
+  const setScope = useCallback((scope: Scope | null) => {
     setState((prev) => ({
-      ...createDefaultFilterState(metadata),
+      ...prev,
       scope,
-      sortDirection: prev.sortDirection ?? metadata.defaults.sortDirection,
-    }))
-  }
-
-  const setStudentScopeChoice = (choice: FilterState['studentScopeChoice']) => {
-    setState((prev) => ({
-      ...prev,
-      studentScopeChoice: choice,
       selectedStudent: null,
-      rankingMode: metadata.defaults.rankingMode,
-      topN: null,
-    }))
-  }
-
-  const setCareerScopeChoice = (choice: FilterState['careerScopeChoice']) => {
-    setState((prev) => ({
-      ...prev,
-      careerScopeChoice: choice,
       selectedCareers: [],
-      allCareersSelected: false,
-      rankingMode: metadata.defaults.rankingMode,
-      topN: null,
+      ranking: false,
+      topN: DEFAULT_FILTER_STATE.topN,
     }))
-  }
+  }, [])
 
-  const setSelectedStudent = (student: DashboardStudentSearchItem | null) => {
-    setState((prev) => ({ ...prev, selectedStudent: student }))
-  }
+  const setSelectedStudent = useCallback((id: string | null) => {
+    setState((prev) => ({ ...prev, selectedStudent: id }))
+  }, [])
 
-  const setSelectedCareers = (careers: DashboardCareerSearchItem[]) => {
-    setState((prev) => ({ ...prev, selectedCareers: careers, allCareersSelected: false }))
-  }
+  const setSelectedCareers = useCallback((ids: string[]) => {
+    setState((prev) => ({ ...prev, selectedCareers: ids }))
+  }, [])
 
-  const toggleCareer = (career: DashboardCareerSearchItem) => {
-    setState((prev) => {
-      const exists = prev.selectedCareers.some((item) => item.id === career.id)
-      return {
-        ...prev,
-        allCareersSelected: false,
-        selectedCareers: exists
-          ? prev.selectedCareers.filter((item) => item.id !== career.id)
-          : [...prev.selectedCareers, career],
-      }
-    })
-  }
-
-  const setAllCareersSelected = (enabled: boolean) => {
+  const toggleCareer = useCallback((id: string) => {
     setState((prev) => ({
       ...prev,
-      allCareersSelected: enabled,
-      selectedCareers: enabled ? [] : prev.selectedCareers,
+      selectedCareers: prev.selectedCareers.includes(id)
+        ? prev.selectedCareers.filter((careerId) => careerId !== id)
+        : [...prev.selectedCareers, id],
     }))
-  }
+  }, [])
 
-  const setAccessResult = (accessResult: DashboardAccessResultFilter | null) => {
-    setState((prev) => ({ ...prev, accessResult }))
-  }
+  const setAccessType = useCallback((type: AccessType) => {
+    setState((prev) => ({ ...prev, accessType: type }))
+  }, [])
 
-  const setDateFilterType = (dateFilterType: DashboardDateFilterType) => {
+  const setDateFilter = useCallback((enabled: boolean) => {
     setState((prev) => ({
       ...prev,
-      dateFilterType,
-      dateRange: dateFilterType === 'CUSTOM_RANGE' ? prev.dateRange : { from: undefined, to: undefined },
+      dateFilter: enabled,
+      dateRange: enabled ? prev.dateRange : { from: undefined, to: undefined },
     }))
-  }
+  }, [])
 
-  const setDateRange = (dateRange: FilterState['dateRange']) => {
-    setState((prev) => ({ ...prev, dateRange }))
-  }
+  const setDateRange = useCallback((range: DateRange) => {
+    setState((prev) => ({ ...prev, dateRange: range }))
+  }, [])
 
-  const setRankingMode = (rankingMode: DashboardRankingMode) => {
-    setState((prev) => ({
-      ...prev,
-      rankingMode,
-      topN: rankingMode === 'TOP' ? prev.topN : null,
-    }))
-  }
+  const setSortOrder = useCallback((order: SortOrder) => {
+    setState((prev) => ({ ...prev, sortOrder: order }))
+  }, [])
 
-  const setTopN = (topN: number | null) => {
+  const setRanking = useCallback((enabled: boolean) => {
+    setState((prev) => ({ ...prev, ranking: enabled }))
+  }, [])
+
+  const setTopN = useCallback((topN: number) => {
     setState((prev) => ({ ...prev, topN }))
-  }
+  }, [])
 
-  const setSortDirection = (sortDirection: DashboardSortDirection) => {
-    setState((prev) => ({ ...prev, sortDirection }))
-  }
+  const reset = useCallback(() => {
+    setState({ ...DEFAULT_FILTER_STATE })
+  }, [])
 
-  const reset = () => {
-    setState(createDefaultFilterState(metadata))
-  }
+  const isComplete = useMemo(() => isFilterComplete(state), [state])
 
-  const derivedMode = useMemo(() => deriveBackendMode(state), [state])
-  const isCareerMultiSelection = state.scope === 'CAREERS' && state.careerScopeChoice === 'MULTIPLE'
-  const isGroupScope = derivedMode === 'ALL' || derivedMode === 'MULTI'
+  const isGroupScope = useMemo(() => {
+    if (state.filterType === 'alumno') return state.scope === 'todos'
+    if (state.filterType === 'carrera') return state.scope === 'varias' || state.scope === 'todas'
+    return false
+  }, [state.filterType, state.scope])
 
   return {
     state,
-    setState,
-    derivedMode,
-    isCareerMultiSelection,
+    isComplete,
     isGroupScope,
+    setFilterType,
     setScope,
-    setStudentScopeChoice,
-    setCareerScopeChoice,
     setSelectedStudent,
     setSelectedCareers,
     toggleCareer,
-    setAllCareersSelected,
-    setAccessResult,
-    setDateFilterType,
+    setAccessType,
+    setDateFilter,
     setDateRange,
-    setRankingMode,
+    setSortOrder,
+    setRanking,
     setTopN,
-    setSortDirection,
     reset,
   }
 }

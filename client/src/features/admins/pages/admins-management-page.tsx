@@ -1,10 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
-import { Users, Plus, Shield, UserCheck, Clock } from 'lucide-react'
-import { Card } from '@/shared/components/ui/card'
+import { Users, Plus, Shield, UserCheck, Clock, RefreshCw } from 'lucide-react'
 import { Button } from '@/shared/components/ui/button'
-import { Input } from '@/shared/components/ui/input'
-import { Dialog, DialogContent } from '@/shared/components/ui/dialog'
 import StatCard from '@/shared/components/data-display/status-card'
 import { SectionHeader } from '@/shared/components/ui/section-header'
 import { useAppToast } from '@/shared/components/ui/app-toast-provider'
@@ -12,45 +9,37 @@ import { AdminsTable, type AdminManagementRow, type AdminRole } from '@/features
 import AdminGraphs from '@/features/admins/components/admin-graphs'
 import type { AdminFormValues } from '@/features/admins/components/modals/create-admin-modal'
 import { CreateAdminModal } from '@/features/admins/components/modals/create-admin-modal'
+import { AdminsFiltersPopover } from '@/features/admins/components/filters/admins-filters-popover'
+import { DEFAULT_ADMINS_TABLE_FILTERS } from '@/features/admins/components/filters/admins-filter-fields'
 import { useTableFilterState } from '@/shared/hooks/use-table-filter-state'
 import { AppConfirmDialog } from '@/shared/components/ui/confirmation-dialog'
 import {
   listAdmins,
   createAdmin,
   updateAdmin,
+  activateAdmin,
   deactivateAdmin,
   resetAdminPassword,
   deleteAdmin,
   getAdminDashboardMetrics,
   type AdminResponseDto,
   type AdminBackendRole,
-  type AdminBackendStatus,
   type AdminDashboardMetrics,
 } from '@/features/admins/api/admins-api'
-import {
-  ModalFormBody,
-  ModalFormFooter,
-  ModalFormHeader,
-  modalFormShellClass,
-} from '@/shared/components/ui/forms/modal-form-primitives'
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 
-const PAGE_SIZE = 5
+const PAGE_SIZE = 8
 
 const EMPTY_FORM: AdminFormValues = {
   email: '', name: '', lastNamePaternal: '', lastNameMaternal: '',
-  password: '', role: 'ADMIN_TI', status: 'ACTIVE',
-}
-
-const DEFAULT_TABLE_FILTERS = {
-  role: 'todos' as 'todos' | AdminRole,
-  status: 'todos' as 'todos' | AdminBackendStatus,
+  role: 'ADMIN_TI',
 }
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 type ConfirmAction =
+  | { type: 'activate'; admin: AdminResponseDto }
   | { type: 'deactivate'; admin: AdminResponseDto }
   | { type: 'delete'; admin: AdminResponseDto }
 
@@ -92,7 +81,7 @@ const AdminsManagement = () => {
 
   // ── Data state ────────────────────────────────────────────────────────────
   const [admins, setAdmins] = useState<AdminResponseDto[]>([])
-  const [loading, setLoading] = useState(true)
+  const [adminsLoading, setAdminsLoading] = useState(false)
   const [totalElements, setTotalElements] = useState(0)
   const [totalPages, setTotalPages] = useState(0)
   const [metrics, setMetrics] = useState<AdminDashboardMetrics | null>(null)
@@ -106,13 +95,12 @@ const AdminsManagement = () => {
     filtersOpen,
     setFiltersOpen,
     draftFilters,
+    setDraftFilters,
     appliedFilters,
-    updateDraftFilter,
     applyFilters,
     resetDraftFilters,
     clearFilters,
-    commitAppliedFilters,
-  } = useTableFilterState(DEFAULT_TABLE_FILTERS)
+  } = useTableFilterState(DEFAULT_ADMINS_TABLE_FILTERS)
 
   // ── Confirmation state ────────────────────────────────────────────────────
   const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null)
@@ -126,8 +114,8 @@ const AdminsManagement = () => {
 
   // ── Reset password modal state ────────────────────────────────────────────
   const [resetAdmin, setResetAdmin] = useState<AdminResponseDto | null>(null)
-  const [newPassword, setNewPassword] = useState('')
   const [resetLoading, setResetLoading] = useState(false)
+  const [resetConfirmOpen, setResetConfirmOpen] = useState(false)
 
   // ── Debounce search ───────────────────────────────────────────────────────
   useEffect(() => {
@@ -155,13 +143,18 @@ const AdminsManagement = () => {
     try {
       const data = await getAdminDashboardMetrics()
       setMetrics(data)
-    } catch {
-      // Non-critical — widgets degrade gracefully
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'No se pudo cargar la analítica de administradores.'
+      showToast({
+        severity: 'warning',
+        title: 'Métricas no disponibles',
+        description: message,
+      })
     }
-  }, [])
+  }, [showToast])
 
   const fetchAdmins = useCallback(async () => {
-    setLoading(true)
+    setAdminsLoading(true)
     try {
       const response = await listAdmins({
         query: debouncedSearch.trim() || undefined,
@@ -179,7 +172,7 @@ const AdminsManagement = () => {
       const message = error instanceof Error ? error.message : 'No se pudo cargar la lista de administradores.'
       showToast({ severity: 'error', title: 'Error cargando administradores', description: message })
     } finally {
-      setLoading(false)
+      setAdminsLoading(false)
     }
   }, [appliedFilters.role, appliedFilters.status, debouncedSearch, page, pageSize, showToast])
 
@@ -204,48 +197,24 @@ const AdminsManagement = () => {
     [admins, actionsMap],
   )
 
-  const activeFilterChips = useMemo(() => ([
-    ...(searchInput.trim()
-      ? [{
-          id: 'search',
-          label: `Búsqueda: ${searchInput.trim()}`,
-          onClear: () => {
-            setSearchInput('')
-            setPage(0)
-          },
-        }]
-      : []),
-    ...(appliedFilters.role !== 'todos'
-      ? [{
-          id: 'role',
-          label: `Rol: ${appliedFilters.role === 'ADMIN_TI' ? 'Admin TI' : 'Admin Biblioteca'}`,
-          onClear: () => {
-            commitAppliedFilters((current) => ({ ...current, role: 'todos' }))
-          },
-        }]
-      : []),
-    ...(appliedFilters.status !== 'todos'
-      ? [{
-          id: 'status',
-          label: `Estado: ${appliedFilters.status === 'ACTIVE' ? 'Activo' : 'Inactivo'}`,
-          onClear: () => {
-            commitAppliedFilters((current) => ({ ...current, status: 'todos' }))
-          },
-        }]
-      : []),
-  ]), [appliedFilters.role, appliedFilters.status, commitAppliedFilters, searchInput])
-
   // ── Create ────────────────────────────────────────────────────────────────
   const handleOpenCreate = () => {
     setFormValues(EMPTY_FORM)
     setCreateModalOpen(true)
   }
 
-  const handleCreate = async () => {
+  const handleCreate = async (nextValues: AdminFormValues) => {
+    setFormValues(nextValues)
     setFormLoading(true)
     try {
-      await createAdmin({ ...formValues, lastNameMaternal: formValues.lastNameMaternal || null })
-      showToast({ severity: 'success', title: 'Administrador creado', description: `${formValues.name} ${formValues.lastNamePaternal} fue registrado correctamente.` })
+      await createAdmin({
+        email: nextValues.email ?? '',
+        name: nextValues.name ?? '',
+        lastNamePaternal: nextValues.lastNamePaternal ?? '',
+        lastNameMaternal: nextValues.lastNameMaternal || null,
+        role: nextValues.role,
+      })
+      showToast({ severity: 'success', title: 'Administrador creado', description: `${nextValues.name} ${nextValues.lastNamePaternal} fue registrado correctamente.` })
       setCreateModalOpen(false)
       void fetchMetrics()
       if (page === 0) { await fetchAdmins() } else { setPage(0) }
@@ -261,26 +230,28 @@ const AdminsManagement = () => {
   const handleOpenEdit = (row: AdminManagementRow) => {
     const source = admins.find((a) => a.id === row.id)
     if (!source) return
-    setEditingAdmin(source)
-    setFormValues({
-      email: source.email, name: source.name,
-      lastNamePaternal: source.lastNamePaternal,
-      lastNameMaternal: source.lastNameMaternal ?? '',
-      password: '', role: source.role as AdminBackendRole, status: source.status,
-    })
+      setEditingAdmin(source)
+      setFormValues({
+        email: source.email, name: source.name,
+        lastNamePaternal: source.lastNamePaternal,
+        lastNameMaternal: source.lastNameMaternal ?? '',
+        role: source.role as AdminBackendRole,
+      })
   }
 
-  const handleEdit = async () => {
+  const handleEdit = async (nextValues: AdminFormValues) => {
     if (!editingAdmin) return
+    setFormValues(nextValues)
     setFormLoading(true)
     try {
       await updateAdmin(editingAdmin.id, {
-        email: formValues.email, name: formValues.name,
-        lastNamePaternal: formValues.lastNamePaternal,
-        lastNameMaternal: formValues.lastNameMaternal || null,
-        role: formValues.role,
+        email: nextValues.email ?? '',
+        name: nextValues.name ?? '',
+        lastNamePaternal: nextValues.lastNamePaternal ?? '',
+        lastNameMaternal: nextValues.lastNameMaternal || null,
+        role: nextValues.role,
       })
-      showToast({ severity: 'success', title: 'Administrador actualizado', description: `${formValues.name} ${formValues.lastNamePaternal} fue actualizado correctamente.` })
+      showToast({ severity: 'success', title: 'Administrador actualizado', description: `${nextValues.name} ${nextValues.lastNamePaternal} fue actualizado correctamente.` })
       setEditingAdmin(null)
       void fetchMetrics()
       await fetchAdmins()
@@ -296,6 +267,21 @@ const AdminsManagement = () => {
     if (!confirmAction) return
     setConfirmLoading(true)
     try {
+      if (confirmAction.type === 'activate') {
+        const reason = 'Reactivado desde el panel de gestión de administradores.'
+        await activateAdmin(confirmAction.admin.id, { reason })
+        showToast({
+          severity: 'success',
+          title: 'Administrador reactivado',
+          description: `${buildFullName(confirmAction.admin)} recuperó acceso al sistema.`,
+        })
+        const shouldGoBack = rows.length === 1 && page > 0
+        setConfirmAction(null)
+        void fetchMetrics()
+        if (shouldGoBack) { setPage((c) => c - 1) } else { await fetchAdmins() }
+        return
+      }
+
       if (confirmAction.type === 'deactivate') {
         const reason = 'Desactivado desde el panel de gestión de administradores.'
         await deactivateAdmin(confirmAction.admin.id, { reason })
@@ -331,13 +317,13 @@ const AdminsManagement = () => {
 
   // ── Reset password ────────────────────────────────────────────────────────
   const handleResetPassword = async () => {
-    if (!resetAdmin || !newPassword.trim()) return
+    if (!resetAdmin) return
     setResetLoading(true)
     try {
-      await resetAdminPassword(resetAdmin.id, { newPassword: newPassword.trim() })
-      showToast({ severity: 'success', title: 'Contraseña restablecida', description: `La contraseña de ${buildFullName(resetAdmin)} fue actualizada.` })
+      await resetAdminPassword(resetAdmin.id, {})
+      showToast({ severity: 'success', title: 'Contraseña restablecida', description: `Se generó una nueva contraseña temporal para ${buildFullName(resetAdmin)}.` })
       setResetAdmin(null)
-      setNewPassword('')
+      setResetConfirmOpen(false)
     } catch (error) {
       const message = error instanceof Error ? error.message : 'No se pudo restablecer la contraseña.'
       showToast({ severity: 'error', title: 'Error al restablecer', description: message })
@@ -352,15 +338,57 @@ const AdminsManagement = () => {
     <motion.div className="space-y-6" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}>
       <AppConfirmDialog
         open={Boolean(confirmAction)}
-        title={confirmAction?.type === 'delete' ? 'Eliminar administrador' : 'Deshabilitar administrador'}
-        description={confirmAction?.type === 'delete'
-          ? 'Esta acción eliminará definitivamente al administrador. Esta operación no se puede deshacer.'
-          : 'Esta acción bloqueará el acceso del administrador al sistema. Podrás reactivarlo más tarde desde backend.'}
-        confirmText={confirmAction?.type === 'delete' ? 'Eliminar' : 'Deshabilitar'}
+        title={
+          confirmAction?.type === 'delete'
+            ? 'Eliminar administrador'
+            : confirmAction?.type === 'activate'
+              ? 'Reactivar administrador'
+              : 'Deshabilitar administrador'
+        }
+        description={
+          confirmAction?.type === 'delete'
+            ? 'Esta acción eliminará definitivamente al administrador. Esta operación no se puede deshacer.'
+            : confirmAction?.type === 'activate'
+              ? 'Esta acción restaurará el acceso del administrador al sistema de forma inmediata.'
+              : 'Esta acción bloqueará el acceso del administrador al sistema. Podrás reactivarlo más tarde desde backend.'
+        }
+        confirmText={
+          confirmAction?.type === 'delete'
+            ? 'Eliminar'
+            : confirmAction?.type === 'activate'
+              ? 'Reactivar'
+              : 'Deshabilitar'
+        }
         cancelText="Cancelar"
-        confirmColor={confirmAction?.type === 'delete' ? 'error' : 'warning'}
+        confirmColor={
+          confirmAction?.type === 'delete'
+            ? 'error'
+            : confirmAction?.type === 'activate'
+              ? 'success'
+              : 'warning'
+        }
         onCancel={() => !confirmLoading && setConfirmAction(null)}
         onConfirm={() => { if (!confirmLoading) void handleConfirmDialog() }}
+        isConfirming={confirmLoading}
+      />
+
+      <AppConfirmDialog
+        open={resetConfirmOpen}
+        title="Confirmar restablecimiento de contraseña"
+        description={
+          resetAdmin
+            ? `Se generará una contraseña temporal para ${buildFullName(resetAdmin)} y se enviará por correo.`
+            : 'Se actualizará la contraseña del administrador seleccionado.'
+        }
+        confirmText="Generar contraseña"
+        cancelText="Cancelar"
+        confirmColor="warning"
+        onCancel={() => !resetLoading && setResetConfirmOpen(false)}
+        onConfirm={() => {
+          if (resetLoading) return
+          void handleResetPassword()
+        }}
+        isConfirming={resetLoading}
       />
 
       {/* Create / edit modal */}
@@ -371,35 +399,8 @@ const AdminsManagement = () => {
         loading={formLoading}
         admin={editingAdmin}
         onClose={() => { setCreateModalOpen(false); setEditingAdmin(null) }}
-        onChange={(key, value) => setFormValues((prev) => ({ ...prev, [key]: value }))}
         onSubmit={editingAdmin ? handleEdit : handleCreate}
       />
-
-      {/* Reset password modal */}
-      <Dialog open={Boolean(resetAdmin)} onOpenChange={(open) => { if (!open) { setResetAdmin(null); setNewPassword('') } }}>
-        <DialogContent showCloseButton={false} animation="fade" className="max-w-md border-0 bg-transparent p-0 shadow-none">
-          <div className={modalFormShellClass}>
-            <ModalFormHeader
-              avatar={<span className="text-sm font-semibold text-primary">
-                {resetAdmin ? buildFullName(resetAdmin).split(' ').slice(0, 2).map((p) => p[0]?.toUpperCase()).join('') : ''}
-              </span>}
-              title="Restablecer contraseña"
-              subtitle={resetAdmin ? buildFullName(resetAdmin) : ''}
-              onClose={() => { setResetAdmin(null); setNewPassword('') }}
-            />
-            <ModalFormBody>
-              <label className="space-y-1.5 block">
-                <span className="text-xs font-semibold text-foreground">Nueva contraseña</span>
-                <Input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Ingresa la nueva contraseña" autoComplete="new-password" />
-              </label>
-            </ModalFormBody>
-            <ModalFormFooter>
-              <Button variant="outline" onClick={() => { setResetAdmin(null); setNewPassword('') }} disabled={resetLoading}>Cancelar</Button>
-              <Button onClick={() => void handleResetPassword()} isLoading={resetLoading} disabled={!newPassword.trim()}>Restablecer</Button>
-            </ModalFormFooter>
-          </div>
-        </DialogContent>
-      </Dialog>
 
       {/* Header */}
       <SectionHeader
@@ -407,9 +408,25 @@ const AdminsManagement = () => {
         title="Gestión de Administradores"
         subtitle={`${summary.total} administradores · ${summary.active} activos`}
         actions={
-          <Button size="md" className="gap-2" onClick={handleOpenCreate}>
-            <Plus className="w-3.5 h-3.5" /> Invitar Admin
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="md"
+              className="gap-2"
+              onClick={() => {
+                void fetchMetrics()
+                void fetchAdmins()
+              }}
+              disabled={adminsLoading}
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${adminsLoading ? 'animate-spin' : ''}`} />
+              Actualizar
+            </Button>
+            <Button size="md" className="gap-2" onClick={handleOpenCreate}>
+              <Plus className="w-3.5 h-3.5" />
+              Registrar administrador
+            </Button>
+          </div>
         }
       />
 
@@ -418,16 +435,16 @@ const AdminsManagement = () => {
         <StatCard className="min-h-[120px]" title="Total Admins" value={summary.total} icon={Users} variant="primary" delay={0} />
         <StatCard className="min-h-[120px]" title="Admin TI" value={summary.adminTi} icon={Shield} variant="warning" delay={0.05} />
         <StatCard className="min-h-[120px]" title="Activos" value={summary.active} icon={UserCheck} variant="success" delay={0.1} />
-        <StatCard
-          className="min-h-[120px]"
-          title="Acciones hoy"
-          value={summary.actionsToday}
-          icon={Clock}
-          variant="info"
-          trend={summary.trend}
-          trendLabel="vs ayer"
-          delay={0.15}
-        />
+          <StatCard
+            className="min-h-[120px]"
+            title="Acciones hoy"
+            value={summary.actionsToday}
+            icon={Clock}
+            variant="info"
+            trend={summary.trend}
+          trendLabel="vs período ant."
+            delay={0.15}
+          />
       </div>
 
       <AdminGraphs metrics={metrics} />
@@ -437,42 +454,54 @@ const AdminsManagement = () => {
         rows={rows}
         searchInput={searchInput}
         onSearchInputChange={(value) => { setSearchInput(value); setPage(0) }}
-        roleFilter={draftFilters.role}
-        onRoleFilterChange={(value) => { updateDraftFilter('role', value) }}
-        statusFilter={draftFilters.status}
-        onStatusFilterChange={(value) => { updateDraftFilter('status', value) }}
-        filtersOpen={filtersOpen}
-        onFiltersToggle={() => setFiltersOpen((c) => !c)}
-        onApplyFilters={() => {
-          applyFilters()
-          setPage(0)
-        }}
-        onResetFilters={resetDraftFilters}
-        onClearFilters={() => {
-          clearFilters()
-          setSearchInput('')
-          setPage(0)
-        }}
-        activeFilterChips={activeFilterChips}
         filteredCount={totalElements}
+        loading={adminsLoading}
         page={page}
         totalPages={totalPages}
         pageSize={pageSize}
         onPageChange={setPage}
-        onPageSizeChange={(next) => { setPageSize(next); setPage(0) }}
+        onPageSizeChange={(nextSize) => {
+          setPageSize(nextSize)
+          setPage(0)
+        }}
         onEdit={handleOpenEdit}
         onResetPassword={(row) => {
           const source = admins.find((a) => a.id === row.id)
-          if (source) { setResetAdmin(source); setNewPassword('') }
+          if (source) {
+            setResetAdmin(source)
+            setResetConfirmOpen(true)
+          }
         }}
         onDeactivate={(row) => {
           const source = admins.find((a) => a.id === row.id)
           if (source) setConfirmAction({ type: 'deactivate', admin: source })
         }}
+        onReactivate={(row) => {
+          const source = admins.find((a) => a.id === row.id)
+          if (source) setConfirmAction({ type: 'activate', admin: source })
+        }}
         onDelete={(row) => {
           const source = admins.find((a) => a.id === row.id)
           if (source) setConfirmAction({ type: 'delete', admin: source })
         }}
+        toolbarRight={(
+          <AdminsFiltersPopover
+            draftFilters={draftFilters}
+            appliedFilters={appliedFilters}
+            open={filtersOpen}
+            onOpenChange={setFiltersOpen}
+            onDraftChange={setDraftFilters}
+            onApply={() => {
+              applyFilters()
+              setPage(0)
+            }}
+            onReset={resetDraftFilters}
+            onClear={() => {
+              clearFilters()
+              setPage(0)
+            }}
+          />
+        )}
       />
     </motion.div>
   )

@@ -53,14 +53,4 @@ public class Career extends BaseAuditableEntity {
     public void setStatus(CareerStatus status) {
         this.status = status;
     }
-
-    /** Bridge para compatibilidad con llamadores existentes. */
-    public boolean isActive() {
-        return status == CareerStatus.ACTIVE;
-    }
-
-    /** Bridge para compatibilidad con llamadores existentes. */
-    public void setActive(boolean active) {
-        this.status = active ? CareerStatus.ACTIVE : CareerStatus.INACTIVE;
-    }
 }

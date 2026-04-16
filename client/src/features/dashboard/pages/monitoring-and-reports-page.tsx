@@ -23,6 +23,7 @@ function downloadBlob(blob: Blob, filename: string) {
 
 const MonitoringAndReportsPage = () => {
   const [exportOpen, setExportOpen] = useState(false)
+  const [isExporting, setIsExporting] = useState(false)
   const {
     metadata,
     analysis,
@@ -40,9 +41,15 @@ const MonitoringAndReportsPage = () => {
   } = useDashboardAnalysisSession()
 
   const handleExport = async (format: DashboardExportFormat) => {
-    const result = await exportActiveAnalysis(format)
-    if (!result) return
-    downloadBlob(result.blob, result.filename)
+    if (isExporting) return
+    setIsExporting(true)
+    try {
+      const result = await exportActiveAnalysis(format)
+      if (!result) return
+      downloadBlob(result.blob, result.filename)
+    } finally {
+      setIsExporting(false)
+    }
   }
 
   return (
@@ -51,6 +58,7 @@ const MonitoringAndReportsPage = () => {
         icon={BarChart2}
         title="Monitoreo y Reportes"
         subtitle="Dashboard adaptativo conectado al backend nuevo de analysis"
+        className="mt-3"
         actions={
           <div className="flex items-center gap-2">
             <Button variant="outline" size="md" onClick={() => { void refresh() }} disabled={!activeRequest || analysisLoading}>
@@ -59,7 +67,7 @@ const MonitoringAndReportsPage = () => {
             </Button>
             <Popover open={exportOpen} onOpenChange={setExportOpen}>
               <PopoverTrigger asChild>
-                <Button variant="outline" size="md" disabled={!activeRequest || analysisLoading}>
+                <Button variant="outline" size="md" disabled={!activeRequest || analysisLoading || isExporting} isLoading={isExporting}>
                   <Download className="size-4" />
                   Exportar
                 </Button>
@@ -71,6 +79,7 @@ const MonitoringAndReportsPage = () => {
                     variant="ghost"
                     size="sm"
                     className="w-full justify-start gap-2"
+                    disabled={isExporting}
                     onClick={() => {
                       setExportOpen(false)
                       void handleExport('CSV')
@@ -84,6 +93,7 @@ const MonitoringAndReportsPage = () => {
                     variant="ghost"
                     size="sm"
                     className="w-full justify-start gap-2"
+                    disabled={isExporting}
                     onClick={() => {
                       setExportOpen(false)
                       void handleExport('XLSX')
@@ -106,6 +116,8 @@ const MonitoringAndReportsPage = () => {
         disabled={metadataLoading}
         onApply={applyAnalysis}
         onReset={resetToBase}
+        onExport={(format) => handleExport(format)}
+        exportDisabled={!activeRequest || analysisLoading || isExporting}
       />
 
       {metadataError && !analysis ? (

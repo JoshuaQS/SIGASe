@@ -32,13 +32,6 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping(ApiRoutes.DASHBOARD + "/analysis")
 @PreAuthorize("hasAnyAuthority('ROLE_ADMIN_TI','ROLE_ADMIN_BIBLIOTECA')")
-/**
- * Endpoint nuevo del dashboard adaptativo.
- *
- * <p>Compatibilidad:
- * no comparte lógica todavía con el dashboard legacy basado en query params; la migración será
- * progresiva por slices/layouts.
- */
 public class DashboardAnalysisController {
 
     private final DashboardAnalysisService dashboardAnalysisService;

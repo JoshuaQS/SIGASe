@@ -61,8 +61,7 @@ export type CreateStudentInput = {
   sex: StudentBackendSex;
   quarter: number;
   institutionalEmail: string;
-  careerId?: string;
-  careerCode?: string;
+  careerId: string;
 };
 
 export type UpdateStudentInput = CreateStudentInput;
@@ -80,6 +79,20 @@ export type StudentImportResultResponse = {
     enrollmentId: string;
     errorCode: string;
     detail: string;
+  }>;
+  emailJobs: Array<{
+    id: string;
+    jobType: 'ADMIN_TEMPORARY_PASSWORD' | 'ADMIN_PASSWORD_RESET' | 'STUDENT_ONBOARDING_PASSWORD' | 'STUDENT_PASSWORD_RESET';
+    status: 'PENDING' | 'SENT' | 'FAILED' | 'PERMANENT_FAILURE';
+    recipientEmail: string;
+    referenceType: string;
+    referenceId: string;
+    attempts: number;
+    maxAttempts: number;
+    nextAttemptAt: string | null;
+    sentAt: string | null;
+    permanentlyFailedAt: string | null;
+    createdAt: string;
   }>;
 };
 
@@ -191,6 +204,13 @@ export async function reactivateStudent(studentId: string, input: StudentStatusC
   const response = await api.patch<ApiEnvelope<StudentResponseDto>>(
     `/students/${studentId}/reactivate`,
     input,
+  );
+  return response.data;
+}
+
+export async function resendStudentOnboardingEmail(studentId: string) {
+  const response = await api.post<ApiEnvelope<StudentResponseDto>>(
+    `/students/${studentId}/resend-onboarding`,
   );
   return response.data;
 }

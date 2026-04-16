@@ -56,7 +56,8 @@ function RecoveryRequestForm({
     formState: { errors, isSubmitting },
   } = useForm<RecoveryRequestFields>({
     resolver: zodResolver(recoveryRequestSchema),
-    mode: 'onTouched',
+    mode: 'onChange',
+    reValidateMode: 'onChange',
   });
 
   const onSubmit = async (data: RecoveryRequestFields) => {
@@ -120,7 +121,8 @@ function PasswordResetForm({
     formState: { errors, isSubmitting },
   } = useForm<PasswordResetFields>({
     resolver: zodResolver(passwordResetSchema),
-    mode: 'onTouched',
+    mode: 'onChange',
+    reValidateMode: 'onChange',
   });
 
   const onSubmit = async (data: PasswordResetFields) => {
@@ -151,14 +153,14 @@ function PasswordResetForm({
           error={errors.newPassword?.message}
           placeholder="Escribe tu nueva clave"
           size="lg"
-          requirementHint="Mínimo 10 caracteres, una mayúscula, un número y un símbolo."
+          requirementHint="Mínimo 12 caracteres, una mayúscula, un número y un símbolo."
         />
 
         <PasswordField
-          {...register('confirmPassword')}
+          {...register('confirmNewPassword')}
           id="confirm-password"
           label="Confirmar contraseña"
-          error={errors.confirmPassword?.message}
+          error={errors.confirmNewPassword?.message}
           placeholder="Repite tu nueva clave"
           size="lg"
           showCapsLockWarning={false} // Evitar duplicar el warning si ya está arriba

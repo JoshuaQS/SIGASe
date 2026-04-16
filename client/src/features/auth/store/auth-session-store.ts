@@ -108,6 +108,7 @@ function buildAdminSession(params: {
   lastNamePaternal: string;
   lastNameMaternal: string | null;
   role: string;
+  hasChangedTemporaryPassword: boolean;
   token: string;
   tokenType: string;
   expiresInSeconds: number;
@@ -121,6 +122,7 @@ function buildAdminSession(params: {
     tokenType: params.tokenType,
     expiresInSeconds: params.expiresInSeconds,
     mustChangePassword: false,
+    hasChangedTemporaryPassword: params.hasChangedTemporaryPassword,
   };
 }
 
@@ -266,6 +268,7 @@ export const authSession = {
       lastNamePaternal: profile.lastNamePaternal,
       lastNameMaternal: profile.lastNameMaternal,
       role: profile.role,
+      hasChangedTemporaryPassword: profile.hasChangedTemporaryPassword,
       token: current.token,
       tokenType: current.tokenType || 'Bearer',
       expiresInSeconds: current.expiresInSeconds || 0,

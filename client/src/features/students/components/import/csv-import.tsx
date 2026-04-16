@@ -393,11 +393,11 @@ export function CsvImport({
         className={cn(
           "relative cursor-pointer rounded-2xl border-2 border-dashed text-center transition-all select-none",
           fullWidth
-            ? "flex min-h-0 flex-1 flex-col items-center justify-center px-4 py-5"
+            ? "flex min-h-0 flex-1 flex-col items-center justify-center px-6 py-10"
             : "p-10",
           state === "over"
             ? "border-primary bg-accent/50 scale-[1.01]"
-            : "border-border bg-card hover:border-primary/50 hover:bg-accent/20"
+            : "border-border bg-card/70 hover:border-primary/50 hover:bg-accent/20"
         )}
       >
         <div
@@ -415,10 +415,10 @@ export function CsvImport({
             )}
           />
         </div>
-        <p className={cn("font-semibold text-foreground", fullWidth ? "text-xs" : "mb-1 text-sm")}>
+        <p className={cn("font-semibold text-foreground", fullWidth ? "text-sm" : "mb-1 text-sm")}>
           {state === "over" ? "Suelta el archivo aquí" : "Arrastra tu archivo aquí"}
         </p>
-        <p className={cn("text-muted-foreground", fullWidth ? "mt-0.5 text-[11px]" : "mb-5 text-xs")}>
+        <p className={cn("text-muted-foreground", fullWidth ? "mt-1 text-sm" : "mb-5 text-xs")}>
           o haz clic para explorar
         </p>
         {!fullWidth ? (
@@ -429,7 +429,7 @@ export function CsvImport({
         <div
           className={cn(
             "flex flex-wrap items-center justify-center gap-x-2 gap-y-0.5 text-muted-foreground",
-            fullWidth ? "mt-3 text-[10px]" : "mt-5 gap-4 text-xs"
+            fullWidth ? "mt-4 text-xs" : "mt-5 gap-4 text-xs"
           )}
         >
           <span className="text-center">

@@ -1,5 +1,6 @@
 package mx.edu.utez.server.modules.auth.dto;
 
+import java.time.Instant;
 import java.util.UUID;
 
 public record AdminMeResponse(
@@ -8,6 +9,10 @@ public record AdminMeResponse(
         String name,
         String lastNamePaternal,
         String lastNameMaternal,
-        String role
+        String role,
+        boolean hasChangedTemporaryPassword,
+        Instant temporaryPasswordGeneratedAt,
+        Instant temporaryPasswordNotifiedAt,
+        Instant passwordChangedAt
 ) {
 }

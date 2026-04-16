@@ -47,15 +47,15 @@ export function ProtectedField({
           cfg.control,
           cfg.text,
           cfg.px,
-          'border-2 border-border border-emerald-500 rounded-md bg-emerald-50 dark:bg-emerald-500/10',
+          'border-2 border-border border-green-400 rounded-md bg-green-50 dark:bg-green-400/10',
           className,
         )}
       >
         <span
           className={cn(
             'absolute -top-2 left-2 px-1.5 py-0 leading-none',
-            'bg-emerald-100 dark:bg-slate-950 border border-emerald-500 rounded-sm',
-            '!text-[10px] text-emerald-600 dark:text-emerald-500 font-bold uppercase tracking-wider',
+            'bg-green-100 dark:bg-slate-950 border border-green-400 rounded-sm',
+            '!text-[10px] text-green-600 dark:text-green-400 font-bold uppercase tracking-wider',
             cfg.fieldLabel
           )}
         >
@@ -77,7 +77,7 @@ export function ProtectedField({
               ))}
             </div>
           </div>
-          <ShieldCheck className={cn(cfg.icon, 'text-emerald-500/95 flex-shrink-0', cfg.adornmentInsetEnd)} />
+          <ShieldCheck className={cn(cfg.icon, 'text-green-400/95 flex-shrink-0', cfg.adornmentInsetEnd)} />
         </div>
       </div>
     )

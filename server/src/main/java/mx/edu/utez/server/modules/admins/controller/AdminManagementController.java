@@ -151,7 +151,7 @@ public class AdminManagementController {
     @Operation(summary = "Reset de contraseña de administrador")
     public ApiResponse<Void> resetPassword(
             @PathVariable UUID adminId,
-            @Valid @RequestBody AdminResetPasswordRequest request,
+            @RequestBody(required = false) AdminResetPasswordRequest request,
             Authentication authentication,
             HttpServletRequest httpRequest
     ) {

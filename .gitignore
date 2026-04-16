@@ -13,13 +13,5 @@ tests/playwright/test-results/
 tests/playwright/storage-states/
 
 # Local tooling folders
-.claude/
-.codex/
-.env
-.env.*
-/get-shit-done/
-/oh-my-codex
-/AGENTS.
-.planning/
-!.env.example
-!**/.env.example
+server/.ai/
+

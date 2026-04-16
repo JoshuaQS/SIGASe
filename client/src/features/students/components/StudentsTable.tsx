@@ -1,11 +1,11 @@
 import { useMemo } from 'react'
-import { ArrowUpDown, Eye, LayoutList, Pencil, PlayCircle, Power, Trash2 } from 'lucide-react'
+import { ArrowUpDown, Eye, Mail, Pencil, PlayCircle, Power, Trash2 } from 'lucide-react'
 import { Badge } from '@/shared/components/ui/badge'
 import { Button } from '@/shared/components/ui/button'
 import { DataTable } from '@/shared/components/ui/data-table'
-import { DataTableFiltersShell, type DataTableFilterChip } from '@/shared/components/ui/data-table-filters-shell'
 import type { StudentResponseDto } from '@/features/students/api/students-api'
 import { cn } from '@/shared/lib/utils'
+import type { ReactNode } from 'react'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -26,31 +26,29 @@ type StudentsTableProps = {
   onDelete: (student: StudentManagementRow) => void
   onView: (student: StudentManagementRow) => void
   onEdit: (student: StudentManagementRow) => void
+  onResendOnboarding: (student: StudentManagementRow) => void
+  resendLoading: boolean
   page: number
   totalElements: number
   totalPages: number
   pageSize: number
   onPageChange: (page: number) => void
   onPageSizeChange: (pageSize: number) => void
-  onFiltersToggle: () => void
-  filtersOpen: boolean
-  careers: Array<{ id: string; code: string }>
-  carreraF: string
-  onCareerChange: (value: string) => void
-  estadoF: 'todos' | StudentResponseDto['status']
-  onStatusChange: (value: 'todos' | StudentResponseDto['status']) => void
-  onClearFilters: () => void
-  onResetFilters: () => void
-  onApplyFilters: () => void
-  activeFilterChips: DataTableFilterChip[]
+  toolbarRight?: ReactNode
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
 const statusStyles: Record<StudentManagementRow['uiStatus'], string> = {
-  activo: 'text-emerald-600 border-emerald-200 bg-emerald-50',
-  inactivo: 'text-muted-foreground border-border',
-  pendiente: 'text-amber-700 border-amber-200 bg-amber-50',
+  activo: 'text-emerald-700 border-emerald-200 bg-emerald-50 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-300',
+  inactivo: 'text-muted-foreground border-border bg-background dark:border-border/80 dark:bg-muted/30 dark:text-muted-foreground',
+  pendiente: 'text-amber-700 border-amber-200 bg-amber-50 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-300',
+}
+
+const statusLabels: Record<StudentManagementRow['uiStatus'], string> = {
+  activo: 'Activo',
+  inactivo: 'Inactivo',
+  pendiente: 'Pendiente',
 }
 
 const sexBadgeStyles: Record<StudentResponseDto['sex'], { label: string; className: string }> = {
@@ -88,23 +86,15 @@ export function StudentsTable({
   onDelete,
   onView,
   onEdit,
+  onResendOnboarding,
+  resendLoading,
   page,
   totalElements,
   totalPages,
   pageSize,
   onPageChange,
   onPageSizeChange,
-  onFiltersToggle,
-  filtersOpen,
-  careers,
-  carreraF,
-  onCareerChange,
-  estadoF,
-  onStatusChange,
-  onClearFilters,
-  onResetFilters,
-  onApplyFilters,
-  activeFilterChips,
+  toolbarRight,
 }: StudentsTableProps) {
   const pageCount = Math.max(totalPages, 1)
 
@@ -121,44 +111,6 @@ export function StudentsTable({
     return items
   }, [page, pageCount])
 
-  const toolbarBelow = (
-    <DataTableFiltersShell
-      open={filtersOpen}
-      chips={activeFilterChips}
-      onApply={onApplyFilters}
-      onReset={onResetFilters}
-      onClear={onClearFilters}
-    >
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:max-w-2xl">
-        <div className="space-y-1.5">
-          <label className="text-xs font-medium text-muted-foreground">Carrera</label>
-          <select
-            value={carreraF}
-            onChange={(e) => onCareerChange(e.target.value)}
-            className="h-9 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-          >
-            <option value="todas">Todas</option>
-            {careers.map((career) => (
-              <option key={career.id} value={career.code}>{career.code}</option>
-            ))}
-          </select>
-        </div>
-        <div className="space-y-1.5">
-          <label className="text-xs font-medium text-muted-foreground">Estado</label>
-          <select
-            value={estadoF}
-            onChange={(e) => onStatusChange(e.target.value as 'todos' | StudentResponseDto['status'])}
-            className="h-9 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-          >
-            <option value="todos">Todos</option>
-            <option value="ACTIVE">Activos</option>
-            <option value="INACTIVE">Inactivos</option>
-          </select>
-        </div>
-      </div>
-    </DataTableFiltersShell>
-  )
-
   return (
     <DataTable
       title="Alumnos totales"
@@ -171,19 +123,7 @@ export function StudentsTable({
       viewToggle={true}
       tableLabel="Table"
       cardsLabel="Cards"
-      toolbarRight={
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="h-8 gap-1.5 text-xs"
-          onClick={onFiltersToggle}
-        >
-          <LayoutList className="h-3 w-3" />
-          Filtrar
-        </Button>
-      }
-      toolbarBelow={toolbarBelow}
+      toolbarRight={toolbarRight}
       renderTable={() => (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -249,7 +189,7 @@ export function StudentsTable({
                   <td className="px-4 py-2.5">
                     <Badge
                       variant="outlined"
-                      className="inline-flex h-6 min-w-[42px] items-center justify-center rounded-md px-2 text-[10px] font-bold"
+                      className="inline-flex h-6 min-w-[42px] items-center justify-center rounded-full px-2.5 text-[10px] font-bold border-border/70 bg-secondary/30 dark:border-border/80 dark:bg-secondary/50"
                       title={student.career?.name ?? student.career?.code ?? 'N/D'}
                     >
                       {student.career?.code ?? 'N/D'}
@@ -271,7 +211,7 @@ export function StudentsTable({
                   </td>
                   <td className="px-4 py-2.5">
                     <Badge variant="outlined" className={`text-xs capitalize ${statusStyles[student.uiStatus]}`}>
-                      {student.uiStatus}
+                      {statusLabels[student.uiStatus]}
                     </Badge>
                   </td>
                   <td className="px-4 py-2.5 text-xs text-muted-foreground whitespace-nowrap">
@@ -302,6 +242,19 @@ export function StudentsTable({
                       >
                         <Pencil className="h-4 w-4" />
                       </Button>
+                      {student.status === 'PENDING' ? (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-xs"
+                          className="text-primary hover:bg-primary/10 hover:text-primary"
+                          title="Reenviar correo de onboarding"
+                          disabled={resendLoading}
+                          onClick={() => onResendOnboarding(student)}
+                        >
+                          <Mail className="h-4 w-4" />
+                        </Button>
+                      ) : null}
                       {student.status === 'ACTIVE' ? (
                         <Button
                           type="button"
@@ -313,7 +266,7 @@ export function StudentsTable({
                         >
                           <Power className="h-4 w-4" />
                         </Button>
-                      ) : (
+                      ) : student.status === 'INACTIVE' ? (
                         <Button
                           type="button"
                           variant="ghost"
@@ -321,10 +274,10 @@ export function StudentsTable({
                           className="text-muted-foreground hover:bg-success/10 hover:text-success"
                           title="Reactivar"
                           onClick={() => onReactivate(student)}
-                        >
-                          <PlayCircle className="h-4 w-4" />
-                        </Button>
-                      )}
+                          >
+                            <PlayCircle className="h-4 w-4" />
+                          </Button>
+                      ) : null}
                       <Button
                         type="button"
                         variant="ghost"
@@ -374,15 +327,28 @@ export function StudentsTable({
                   <Button type="button" variant="ghost" size="icon-xs" onClick={() => onEdit(student)}>
                     <Pencil className="h-4 w-4" />
                   </Button>
+                  {student.status === 'PENDING' ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-xs"
+                      className="text-primary hover:bg-primary/10 hover:text-primary"
+                      title="Reenviar correo de onboarding"
+                      disabled={resendLoading}
+                      onClick={() => onResendOnboarding(student)}
+                    >
+                      <Mail className="h-4 w-4" />
+                    </Button>
+                  ) : null}
                   {student.status === 'ACTIVE' ? (
                     <Button type="button" variant="ghost" size="icon-xs" onClick={() => onDeactivate(student)}>
                       <Power className="h-4 w-4" />
                     </Button>
-                  ) : (
+                  ) : student.status === 'INACTIVE' ? (
                     <Button type="button" variant="ghost" size="icon-xs" onClick={() => onReactivate(student)}>
                       <PlayCircle className="h-4 w-4" />
                     </Button>
-                  )}
+                  ) : null}
                   <Button type="button" variant="ghost" size="icon-xs" onClick={() => onDelete(student)}>
                     <Trash2 className="h-4 w-4" />
                   </Button>
@@ -398,7 +364,10 @@ export function StudentsTable({
                 </div>
               </div>
               <div className="mb-3 flex items-center gap-2">
-                <Badge variant="outlined" className="inline-flex h-6 min-w-[42px] items-center justify-center rounded-md px-2 text-[10px] font-bold">
+                <Badge
+                  variant="outlined"
+                  className="inline-flex h-6 min-w-[42px] items-center justify-center rounded-full px-2.5 text-[10px] font-bold border-border/70 bg-secondary/30 dark:border-border/80 dark:bg-secondary/50"
+                >
                   {student.career?.code ?? 'N/D'}
                 </Badge>
                 <span className="truncate text-xs text-muted-foreground">{student.career?.name ?? 'Sin carrera'}</span>
@@ -423,7 +392,6 @@ export function StudentsTable({
       pagination={{
         summary: `${totalElements} alumnos · ${rows.length} mostrados`,
         pageSize,
-        pageSizeOptions: [5, 8, 10, 20, 50],
         onPageSizeChange,
         items: pageItems,
         active: page + 1,

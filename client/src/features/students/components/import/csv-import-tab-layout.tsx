@@ -1,18 +1,16 @@
-import { useRef, type ComponentType, type ReactNode } from "react";
-import { Download, FileSpreadsheet, Upload } from "lucide-react";
-import { Badge } from "@/shared/components/ui/badge";
+import { useRef, type ReactNode } from "react";
+import { Download, Upload } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import { FileImportForm } from "./file-import-form";
 import type { CsvImportParsed } from "./csv-import";
 
 const templateColumns = [
-  { name: "matricula", type: "text", required: true, example: "20230001" },
-  { name: "nombre", type: "text", required: true, example: "Carlos" },
-  { name: "apellido_paterno", type: "text", required: true, example: "Ramírez" },
-  { name: "apellido_materno", type: "text", required: false, example: "Vega" },
-  { name: "sexo", type: "enum (M/F)", required: true, example: "M" },
-  { name: "cuatrimestre", type: "number", required: true, example: "3" },
-  { name: "carrera", type: "enum", required: true, example: "IDS" },
+  { name: "matrícula", required: true },
+  { name: "nombre", required: true },
+  { name: "apellido_paterno", required: true },
+  { name: "apellido_materno", required: false },
+  { name: "correo", required: true },
+  { name: "carrera", required: false },
 ] as const;
 
 function SectionLabel({ children }: { children: ReactNode }) {
@@ -20,39 +18,6 @@ function SectionLabel({ children }: { children: ReactNode }) {
     <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground leading-none">
       {children}
     </p>
-  );
-}
-
-function CardHeader({
-  icon: Icon,
-  title,
-  subtitle,
-  compact,
-}: {
-  icon: ComponentType<{ className?: string }>;
-  title: string;
-  subtitle: string;
-  compact?: boolean;
-}) {
-  return (
-    <div
-      className={cn(
-        "flex shrink-0 items-start border-b border-border bg-secondary/40",
-        compact ? "gap-2 px-3 py-2" : "gap-3 px-4 py-3"
-      )}
-    >
-      <div className={cn("rounded-lg bg-muted shrink-0", compact ? "p-1.5" : "p-2")}>
-        <Icon className={cn("text-muted-foreground", compact ? "h-3.5 w-3.5" : "h-4 w-4")} />
-      </div>
-      <div className="min-w-0 pt-px">
-        <h3 className={cn("font-semibold text-foreground leading-tight", compact ? "text-xs" : "text-sm")}>
-          {title}
-        </h3>
-        <p className={cn("text-muted-foreground leading-snug", compact ? "mt-0.5 text-[10px]" : "mt-0.5 text-xs")}>
-          {subtitle}
-        </p>
-      </div>
-    </div>
   );
 }
 
@@ -84,7 +49,7 @@ export function CsvImportTabLayout({
   const uploadCell = (
     <div className="flex h-full min-h-0 min-w-0 flex-col gap-1.5">
       <SectionLabel>Cargar archivo</SectionLabel>
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
         <FileImportForm
           fullWidth={fullWidth}
           importing={importing}
@@ -102,80 +67,77 @@ export function CsvImportTabLayout({
   const templateCell = (
     <div className="flex h-full min-h-0 min-w-0 flex-col gap-1.5">
       <SectionLabel>Plantilla CSV</SectionLabel>
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-        <CardHeader
-          compact
-          icon={FileSpreadsheet}
-          title="Estructura del CSV"
-          subtitle="Columnas requeridas para la importación"
-        />
-        <div className="min-h-0 flex-1 divide-y divide-border overflow-y-auto overscroll-contain">
-          {templateColumns.map((col) => (
-            <div
-              key={col.name}
-              className="flex items-center gap-2 px-3 py-1.5 transition-colors hover:bg-muted/30"
-            >
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-mono text-[11px] font-semibold text-foreground">{col.name}</p>
-                <p className="text-[10px] leading-tight text-muted-foreground">{col.type}</p>
-              </div>
-              <div className="flex shrink-0 items-center gap-1.5">
-                <span className="font-mono text-[10px] tabular-nums text-muted-foreground">{col.example}</span>
-                <Badge
-                  variant="outlined"
-                  className={cn(
-                    "px-1.5 py-px text-[9px] font-semibold uppercase tracking-wide",
-                    col.required
-                      ? "border-destructive/20 bg-destructive/10 text-destructive"
-                      : "border-border bg-muted text-muted-foreground"
-                  )}
-                >
-                  {col.required ? "requerido" : "opcional"}
-                </Badge>
-              </div>
-            </div>
-          ))}
-        </div>
-        <div className="flex shrink-0 justify-end gap-2 border-t border-border bg-card px-3 py-2">
-          <button
-            type="button"
-            onClick={() => openPickerRef.current?.()}
-            className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg bg-primary px-3 text-xs font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
-          >
-            <Upload className="h-3.5 w-3.5 shrink-0" />
-            Iniciar importación
-          </button>
-          <button
-            type="button"
-            onClick={() => onDownloadTemplate?.()}
-            className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-primary/35 bg-card px-3 text-xs font-medium text-primary transition-colors hover:bg-accent"
-          >
-            <Download className="h-3.5 w-3.5 shrink-0" />
-            Descargar plantilla
-          </button>
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+        <div className="min-h-0 flex-1 overflow-auto">
+          <table className="w-full text-left text-sm">
+            <thead className="sticky top-0 z-10 bg-card">
+              <tr className="border-b border-border">
+                <th className="px-4 py-3 text-xs font-semibold text-muted-foreground">Campo</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground">Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              {templateColumns.map((col) => (
+                <tr key={col.name} className="border-b border-border last:border-b-0">
+                  <td className="px-4 py-3 font-mono text-sm text-foreground">{col.name}</td>
+                  <td className="px-4 py-3 text-right">
+                    <span
+                      className={cn(
+                        "inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
+                        col.required
+                          ? "border-primary/20 bg-primary/10 text-primary"
+                          : "border-border bg-muted/40 text-muted-foreground"
+                      )}
+                    >
+                      {col.required ? "required" : "opcional"}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
   );
 
   return (
-    <div
-      className={cn(
-        "grid h-full min-h-0 w-full flex-1 grid-cols-1 gap-4 md:grid-cols-2 md:items-stretch md:gap-4 lg:gap-5",
-        className
-      )}
-    >
-      {invertedOrder ? (
-        <>
-          {uploadCell}
-          {templateCell}
-        </>
-      ) : (
-        <>
-          {templateCell}
-          {uploadCell}
-        </>
-      )}
+    <div className={cn("flex h-full min-h-0 w-full flex-1 flex-col gap-4", className)}>
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 md:grid-cols-2 md:items-stretch lg:gap-6">
+        {invertedOrder ? (
+          <>
+            {uploadCell}
+            {templateCell}
+          </>
+        ) : (
+          <>
+            {templateCell}
+            {uploadCell}
+          </>
+        )}
+      </div>
+
+      <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border bg-card/70 pt-4">
+        <button
+          type="button"
+          onClick={() => onDownloadTemplate?.()}
+          className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-border bg-background px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted/40"
+        >
+          <Download className="h-4 w-4 shrink-0" />
+          Descargar plantilla
+        </button>
+        <button
+          type="button"
+          disabled={importing}
+          onClick={() => openPickerRef.current?.()}
+          className={cn(
+            "inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
+          )}
+        >
+          <Upload className="h-4 w-4 shrink-0" />
+          Iniciar importación
+        </button>
+      </div>
     </div>
   );
 }

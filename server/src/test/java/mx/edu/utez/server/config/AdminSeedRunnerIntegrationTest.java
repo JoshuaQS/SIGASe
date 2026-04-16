@@ -4,6 +4,7 @@ import mx.edu.utez.server.modules.admins.entity.Admin;
 import mx.edu.utez.server.modules.admins.repository.AdminRepository;
 import mx.edu.utez.server.modules.auth.repository.AdminPasswordResetTokenRepository;
 import mx.edu.utez.server.shared.enums.AdminRole;
+import mx.edu.utez.server.shared.enums.AdminStatus;
 import mx.edu.utez.server.shared.util.EmailNormalizer;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -48,7 +49,7 @@ class AdminSeedRunnerIntegrationTest {
 
         Admin admin = found.get();
         assertEquals(AdminRole.ADMIN_TI, admin.getRole());
-        assertTrue(admin.isActive());
+        assertEquals(AdminStatus.ACTIVE, admin.getStatus());
         assertEquals(SEED_FULL_NAME, admin.getName());
         assertTrue(passwordEncoder.matches(SEED_PASSWORD, admin.getPasswordHash()));
     }

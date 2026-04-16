@@ -11,6 +11,7 @@ export type AuthUser = {
   id?: string;
   role: string;
   mustChangePassword?: boolean;
+  hasChangedTemporaryPassword?: boolean;
   displayName?: string;
   email?: string;
   token?: string;

@@ -8,33 +8,31 @@ import {
   Download,
   Eye,
   FileText,
-  Filter,
   Info,
   RefreshCw,
-  Search,
   Shield,
   UserCircle2,
+  X,
 } from 'lucide-react'
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card'
 import { Button } from '@/shared/components/ui/button'
-import { Input } from '@/shared/components/ui/input'
 import { Badge } from '@/shared/components/ui/badge'
-import { DataTable } from '@/shared/components/ui/data-table'
-import { DataTableFiltersShell } from '@/shared/components/ui/data-table-filters-shell'
 import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/popover'
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
 } from '@/shared/components/ui/dialog'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select'
 import { SectionHeader } from '@/shared/components/ui/section-header'
 import { useAppToast } from '@/shared/components/ui/app-toast-provider'
 import StatusCard from '@/shared/components/data-display/status-card'
 import { useTableFilterState } from '@/shared/hooks/use-table-filter-state'
+import { cn } from '@/shared/lib/utils'
+import { AuditLogsTable } from '@/features/audit-logs/components/audit-logs-table'
+import {
+  DEFAULT_AUDIT_LOGS_FILTERS,
+  type AuditLogsFilters,
+} from '@/features/audit-logs/components/filters/audit-logs-filter-fields'
 import { ROLE_ADMIN_TI } from '@/features/auth/types/auth-user'
 import { useAuthUser } from '@/features/auth/hooks/use-auth-user'
 import {
@@ -48,7 +46,7 @@ import {
   type AuditSeverity,
 } from '@/features/audit-logs/api/audit-logs-api'
 
-const PAGE_SIZE = 10
+const PAGE_SIZE = 8
 const CHART_COLORS = ['#0ea5e9', '#f59e0b', '#ef4444', '#6366f1', '#10b981', '#f97316']
 const tooltipStyle = {
   background: 'hsl(var(--card))',
@@ -59,31 +57,31 @@ const tooltipStyle = {
 
 const severityStyles: Record<AuditSeverity, { badge: string; label: string; icon: React.ElementType; bar: string }> = {
   INFO: {
-    badge: 'text-blue-600 border-blue-200 bg-blue-50',
+    badge: 'text-blue-700 border-blue-200 bg-blue-50 dark:border-blue-900/60 dark:bg-blue-950/30 dark:text-blue-300',
     label: 'INFO',
     icon: Info,
     bar: 'bg-blue-500',
   },
   NOTICE: {
-    badge: 'text-sky-700 border-sky-200 bg-sky-50',
+    badge: 'text-sky-700 border-sky-200 bg-sky-50 dark:border-sky-900/60 dark:bg-sky-950/30 dark:text-sky-300',
     label: 'NOTICE',
     icon: Eye,
     bar: 'bg-sky-500',
   },
   WARNING: {
-    badge: 'text-amber-700 border-amber-200 bg-amber-50',
+    badge: 'text-amber-700 border-amber-200 bg-amber-50 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-300',
     label: 'WARNING',
     icon: AlertTriangle,
     bar: 'bg-amber-500',
   },
   SECURITY: {
-    badge: 'text-orange-700 border-orange-200 bg-orange-50',
+    badge: 'text-orange-700 border-orange-200 bg-orange-50 dark:border-orange-900/60 dark:bg-orange-950/30 dark:text-orange-300',
     label: 'SECURITY',
     icon: Shield,
     bar: 'bg-orange-500',
   },
   CRITICAL: {
-    badge: 'text-red-600 border-red-200 bg-red-50',
+    badge: 'text-red-700 border-red-200 bg-red-50 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300',
     label: 'CRITICAL',
     icon: AlertCircle,
     bar: 'bg-red-500',
@@ -101,34 +99,6 @@ const outcomeLabels: Record<AuditOutcome, string> = {
   FAILURE: 'Fallo',
   DENIED: 'Denegado',
   ERROR: 'Error',
-}
-
-type FilterState = {
-  dateFrom: string
-  dateTo: string
-  search: string
-  actorEmail: string
-  action: string
-  entityType: string
-  requestId: string
-  correlationId: string
-  actorType: 'ALL' | AuditActorType
-  outcome: 'ALL' | AuditOutcome
-  severity: 'ALL' | AuditSeverity
-}
-
-const DEFAULT_FILTERS: FilterState = {
-  dateFrom: '',
-  dateTo: '',
-  search: '',
-  actorEmail: '',
-  action: '',
-  entityType: '',
-  requestId: '',
-  correlationId: '',
-  actorType: 'ALL',
-  outcome: 'ALL',
-  severity: 'ALL',
 }
 
 function formatDateTime(value?: string | null) {
@@ -177,33 +147,50 @@ const AuditLogs = () => {
   const authUser = useAuthUser()
   const canExport = authUser?.role === ROLE_ADMIN_TI
   const [page, setPage] = useState(0)
+  const [pageSize, setPageSize] = useState(PAGE_SIZE)
   const [logs, setLogs] = useState<AuditLogDto[]>([])
   const [totalElements, setTotalElements] = useState(0)
   const [totalPages, setTotalPages] = useState(0)
   const [loading, setLoading] = useState(true)
   const [exporting, setExporting] = useState(false)
   const [selectedLog, setSelectedLog] = useState<AuditLogDto | null>(null)
+  const [detailTab, setDetailTab] = useState<'overview' | 'raw'>('overview')
   const [isHeaderExportOpen, setIsHeaderExportOpen] = useState(false)
+  const [searchInput, setSearchInput] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const {
     filtersOpen,
     setFiltersOpen,
     draftFilters,
+    setDraftFilters,
     appliedFilters,
-    updateDraftFilter,
+    setAppliedFilters,
     applyFilters,
     resetDraftFilters,
     clearFilters,
-    commitAppliedFilters,
-  } = useTableFilterState(DEFAULT_FILTERS)
+  } = useTableFilterState<AuditLogsFilters>(DEFAULT_AUDIT_LOGS_FILTERS)
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setDebouncedSearch(searchInput)
+    }, 350)
+    return () => window.clearTimeout(timeoutId)
+  }, [searchInput])
+
+  useEffect(() => {
+    setDraftFilters((current) => ({ ...current, search: debouncedSearch }))
+    setAppliedFilters((current) => ({ ...current, search: debouncedSearch }))
+    setPage(0)
+  }, [debouncedSearch, setAppliedFilters, setDraftFilters])
 
   const queryParams = useMemo<AuditLogParams>(() => ({
     page,
-    size: PAGE_SIZE,
+    size: pageSize,
     sortBy: 'occurredAt',
     sortDir: 'desc',
     dateFrom: normalizeDateTimeFilter(appliedFilters.dateFrom),
     dateTo: normalizeDateTimeFilter(appliedFilters.dateTo),
-    search: appliedFilters.search.trim() || undefined,
+    search: debouncedSearch.trim() || undefined,
     actorEmail: appliedFilters.actorEmail.trim() || undefined,
     action: appliedFilters.action.trim() || undefined,
     entityType: appliedFilters.entityType.trim() || undefined,
@@ -212,7 +199,7 @@ const AuditLogs = () => {
     actorType: appliedFilters.actorType === 'ALL' ? undefined : appliedFilters.actorType,
     outcome: appliedFilters.outcome === 'ALL' ? undefined : appliedFilters.outcome,
     severity: appliedFilters.severity === 'ALL' ? undefined : appliedFilters.severity,
-  }), [appliedFilters, page])
+  }), [appliedFilters, debouncedSearch, page, pageSize])
 
   const loadAuditLogs = useCallback(async (params: AuditLogParams) => {
     setLoading(true)
@@ -240,6 +227,12 @@ const AuditLogs = () => {
   useEffect(() => {
     setPage(0)
   }, [appliedFilters])
+
+  useEffect(() => {
+    if (selectedLog) {
+      setDetailTab('overview')
+    }
+  }, [selectedLog?.id])
 
   const actionDistribution = useMemo(() => {
     const counts = new Map<string, number>()
@@ -271,8 +264,8 @@ const AuditLogs = () => {
   const currentPageFailures = logs.filter((log) => log.outcome === 'FAILURE' || log.outcome === 'ERROR').length
   const currentPageCriticals = severityBreakdown.CRITICAL + severityBreakdown.SECURITY
   const currentActors = new Set(logs.map((log) => formatActor(log))).size
-  const visibleFrom = totalElements === 0 ? 0 : page * PAGE_SIZE + 1
-  const visibleTo = totalElements === 0 ? 0 : Math.min((page + 1) * PAGE_SIZE, totalElements)
+  const visibleFrom = totalElements === 0 ? 0 : page * pageSize + 1
+  const visibleTo = totalElements === 0 ? 0 : Math.min((page + 1) * pageSize, totalElements)
 
   const handleRefresh = () => {
     void loadAuditLogs(queryParams)
@@ -316,86 +309,6 @@ const AuditLogs = () => {
       setExporting(false)
     }
   }
-
-  const activeFilterChips = useMemo(() => ([
-    ...(appliedFilters.search.trim()
-      ? [{
-          id: 'search',
-          label: `Búsqueda: ${appliedFilters.search.trim()}`,
-          onClear: () => commitAppliedFilters((current) => ({ ...current, search: '' })),
-        }]
-      : []),
-    ...(appliedFilters.actorEmail.trim()
-      ? [{
-          id: 'actorEmail',
-          label: `Correo: ${appliedFilters.actorEmail.trim()}`,
-          onClear: () => commitAppliedFilters((current) => ({ ...current, actorEmail: '' })),
-        }]
-      : []),
-    ...(appliedFilters.action.trim()
-      ? [{
-          id: 'action',
-          label: `Acción: ${appliedFilters.action.trim()}`,
-          onClear: () => commitAppliedFilters((current) => ({ ...current, action: '' })),
-        }]
-      : []),
-    ...(appliedFilters.entityType.trim()
-      ? [{
-          id: 'entityType',
-          label: `Entidad: ${appliedFilters.entityType.trim()}`,
-          onClear: () => commitAppliedFilters((current) => ({ ...current, entityType: '' })),
-        }]
-      : []),
-    ...(appliedFilters.requestId.trim()
-      ? [{
-          id: 'requestId',
-          label: `Request ID: ${appliedFilters.requestId.trim()}`,
-          onClear: () => commitAppliedFilters((current) => ({ ...current, requestId: '' })),
-        }]
-      : []),
-    ...(appliedFilters.correlationId.trim()
-      ? [{
-          id: 'correlationId',
-          label: `Correlation ID: ${appliedFilters.correlationId.trim()}`,
-          onClear: () => commitAppliedFilters((current) => ({ ...current, correlationId: '' })),
-        }]
-      : []),
-    ...(appliedFilters.actorType !== 'ALL'
-      ? [{
-          id: 'actorType',
-          label: `Actor: ${actorTypeLabels[appliedFilters.actorType]}`,
-          onClear: () => commitAppliedFilters((current) => ({ ...current, actorType: 'ALL' })),
-        }]
-      : []),
-    ...(appliedFilters.outcome !== 'ALL'
-      ? [{
-          id: 'outcome',
-          label: `Resultado: ${outcomeLabels[appliedFilters.outcome]}`,
-          onClear: () => commitAppliedFilters((current) => ({ ...current, outcome: 'ALL' })),
-        }]
-      : []),
-    ...(appliedFilters.severity !== 'ALL'
-      ? [{
-          id: 'severity',
-          label: `Severidad: ${appliedFilters.severity}`,
-          onClear: () => commitAppliedFilters((current) => ({ ...current, severity: 'ALL' })),
-        }]
-      : []),
-    ...(appliedFilters.dateFrom
-      ? [{
-          id: 'dateFrom',
-          label: 'Fecha inicial',
-          onClear: () => commitAppliedFilters((current) => ({ ...current, dateFrom: '' })),
-        }]
-      : []),
-    ...(appliedFilters.dateTo
-      ? [{
-          id: 'dateTo',
-          label: 'Fecha final',
-          onClear: () => commitAppliedFilters((current) => ({ ...current, dateTo: '' })),
-        }]
-      : []),
-  ]), [appliedFilters, commitAppliedFilters])
 
   return (
     <motion.div className="space-y-6" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}>
@@ -494,17 +407,25 @@ const AuditLogs = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Card>
+        <Card className="flex flex-col">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-semibold">Acciones en resultados cargados</CardTitle>
             <p className="text-xs text-muted-foreground">Distribución de acciones en la página actual</p>
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex min-h-[260px] flex-1 gap-4">
             {actionDistribution.length > 0 ? (
-              <ResponsiveContainer width="100%" height={220}>
-                <BarChart data={actionDistribution} margin={{ top: 0, right: 8, left: 10, bottom: 0 }}>
+              <>
+                <div className="min-w-0 flex-1">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={actionDistribution} margin={{ top: 0, right: 8, left: 10, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.15)" vertical={false} />
-                  <XAxis dataKey="action" tick={{ fill: '#64748b', fontSize: 10 }} tickLine={false} axisLine={false} />
+                  <XAxis
+                    dataKey="action"
+                    tick={{ fill: '#64748b', fontSize: 10 }}
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(value: string) => String(value).slice(0, 8) + (String(value).length > 8 ? '…' : '')}
+                  />
                   <YAxis tick={{ fill: '#64748b', fontSize: 10 }} tickLine={false} axisLine={false} allowDecimals={false} />
                   <Tooltip contentStyle={tooltipStyle} />
                   <Bar dataKey="total" radius={[6, 6, 0, 0]} maxBarSize={42}>
@@ -512,10 +433,39 @@ const AuditLogs = () => {
                       <Cell key={index} fill={CHART_COLORS[index % CHART_COLORS.length]} fillOpacity={0.9} />
                     ))}
                   </Bar>
-                </BarChart>
-              </ResponsiveContainer>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+
+                <div className="hidden w-[220px] shrink-0 flex-col gap-2 lg:flex">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Leyenda
+                  </p>
+                  <div className="max-h-[220px] overflow-auto rounded-lg border border-border bg-muted/20 p-2">
+                    <div className="space-y-1.5">
+                      {actionDistribution.map((row, index) => (
+                        <div key={row.action} className="flex items-start gap-2 text-xs">
+                          <span
+                            className="mt-1 inline-block h-2.5 w-2.5 shrink-0 rounded-full"
+                            style={{ backgroundColor: CHART_COLORS[index % CHART_COLORS.length] }}
+                            aria-hidden
+                          />
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-foreground" title={row.action}>
+                              {row.action}
+                            </p>
+                            <p className="text-[11px] text-muted-foreground">
+                              {row.total} eventos
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </>
             ) : (
-              <div className="h-[220px] grid place-items-center text-sm text-muted-foreground">
+              <div className="min-h-[260px] grid w-full place-items-center text-sm text-muted-foreground">
                 Sin datos para graficar con los filtros actuales.
               </div>
             )}
@@ -571,259 +521,175 @@ const AuditLogs = () => {
         </Card>
       </div>
 
-      <DataTable
-        title="Audit logs"
-        meta={`${totalElements.toLocaleString()} eventos · mostrando ${logs.length} en esta página`}
-        viewToggle={false}
-        toolbarRight={
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="h-8 gap-1.5 text-xs"
-            onClick={() => setFiltersOpen((current) => !current)}
-          >
-            <Filter className="h-3 w-3" />
-            Filtrar
-          </Button>
-        }
-        toolbarBelow={(
-          <DataTableFiltersShell
-            open={filtersOpen}
-            chips={activeFilterChips}
-            onApply={() => {
-              applyFilters()
-              setPage(0)
-            }}
-            onReset={resetDraftFilters}
-            onClear={() => {
-              clearFilters()
-              setPage(0)
-            }}
-          >
-            <div className="grid grid-cols-1 gap-3 xl:grid-cols-4">
-              <Input
-                placeholder="Búsqueda libre"
-                value={draftFilters.search}
-                onChange={(event) => updateDraftFilter('search', event.target.value)}
-                startAdornment={<Search className="h-4 w-4" />}
-              />
-              <Input
-                type="datetime-local"
-                value={draftFilters.dateFrom}
-                onChange={(event) => updateDraftFilter('dateFrom', event.target.value)}
-              />
-              <Input
-                type="datetime-local"
-                value={draftFilters.dateTo}
-                onChange={(event) => updateDraftFilter('dateTo', event.target.value)}
-              />
-              <Input
-                placeholder="Correo del actor"
-                value={draftFilters.actorEmail}
-                onChange={(event) => updateDraftFilter('actorEmail', event.target.value)}
-              />
-
-              <Input
-                placeholder="Acción exacta"
-                value={draftFilters.action}
-                onChange={(event) => updateDraftFilter('action', event.target.value)}
-              />
-              <Input
-                placeholder="Entidad exacta"
-                value={draftFilters.entityType}
-                onChange={(event) => updateDraftFilter('entityType', event.target.value)}
-              />
-              <Input
-                placeholder="requestId exacto"
-                value={draftFilters.requestId}
-                onChange={(event) => updateDraftFilter('requestId', event.target.value)}
-              />
-              <Input
-                placeholder="correlationId exacto"
-                value={draftFilters.correlationId}
-                onChange={(event) => updateDraftFilter('correlationId', event.target.value)}
-              />
-
-              <Select value={draftFilters.actorType} onValueChange={(value) => updateDraftFilter('actorType', value as FilterState['actorType'])}>
-                <SelectTrigger className="h-9 text-sm">
-                  <SelectValue placeholder="Tipo de actor" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">Todos los actores</SelectItem>
-                  <SelectItem value="ADMIN">Admin</SelectItem>
-                  <SelectItem value="SYSTEM">Sistema</SelectItem>
-                  <SelectItem value="INTEGRATION">Integración</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={draftFilters.outcome} onValueChange={(value) => updateDraftFilter('outcome', value as FilterState['outcome'])}>
-                <SelectTrigger className="h-9 text-sm">
-                  <SelectValue placeholder="Resultado" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">Todos los resultados</SelectItem>
-                  <SelectItem value="SUCCESS">Exitoso</SelectItem>
-                  <SelectItem value="FAILURE">Fallo</SelectItem>
-                  <SelectItem value="DENIED">Denegado</SelectItem>
-                  <SelectItem value="ERROR">Error</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={draftFilters.severity} onValueChange={(value) => updateDraftFilter('severity', value as FilterState['severity'])}>
-                <SelectTrigger className="h-9 text-sm">
-                  <SelectValue placeholder="Severidad" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">Todas las severidades</SelectItem>
-                  <SelectItem value="INFO">Info</SelectItem>
-                  <SelectItem value="NOTICE">Notice</SelectItem>
-                  <SelectItem value="WARNING">Warning</SelectItem>
-                  <SelectItem value="SECURITY">Security</SelectItem>
-                  <SelectItem value="CRITICAL">Critical</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </DataTableFiltersShell>
-        )}
-        renderTable={() => (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-y border-border bg-muted/40">
-                  {['Fecha', 'Actor / módulo', 'Acción / descripción', 'Entidad', 'Resultado', 'Request / Correlation', 'Endpoint', 'Severidad', ''].map((header) => (
-                    <th key={header} className="text-left px-4 py-2.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider whitespace-nowrap">
-                      {header}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <tr>
-                    <td colSpan={9} className="px-4 py-6 text-sm text-muted-foreground">
-                      Cargando audit logs...
-                    </td>
-                  </tr>
-                ) : logs.length === 0 ? (
-                  <tr>
-                    <td colSpan={9} className="px-4 py-6 text-sm text-muted-foreground">
-                      No hay resultados para los filtros actuales.
-                    </td>
-                  </tr>
-                ) : (
-                  logs.map((log) => {
-                    const severity = log.severity ?? 'INFO'
-                    const style = severityStyles[severity]
-                    const actorTypeLabel = log.actorType ? actorTypeLabels[log.actorType] : 'N/D'
-                    const outcomeLabel = log.outcome ? outcomeLabels[log.outcome] : 'N/D'
-
-                    return (
-                      <tr key={log.id} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors align-top">
-                        <td className="px-4 py-3 font-mono text-xs text-muted-foreground whitespace-nowrap">
-                          {formatDateTime(log.occurredAt)}
-                        </td>
-                        <td className="px-4 py-3 min-w-[220px]">
-                          <div className="font-medium text-foreground text-sm">{formatActor(log)}</div>
-                          <div className="text-xs text-muted-foreground">{actorTypeLabel} · {formatModule(log)}</div>
-                        </td>
-                        <td className="px-4 py-3 min-w-[240px]">
-                          <div className="font-medium text-foreground">{log.action}</div>
-                          <div className="text-xs text-muted-foreground">{log.description || 'Sin descripción adicional'}</div>
-                        </td>
-                        <td className="px-4 py-3 text-xs text-muted-foreground min-w-[180px]">{formatEntity(log)}</td>
-                        <td className="px-4 py-3 whitespace-nowrap">
-                          <Badge variant="outlined" className="text-[10px]">
-                            {outcomeLabel}
-                          </Badge>
-                        </td>
-                        <td className="px-4 py-3 min-w-[200px]">
-                          <div className="font-mono text-xs text-muted-foreground">{log.requestId ?? 'Sin requestId'}</div>
-                          <div className="font-mono text-xs text-muted-foreground">{log.correlationId ?? 'Sin correlationId'}</div>
-                        </td>
-                        <td className="px-4 py-3 min-w-[220px]">
-                          <div className="font-mono text-xs text-muted-foreground">{log.httpMethod ?? 'N/D'} {log.endpoint ?? 'Sin endpoint'}</div>
-                          <div className="text-xs text-muted-foreground">statusCode: {log.statusCode ?? 'N/D'} · IP: {log.ipAddressMasked ?? 'Oculta'}</div>
-                        </td>
-                        <td className="px-4 py-3 whitespace-nowrap">
-                          <Badge variant="outlined" className={`text-[10px] gap-1 ${style.badge}`}>
-                            <style.icon className="w-3 h-3" />
-                            {style.label}
-                          </Badge>
-                        </td>
-                        <td className="px-4 py-3">
-                          <Button variant="ghost" size="icon-sm" onClick={() => setSelectedLog(log)}>
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                        </td>
-                      </tr>
-                    )
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-        )}
-        pagination={{
-          summary: `Mostrando ${visibleFrom}–${visibleTo} de ${totalElements}`,
-          pageIndex: page,
-          pageCount: Math.max(totalPages, 1),
-          canPreviousPage: !loading && page > 0,
-          canNextPage: !loading && page < totalPages - 1,
-          onPreviousPage: () => setPage((current) => Math.max(0, current - 1)),
-          onNextPage: () => setPage((current) => Math.min(Math.max(totalPages - 1, 0), current + 1)),
+      <AuditLogsTable
+        totalElements={totalElements}
+        logs={logs}
+        loading={loading}
+        page={page}
+        totalPages={totalPages}
+        visibleFrom={visibleFrom}
+        visibleTo={visibleTo}
+        draftFilters={draftFilters}
+        appliedFilters={appliedFilters}
+        searchInput={searchInput}
+        onSearchInputChange={(value) => setSearchInput(value)}
+        pageSize={pageSize}
+        onPageSizeChange={(nextSize) => {
+          setPageSize(nextSize)
+          setPage(0)
         }}
+        filtersOpen={filtersOpen}
+        onFiltersOpenChange={setFiltersOpen}
+        onDraftFiltersChange={setDraftFilters}
+        onApplyFilters={() => {
+          applyFilters()
+          setPage(0)
+        }}
+        onResetFilters={resetDraftFilters}
+        onClearFilters={() => {
+          clearFilters()
+          setSearchInput('')
+          setPage(0)
+        }}
+        onOpenDetail={setSelectedLog}
+        onPreviousPage={() => setPage((current) => Math.max(0, current - 1))}
+        onNextPage={() => setPage((current) => Math.min(Math.max(totalPages - 1, 0), current + 1))}
+        severityStyles={severityStyles}
+        actorTypeLabels={actorTypeLabels}
+        outcomeLabels={outcomeLabels}
+        formatDateTime={formatDateTime}
+        formatActor={formatActor}
+        formatModule={formatModule}
+        formatEntity={formatEntity}
       />
 
       <Dialog open={Boolean(selectedLog)} onOpenChange={(open) => !open && setSelectedLog(null)}>
-        <DialogContent size="3">
-          <DialogHeader>
-            <DialogTitle>Detalle de audit log</DialogTitle>
-            <DialogDescription>
-              Vista extendida de los campos seguros expuestos por el backend.
-            </DialogDescription>
-          </DialogHeader>
-          {selectedLog ? (
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-3 rounded-xl border border-border bg-muted/30 p-4">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Acción</p>
-                  <p className="text-sm text-foreground">{selectedLog.action}</p>
+        <DialogContent
+          showCloseButton={false}
+          animation="fade"
+          className="max-w-4xl border border-border bg-card p-0 shadow-lg"
+        >
+          {selectedLog ? (() => {
+            const severity = selectedLog.severity ?? 'INFO'
+            const style = severityStyles[severity]
+            const actor = formatActor(selectedLog)
+            const outcomeLabel = selectedLog.outcome ? outcomeLabels[selectedLog.outcome] : 'N/D'
+            const actorTypeLabel = selectedLog.actorType ? actorTypeLabels[selectedLog.actorType] : 'N/D'
+
+            return (
+              <div className="flex min-h-[520px] min-w-0 rounded-lg">
+                <div className="w-56 border-r border-border bg-muted/30 p-5">
+                  <div className="flex flex-col items-center">
+                    <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10">
+                      <Shield className="h-7 w-7 text-primary" />
+                    </div>
+                    <p className="mt-3 text-center text-sm font-semibold text-foreground">Audit log</p>
+                    <p className="text-center text-[11px] text-muted-foreground">{formatDateTime(selectedLog.occurredAt)}</p>
+
+                    <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+                      <Badge variant="outlined" className={`text-[10px] gap-1 ${style.badge}`}>
+                        <style.icon className="h-3 w-3" />
+                        {style.label}
+                      </Badge>
+                      <Badge variant="outlined" className="text-[10px]">
+                        {outcomeLabel}
+                      </Badge>
+                    </div>
+                  </div>
+
+                  <div className="mt-6 space-y-1">
+                    {([
+                      { key: 'overview', label: 'Detalle' },
+                      { key: 'raw', label: 'Raw' },
+                    ] as const).map((item) => (
+                      <button
+                        key={item.key}
+                        type="button"
+                        onClick={() => setDetailTab(item.key)}
+                        className={cn(
+                          'flex w-full items-center justify-between rounded-md px-3 py-2 text-xs transition-colors',
+                          detailTab === item.key
+                            ? 'bg-card font-medium text-foreground shadow-sm'
+                            : 'text-muted-foreground hover:text-foreground',
+                        )}
+                      >
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Descripción</p>
-                  <p className="text-sm text-foreground">{selectedLog.description || 'Sin descripción adicional'}</p>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Módulo</p>
-                  <p className="text-sm text-foreground">{formatModule(selectedLog)}</p>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Entidad / objetivo</p>
-                  <p className="text-sm text-foreground">{formatEntity(selectedLog)}</p>
+
+                <div className="relative flex-1 min-w-0 p-6">
+                  <button
+                    type="button"
+                    className="absolute right-4 top-4 rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                    onClick={() => setSelectedLog(null)}
+                    aria-label="Cerrar"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+
+                  <div className="mb-5">
+                    <p className="text-sm font-semibold text-foreground">{selectedLog.action || 'SIN_ACCION'}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {actor} · {actorTypeLabel} · {formatModule(selectedLog)}
+                    </p>
+                    {selectedLog.description ? (
+                      <p className="mt-2 text-sm text-foreground/90">{selectedLog.description}</p>
+                    ) : null}
+                  </div>
+
+                  {detailTab === 'overview' ? (
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <div className="space-y-3 rounded-xl border border-border bg-muted/20 p-4">
+                        <div>
+                          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Entidad / objetivo</p>
+                          <p className="mt-1 text-sm text-foreground">{formatEntity(selectedLog)}</p>
+                        </div>
+                        <div>
+                          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">HTTP</p>
+                          <p className="mt-1 font-mono text-xs text-foreground">
+                            {selectedLog.httpMethod ?? 'N/D'} {selectedLog.endpoint ?? 'Sin endpoint'}
+                          </p>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            statusCode: {selectedLog.statusCode ?? 'N/D'} · IP: {selectedLog.ipAddressMasked ?? 'Oculta'}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="space-y-3 rounded-xl border border-border bg-muted/20 p-4">
+                        <div>
+                          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Request / Correlation</p>
+                          <p className="mt-1 font-mono text-xs text-foreground">{selectedLog.requestId ?? 'Sin requestId'}</p>
+                          <p className="mt-1 font-mono text-xs text-foreground">{selectedLog.correlationId ?? 'Sin correlationId'}</p>
+                        </div>
+                        <div>
+                          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Referencias</p>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            id: <span className="font-mono text-foreground">{selectedLog.id}</span>
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="rounded-xl border border-border bg-muted/10 p-4 md:col-span-2">
+                        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Metadata segura</p>
+                        <pre className="mt-2 w-full max-h-64 overflow-auto rounded-lg bg-background p-3 text-xs text-muted-foreground">
+                          {selectedLog.metadataJson || 'Sin metadata serializada'}
+                        </pre>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="rounded-xl border border-border bg-muted/10 p-4">
+                      <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Raw JSON</p>
+                      <pre className="mt-2 w-full max-h-[420px] overflow-auto rounded-lg bg-background p-3 text-xs text-muted-foreground">
+                        {JSON.stringify(selectedLog, null, 2)}
+                      </pre>
+                    </div>
+                  )}
                 </div>
               </div>
-              <div className="space-y-3 rounded-xl border border-border bg-muted/30 p-4">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Actor</p>
-                  <p className="text-sm text-foreground">{formatActor(selectedLog)}</p>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">HTTP</p>
-                  <p className="text-sm text-foreground">{selectedLog.httpMethod ?? 'N/D'} {selectedLog.endpoint ?? 'Sin endpoint'}</p>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Request / Correlation</p>
-                  <p className="font-mono text-xs text-foreground">{selectedLog.requestId ?? 'Sin requestId'}</p>
-                  <p className="font-mono text-xs text-foreground">{selectedLog.correlationId ?? 'Sin correlationId'}</p>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Metadata segura</p>
-                  <pre className="max-h-40 overflow-auto rounded-lg bg-background p-3 text-xs text-muted-foreground">
-                    {selectedLog.metadataJson || 'Sin metadata serializada'}
-                  </pre>
-                </div>
-              </div>
-            </div>
-          ) : null}
+            )
+          })() : null}
         </DialogContent>
       </Dialog>
     </motion.div>

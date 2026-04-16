@@ -199,6 +199,26 @@ class AdminManagementControllerIntegrationTest {
     }
 
     @Test
+    void shouldRejectDuplicateEmailOnUpdate() throws Exception {
+        String payload = """
+                {
+                  "email": "admin.ti@utez.edu.mx",
+                  "name": "Admin",
+                  "lastNamePaternal": "Actualizado",
+                  "lastNameMaternal": "SIGASe",
+                  "role": "ADMIN_TI"
+                }
+                """;
+
+        mockMvc.perform(put("/api/v1/admins/{adminId}", targetAdmin.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload)
+                        .with(auth(adminTi, RoleConstants.ADMIN_TI)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.errorCode", is("BUSINESS_RULE_VIOLATION")));
+    }
+
+    @Test
     void shouldActivateAndDeactivateAdmin() throws Exception {
         String reasonPayload = objectMapper.writeValueAsString(new ReasonPayload("Operación de prueba"));
 

@@ -1,6 +1,6 @@
 export type AdminRole = 'ADMIN_TI' | 'ADMIN_BIBLIOTECA';
 export type AdminStatus = 'ACTIVE' | 'INACTIVE';
-export type StudentStatus = 'ACTIVE' | 'INACTIVE';
+export type StudentStatus = 'PENDING' | 'ACTIVE' | 'INACTIVE';
 export type StudentSex = 'FEMALE' | 'MALE' | 'NON_BINARY';
 export type SortDir = 'asc' | 'desc';
 export type DashboardCurrentElibroConfigStatus =

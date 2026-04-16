@@ -10,14 +10,13 @@ import jakarta.validation.constraints.Size;
 import java.util.UUID;
 
 public record CreateStudentRequest(
-        @NotBlank @Size(max = 10) String enrollmentId,
+        @NotBlank @Size(min = 10, max = 11) String enrollmentId,
         @NotBlank @Size(max = 100) String name,
         @NotBlank @Size(max = 100) String lastNamePaternal,
         @Size(max = 100) String lastNameMaternal,
         @NotNull Sex sex,
-        @NotNull @Min(1) @Max(12) Integer quarter,
+        @NotNull @Min(1) @Max(11) Integer quarter,
         @NotBlank @Email @Size(max = 254) String institutionalEmail,
-        UUID careerId,
-        @Size(max = 20) String careerCode
+        @NotNull UUID careerId
 ) {
 }

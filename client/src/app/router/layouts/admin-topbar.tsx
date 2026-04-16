@@ -7,7 +7,6 @@ import {
   Users,
   FileText,
   Shield,
-  Bell,
   BookOpen,
 } from 'lucide-react';
 import { Badge } from '@/shared/components/ui/badge';
@@ -15,6 +14,7 @@ import { ThemeToggle } from '@/shared/components/ui/theme-toggle';
 import { AdminProfileMenu } from './admin-profile-menu';
 import { useAuthUser } from '@/features/auth/hooks/use-auth-user';
 import { ROLE_ADMIN_BIBLIOTECA, ROLE_ADMIN_TI } from '@/features/auth/types/auth-user';
+import { NotificationsPopover } from '@/features/notifications';
 
 type NavItem = {
   id: string;
@@ -41,6 +41,7 @@ export function AdminTopbar() {
   const panelSubtitle = isLibrarian
     ? 'Gestión de estudiantes, monitoreo y auditoría de accesos'
     : 'Sistema Integral de Gestión y Acceso SSO eLibro';
+  const hasTemporaryPasswordPending = authUser?.role?.startsWith('ROLE_ADMIN') && authUser.hasChangedTemporaryPassword === false;
 
   return (
     <header className="sticky top-0 z-50 bg-topbar/85 shadow-lg shadow-black/5 backdrop-blur supports-[backdrop-filter]:bg-topbar/75">
@@ -61,15 +62,7 @@ export function AdminTopbar() {
         </div>
 
         <div className="flex items-center gap-2">
-
-          <button
-            type="button"
-            className="relative flex h-9 w-9 items-center justify-center rounded-lg transition-colors"
-            aria-label="Notificaciones"
-          >
-            <Bell className="h-4 w-4 text-muted-foreground" />
-            <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-primary" />
-          </button>
+          <NotificationsPopover />
           <ThemeToggle className="h-9 w-9 [&_svg]:size-5" />
           <AdminProfileMenu />
         </div>
@@ -103,6 +96,12 @@ export function AdminTopbar() {
           </div>
         </div>
       </nav>
+
+      {hasTemporaryPasswordPending ? (
+        <div className="border-b border-warning/30 bg-warning/10 px-4 py-2 text-xs font-medium text-warning-foreground">
+          Tu cuenta usa una contraseña temporal. Puedes seguir trabajando con normalidad, pero cambia tu contraseña cuando te sea posible.
+        </div>
+      ) : null}
     </header>
   );
 }

@@ -14,7 +14,6 @@ public record AuditLogFilterRequest(
         String action,
         String entityType,
         AuditOutcome outcome,
-        AuditOutcome result,
         String requestId,
         String correlationId,
         AuditSeverity severity,
@@ -26,7 +25,7 @@ public record AuditLogFilterRequest(
 ) {
 
     public AuditOutcome resolvedOutcome() {
-        return outcome != null ? outcome : result;
+        return outcome;
     }
 
     public int resolvedPage(int fallback) {
@@ -54,7 +53,6 @@ public record AuditLogFilterRequest(
                 action,
                 entityType,
                 outcome,
-                result,
                 requestId,
                 correlationId,
                 severity,
@@ -68,7 +66,6 @@ public record AuditLogFilterRequest(
 
     public static AuditLogFilterRequest empty() {
         return new AuditLogFilterRequest(
-                null,
                 null,
                 null,
                 null,

@@ -2,6 +2,7 @@ package mx.edu.utez.server.modules.admins.service;
 
 import mx.edu.utez.server.modules.admins.entity.Admin;
 import mx.edu.utez.server.modules.admins.repository.AdminRepository;
+import mx.edu.utez.server.shared.enums.AdminStatus;
 import mx.edu.utez.server.shared.exception.BusinessException;
 import mx.edu.utez.server.shared.exception.ErrorCode;
 import java.util.UUID;
@@ -30,7 +31,7 @@ public class AdminContextService {
 
         Admin admin = adminRepository.findById(adminId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.UNAUTHORIZED, "Sesión inválida."));
-        if (!admin.isActive()) {
+        if (admin.getStatus() != AdminStatus.ACTIVE) {
             throw new BusinessException(ErrorCode.UNAUTHORIZED, "Administrador desactivado.");
         }
         return admin;

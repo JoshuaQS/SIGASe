@@ -150,7 +150,7 @@ class ReportXlsxExportIntegrationTest {
         }
     }
 
-    // ── 3. CSV default backward compatibility ──────────────────────────
+    // ── 3. CSV default behavior ────────────────────────────────────────
 
     @Test
     void shouldDefaultToCsvWhenNoFormatSpecified() throws Exception {
@@ -244,7 +244,7 @@ class ReportXlsxExportIntegrationTest {
                 .andExpect(status().isForbidden());
     }
 
-    // ── 9. Access-logs CSV compatibility still works ───────────────────
+    // ── 9. Access-logs CSV export still works ─────────────────────────
 
     @Test
     void shouldStillExportAccessLogsCsvWithFormatParam() throws Exception {

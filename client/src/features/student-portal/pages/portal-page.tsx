@@ -175,10 +175,15 @@ const Portal = () => {
     } catch (error) {
       const message = resolveErrorMessage(error);
       setSummaryError(message);
+      showToast({
+        severity: 'warning',
+        title: 'No se pudo cargar el resumen',
+        description: message,
+      });
     } finally {
       setIsSummaryLoading(false);
     }
-  }, []);
+  }, [showToast]);
 
   useEffect(() => {
     void loadSummary();
@@ -285,15 +290,21 @@ const Portal = () => {
     : isAccountActive
       ? 'Autenticación segura vía SSO institucional'
       : 'Acceso temporalmente restringido';
-  const cardHoverClass = 'transition-transform duration-300 will-change-transform hover:scale-[1.01]';
+  const cardHoverClass = 'transition-transform duration-300 will-change-transform hover:-translate-y-0.5 hover:scale-[1.01]';
+  const portalGlassCardClass =
+    'relative overflow-hidden rounded-3xl border border-white/70 bg-white/72 shadow-[0_22px_60px_rgba(15,23,42,0.14)] ring-1 ring-white/35 backdrop-blur-2xl dark:border-white/10 dark:bg-slate-950/55 dark:shadow-[0_24px_70px_rgba(0,0,0,0.36)] dark:ring-white/5';
 
   return (
     <div className="relative flex h-full min-h-0 flex-1 flex-col overflow-hidden">
       <div className="relative z-10 mx-auto flex h-full w-full max-w-full flex-1 items-center px-2 py-4 lg:px-4 lg:py-6">
-        <div className="grid w-full grid-cols-1 gap-2.5 xl:grid-cols-12 xl:grid-rows-none xl:items-start xl:gap-x-4 xl:gap-y-2.5">
+        <div className="grid w-full grid-cols-1 gap-y-4 xl:grid-cols-12 xl:grid-rows-none xl:items-start xl:gap-x-4 xl:gap-y-5">
           <section className="xl:col-span-12">
             <ElibroCtaCard
-              className={cn(cardHoverClass, 'portal-cta-lg')}
+              className={cn(
+                cardHoverClass,
+                'portal-cta-lg',
+                'relative overflow-hidden rounded-[2rem] border border-white/75 bg-white/75 shadow-[0_26px_72px_rgba(15,23,42,0.16)] ring-1 ring-white/40 backdrop-blur-2xl dark:border-white/10 dark:bg-slate-950/55 dark:shadow-[0_28px_80px_rgba(0,0,0,0.4)] dark:ring-white/5',
+              )}
               onTrigger={handleElibroAccess}
               busy={isOpeningElibro}
               disabled={ctaDisabled}
@@ -303,11 +314,12 @@ const Portal = () => {
             />
           </section>
 
-          <section className="grid min-h-0 gap-2.5 xl:col-span-12 xl:grid-rows-[auto_1fr]">
-            <div className="grid grid-cols-1 gap-2.5">
+          <section className="grid min-h-0 gap-4 xl:col-span-12 xl:grid-rows-[auto_1fr]">
+            <div className="grid grid-cols-1 gap-4">
               <Card
                 className={cn(
-                  'rounded-2xl border border-border/50 bg-card/40 p-3.5 shadow-2xl shadow-primary/25 backdrop-blur-xl',
+                  portalGlassCardClass,
+                  'p-4 md:p-5',
                   cardHoverClass,
                 )}
               >
@@ -352,10 +364,11 @@ const Portal = () => {
               </Card>
             </div>
 
-            <div className="grid min-h-0 grid-cols-1 gap-2.5 lg:grid-cols-12 lg:items-stretch lg:gap-2.5">
+            <div className="grid min-h-0 grid-cols-1 gap-4 lg:grid-cols-12 lg:items-stretch lg:gap-4">
               <Card
                 className={cn(
-                  'rounded-2xl border border-border/50 bg-card/40 p-3.5 shadow-2xl shadow-primary/25 backdrop-blur-xl lg:col-span-4',
+                  portalGlassCardClass,
+                  'p-4 md:p-5 lg:col-span-4',
                   cardHoverClass,
                 )}
               >
@@ -397,7 +410,8 @@ const Portal = () => {
               <div className="grid min-h-0 grid-cols-1 gap-2.5 lg:col-span-8 lg:grid-cols-2">
                 <Card
                   className={cn(
-                    'group relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-border/50 bg-card/40 p-3.5 shadow-2xl shadow-primary/25 backdrop-blur-xl',
+                    portalGlassCardClass,
+                    'group flex min-h-0 flex-1 flex-col p-4 md:p-5',
                     portalEffects.zapTrailGroup,
                     cardHoverClass,
                   )}
@@ -427,7 +441,8 @@ const Portal = () => {
 
                 <Card
                   className={cn(
-                    'flex min-h-0 flex-1 flex-col rounded-2xl border border-border/50 bg-card/40 p-3.5 shadow-2xl shadow-primary/25 backdrop-blur-xl',
+                    portalGlassCardClass,
+                    'flex min-h-0 flex-1 flex-col p-4 md:p-5',
                     cardHoverClass,
                   )}
                 >

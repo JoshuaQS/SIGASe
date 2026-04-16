@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LogOut, Settings, User } from 'lucide-react';
 
@@ -8,6 +8,7 @@ import { ROLE_ADMIN_TI } from '@/features/auth/types/auth-user';
 import { AdminProfileModal } from '@/features/admins/components/modals/admin-profile-modal';
 import { useAppToast } from '@/shared/components/ui/app-toast-provider';
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
+import { AppConfirmDialog } from '@/shared/components/ui/confirmation-dialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,6 +23,14 @@ export function AdminProfileMenu() {
   const navigate = useNavigate();
   const { showToast } = useAppToast();
   const [profileOpen, setProfileOpen] = useState(false);
+  const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
+  const [logoutLoading, setLogoutLoading] = useState(false);
+
+  useEffect(() => {
+    if (user?.role.startsWith('ROLE_ADMIN') && user.hasChangedTemporaryPassword === false) {
+      setProfileOpen(true);
+    }
+  }, [user]);
 
   const displayName = user?.displayName || 'Administrador UTEZ';
   const email = user?.email || 'admin@utez.edu.mx';
@@ -37,13 +46,17 @@ export function AdminProfileMenu() {
   const settingsPath = user?.role === ROLE_ADMIN_TI ? '/admin/elibro-status' : '/admin/monitoreo-reportes';
 
   const handleLogout = async () => {
+    if (logoutLoading) return;
+    setLogoutLoading(true);
     try {
       await authSession.logout();
+      setLogoutConfirmOpen(false);
       showToast({
         severity: 'success',
         title: 'Sesión cerrada',
         description: 'Tu sesión administrativa ha finalizado.',
       });
+      navigate('/login?mode=admin', { replace: true, state: { mode: 'admin' } });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'No se pudo cerrar la sesión.';
       showToast({
@@ -52,7 +65,7 @@ export function AdminProfileMenu() {
         description: message,
       });
     } finally {
-      navigate('/login?mode=admin', { replace: true, state: { mode: 'admin' } });
+      setLogoutLoading(false);
     }
   };
 
@@ -62,6 +75,18 @@ export function AdminProfileMenu() {
 
   return (
     <>
+      <AppConfirmDialog
+        open={logoutConfirmOpen}
+        title="Cerrar sesión"
+        description="Se cerrará tu sesión administrativa actual. ¿Deseas continuar?"
+        confirmText="Cerrar sesión"
+        cancelText="Cancelar"
+        confirmColor="warning"
+        isConfirming={logoutLoading}
+        onCancel={() => !logoutLoading && setLogoutConfirmOpen(false)}
+        onConfirm={() => { if (!logoutLoading) void handleLogout(); }}
+      />
+
       <AdminProfileModal open={profileOpen} onClose={() => setProfileOpen(false)} />
 
       <DropdownMenu>
@@ -100,10 +125,11 @@ export function AdminProfileMenu() {
           <DropdownMenuItem
             variant="destructive"
             className="cursor-pointer"
-            onSelect={() => void handleLogout()}
+            disabled={logoutLoading}
+            onSelect={() => setLogoutConfirmOpen(true)}
           >
             <LogOut className="h-4 w-4" />
-            Cerrar sesión
+            {logoutLoading ? 'Cerrando sesión...' : 'Cerrar sesión'}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

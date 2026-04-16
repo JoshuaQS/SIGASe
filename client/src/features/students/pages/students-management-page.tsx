@@ -36,6 +36,8 @@ import { StudentsTable, type StudentManagementRow } from '@/features/students/co
 import { StudentCreateModal as CreateStudentModal } from '@/features/students/components/modals/create-student-modal'
 import { EditStudentModal } from '@/features/students/components/modals/edit-student-modal'
 import { StudentDetailModal } from '@/features/students/components/modals/student-detail-modal'
+import { StudentsFiltersPopover } from '@/features/students/components/filters/students-filters-popover'
+import { DEFAULT_STUDENTS_TABLE_FILTERS } from '@/features/students/components/filters/students-filter-fields'
 import { DeleteUserModal } from '@/features/admins/components/modals/delete-user-modal'
 import { StudentStatusChangeModal } from '@/features/students/components/modals/student-status-change-modal'
 import { listActiveCareers, type CareerDto } from '@/features/careers/api/careers-api'
@@ -48,8 +50,8 @@ import {
   importStudentsCsv,
   listStudents,
   reactivateStudent,
+  resendStudentOnboardingEmail,
   type StudentExportFormat,
-  type StudentBackendStatus,
   type StudentMetricsResponseDto,
   type StudentResponseDto,
 } from '@/features/students/api/students-api'
@@ -62,11 +64,6 @@ const tooltipStyle = {
 }
 
 const PAGE_SIZE = 8
-
-const DEFAULT_TABLE_FILTERS = {
-  careerCode: 'todas',
-  status: 'todos' as 'todos' | StudentBackendStatus,
-}
 
 function buildFullName(student: StudentResponseDto) {
   return [
@@ -112,13 +109,12 @@ const StudentsManagement = () => {
     filtersOpen,
     setFiltersOpen,
     draftFilters,
+    setDraftFilters,
     appliedFilters,
-    updateDraftFilter,
     applyFilters,
     resetDraftFilters,
     clearFilters,
-    commitAppliedFilters,
-  } = useTableFilterState(DEFAULT_TABLE_FILTERS)
+  } = useTableFilterState(DEFAULT_STUDENTS_TABLE_FILTERS)
 
   const [careers, setCareers] = useState<CareerDto[]>([])
   const [students, setStudents] = useState<StudentResponseDto[]>([])
@@ -147,6 +143,7 @@ const StudentsManagement = () => {
   const [statusLoading, setStatusLoading] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<StudentResponseDto | null>(null)
   const [deleteLoading, setDeleteLoading] = useState(false)
+  const [resendLoading, setResendLoading] = useState(false)
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -160,37 +157,6 @@ const StudentsManagement = () => {
     careerCode: appliedFilters.careerCode === 'todas' ? undefined : appliedFilters.careerCode,
     status: appliedFilters.status === 'todos' ? undefined : appliedFilters.status,
   }), [appliedFilters.careerCode, appliedFilters.status, debouncedSearch])
-
-  const activeFilterChips = useMemo(() => ([
-    ...(appliedFilters.careerCode !== 'todas'
-      ? [{
-          id: 'career',
-          label: `Carrera: ${appliedFilters.careerCode}`,
-          onClear: () => {
-            commitAppliedFilters((current) => ({ ...current, careerCode: 'todas' }))
-          },
-        }]
-      : []),
-    ...(appliedFilters.status !== 'todos'
-      ? [{
-          id: 'status',
-          label: `Estado: ${appliedFilters.status === 'ACTIVE' ? 'Activo' : 'Inactivo'}`,
-          onClear: () => {
-            commitAppliedFilters((current) => ({ ...current, status: 'todos' }))
-          },
-        }]
-      : []),
-    ...(searchInput.trim()
-      ? [{
-          id: 'search',
-          label: `Búsqueda: ${searchInput.trim()}`,
-          onClear: () => {
-            setSearchInput('')
-            setPage(0)
-          },
-        }]
-      : []),
-  ]), [appliedFilters.careerCode, appliedFilters.status, commitAppliedFilters, searchInput])
 
   const fetchCareers = useCallback(async () => {
     try {
@@ -278,11 +244,13 @@ const StudentsManagement = () => {
       ...student,
       fullName: buildFullName(student),
       uiStatus:
-        student.status === 'INACTIVE'
-          ? 'inactivo' as const
-          : student.mustChangePassword
-            ? 'pendiente' as const
-            : 'activo' as const,
+        student.status === 'PENDING'
+          ? 'pendiente' as const
+          : student.status === 'INACTIVE'
+            ? 'inactivo' as const
+            : student.mustChangePassword
+              ? 'pendiente' as const
+              : 'activo' as const,
       lastAccessLabel: formatRelativeAccess(student.lastLoginAt),
     }))
   ), [students])
@@ -302,10 +270,15 @@ const StudentsManagement = () => {
     setImportLoading(true)
     try {
       const result = await importStudentsCsv(file)
+      const emailJobs = result.emailJobs ?? []
+      const pendingJobs = emailJobs.filter((job) => job.status === 'PENDING').length
+      const sentJobs = emailJobs.filter((job) => job.status === 'SENT').length
+      const failedJobs = emailJobs.filter((job) => job.status === 'FAILED').length
+      const terminalJobs = emailJobs.filter((job) => job.status === 'PERMANENT_FAILURE').length
       showToast({
         severity: 'success',
         title: 'Importación completada',
-        description: `Filas procesadas: ${result.totalRows} · Exitosas: ${result.successCount} · Con error: ${result.errorCount}`,
+        description: `Filas procesadas: ${result.totalRows} · Exitosas: ${result.successCount} · Con error: ${result.errorCount}${emailJobs.length > 0 ? ` · Correos: pendientes ${pendingJobs}, enviados ${sentJobs}, fallidos ${failedJobs}, terminales ${terminalJobs}` : ''}`,
       })
       await fetchMetrics()
       if (page === 0) {
@@ -367,6 +340,30 @@ const StudentsManagement = () => {
       setExportLoading(false)
     }
   }
+
+  const handleResendOnboarding = useCallback(async (student: StudentResponseDto) => {
+    if (resendLoading || student.status !== 'PENDING') return
+
+    setResendLoading(true)
+    try {
+      await resendStudentOnboardingEmail(student.id)
+      showToast({
+        severity: 'success',
+        title: 'Correo reenviado',
+        description: `Se reenviaron las instrucciones de acceso a ${buildFullName(student)}.`,
+      })
+      await fetchStudents()
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'No se pudo reenviar el correo de onboarding.'
+      showToast({
+        severity: 'error',
+        title: 'Reenvío fallido',
+        description: message,
+      })
+    } finally {
+      setResendLoading(false)
+    }
+  }, [fetchStudents, resendLoading, showToast])
 
   return (
     <motion.div className="space-y-6" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}>
@@ -639,6 +636,8 @@ const StudentsManagement = () => {
         onDeactivate={(student) => setStatusTarget(student)}
         onReactivate={(student) => setStatusTarget(student)}
         onDelete={(student) => setDeleteTarget(student)}
+        onResendOnboarding={(student) => void handleResendOnboarding(student)}
+        resendLoading={resendLoading}
         page={page}
         totalElements={totalElements}
         totalPages={totalPages}
@@ -648,28 +647,25 @@ const StudentsManagement = () => {
           setPageSize(nextSize)
           setPage(0)
         }}
-        onFiltersToggle={() => setFiltersOpen((current) => !current)}
-        filtersOpen={filtersOpen}
-        careers={careers}
-        carreraF={draftFilters.careerCode}
-        onCareerChange={(value) => {
-          updateDraftFilter('careerCode', value)
-        }}
-        estadoF={draftFilters.status}
-        onStatusChange={(value) => {
-          updateDraftFilter('status', value)
-        }}
-        onClearFilters={() => {
-          clearFilters()
-          setSearchInput('')
-          setPage(0)
-        }}
-        onResetFilters={resetDraftFilters}
-        onApplyFilters={() => {
-          applyFilters()
-          setPage(0)
-        }}
-        activeFilterChips={activeFilterChips}
+        toolbarRight={(
+          <StudentsFiltersPopover
+            careers={careers}
+            draftFilters={draftFilters}
+            appliedFilters={appliedFilters}
+            open={filtersOpen}
+            onOpenChange={setFiltersOpen}
+            onDraftChange={setDraftFilters}
+            onApply={() => {
+              applyFilters()
+              setPage(0)
+            }}
+            onReset={resetDraftFilters}
+            onClear={() => {
+              clearFilters()
+              setPage(0)
+            }}
+          />
+        )}
       />
 
     </motion.div>

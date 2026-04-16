@@ -20,6 +20,9 @@ const ResetPasswordPage = lazy(() => import('@/features/auth/pages/reset-passwor
 const StudentOnboardingPasswordPage = lazy(
   () => import('@/features/auth/pages/student-onboarding-password-page'),
 )
+const ForcePasswordChangeShellPage = lazy(
+  () => import('@/features/student-portal/pages/force-password-change-shell'),
+)
 
 const StudentsManagementPage = lazy(
   () => import('@/features/students/pages/students-management-page'),
@@ -41,8 +44,8 @@ const ElibroSsoConfigPage = lazy(
 )
 
 const PortalPage = lazy(() => import('@/features/student-portal/pages/portal-page'))
-const ForcePasswordChangePage = lazy(
-  () => import('@/features/student-portal/pages/force-password-change-page'),
+const ForcePasswordChangeShell = lazy(
+  () => import('@/features/student-portal/pages/force-password-change-shell'),
 )
 
 const ForbiddenPage = lazy(() => import('@/pages/forbidden-page'))
@@ -132,6 +135,15 @@ export const routes: RouteObject[] = [
     element: <SessionGuard />,
     children: [
       {
+        element: <ForcePasswordChangeGuard />,
+        children: [
+          {
+            path: '/student/force-password-change',
+            element: withSuspense(<ForcePasswordChangeShell />),
+          },
+        ],
+      },
+      {
         path: '/student',
         element: <StudentLayout />,
         children: [
@@ -140,15 +152,6 @@ export const routes: RouteObject[] = [
             element: <StudentMustChangePasswordGuard />,
             children: [
               { path: 'portal', element: withSuspense(<PortalPage />) },
-            ],
-          },
-          {
-            element: <ForcePasswordChangeGuard />,
-            children: [
-              {
-                path: 'force-password-change',
-                element: withSuspense(<ForcePasswordChangePage />),
-              },
             ],
           },
         ],
