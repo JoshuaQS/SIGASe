@@ -1,13 +1,12 @@
 pipeline {
     agent any
 
-    options {
-        ansiColor('xterm')
-        timestamps()
-        disableConcurrentBuilds()
-        skipDefaultCheckout(true)
-        buildDiscarder(logRotator(numToKeepStr: '20'))
-    }
+options {
+    timestamps()
+    disableConcurrentBuilds()
+    skipDefaultCheckout(true)
+    buildDiscarder(logRotator(numToKeepStr: '20'))
+}
 
     environment {
         COMPOSE_PROJECT_NAME = 'sigase'
