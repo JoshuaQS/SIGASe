@@ -1,7 +1,6 @@
 package mx.edu.utez.server.shared.validation;
 
 import java.text.Normalizer;
-import java.util.Locale;
 import java.util.regex.Pattern;
 import org.springframework.util.StringUtils;
 

@@ -205,8 +205,8 @@ class StudentAuthControllerIntegrationTest {
                         .header(HttpHeaders.AUTHORIZATION, bearer(token))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(String.format("""
-                                {"currentPassword":"password123","newPassword":"%s"}
-                                """, COMPLIANT_NEW_PASSWORD)))
+                                {"currentPassword":"password123","newPassword":"%s","confirmNewPassword":"%s"}
+                                """, COMPLIANT_NEW_PASSWORD, COMPLIANT_NEW_PASSWORD)))
                 .andExpect(status().isNoContent());
     }
 
@@ -281,8 +281,8 @@ class StudentAuthControllerIntegrationTest {
         mockMvc.perform(post(BASE + "/reset-password/confirm")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(String.format("""
-                                {"token":"faketoken","newPassword":"%s"}
-                                """, COMPLIANT_NEW_PASSWORD)))
+                                {"token":"faketoken","newPassword":"%s","confirmNewPassword":"%s"}
+                                """, COMPLIANT_NEW_PASSWORD, COMPLIANT_NEW_PASSWORD)))
                 .andExpect(status().isUnauthorized());
     }
 
@@ -304,7 +304,7 @@ class StudentAuthControllerIntegrationTest {
                         .header(HttpHeaders.AUTHORIZATION, bearer(token))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"currentPassword":"password123","newPassword":"abcdefghij1!"}
+                                {"currentPassword":"password123","newPassword":"abcdefghij1!","confirmNewPassword":"abcdefghij1!"}
                                 """))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errorCode").value("VALIDATION_ERROR"))
@@ -318,7 +318,7 @@ class StudentAuthControllerIntegrationTest {
                         .header(HttpHeaders.AUTHORIZATION, bearer(token))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"currentPassword":"password123","newPassword":"NoDigitHere!Ab"}
+                                {"currentPassword":"password123","newPassword":"NoDigitHere!Ab","confirmNewPassword":"NoDigitHere!Ab"}
                                 """))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errorCode").value("VALIDATION_ERROR"));
@@ -331,7 +331,7 @@ class StudentAuthControllerIntegrationTest {
                         .header(HttpHeaders.AUTHORIZATION, bearer(token))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"currentPassword":"password123","newPassword":"NoSymbol12AbCd"}
+                                {"currentPassword":"password123","newPassword":"NoSymbol12AbCd","confirmNewPassword":"NoSymbol12AbCd"}
                                 """))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errorCode").value("VALIDATION_ERROR"));
@@ -344,7 +344,7 @@ class StudentAuthControllerIntegrationTest {
                         .header(HttpHeaders.AUTHORIZATION, bearer(token))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"currentPassword":"password123","newPassword":"Ab1!short"}
+                                {"currentPassword":"password123","newPassword":"Ab1!short","confirmNewPassword":"Ab1!short"}
                                 """))
                 .andExpect(status().isBadRequest());
     }
@@ -356,8 +356,8 @@ class StudentAuthControllerIntegrationTest {
                         .header(HttpHeaders.AUTHORIZATION, bearer(token))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(String.format("""
-                                {"currentPassword":"password123","newPassword":"%s"}
-                                """, COMPLIANT_NEW_PASSWORD)))
+                                {"currentPassword":"password123","newPassword":"%s","confirmNewPassword":"%s"}
+                                """, COMPLIANT_NEW_PASSWORD, COMPLIANT_NEW_PASSWORD)))
                 .andExpect(status().isNoContent());
     }
 
@@ -369,8 +369,8 @@ class StudentAuthControllerIntegrationTest {
                         .header(HttpHeaders.AUTHORIZATION, bearer(token))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(String.format("""
-                                {"currentPassword":"password123","newPassword":"%s"}
-                                """, COMPLIANT_NEW_PASSWORD)))
+                                {"currentPassword":"password123","newPassword":"%s","confirmNewPassword":"%s"}
+                                """, COMPLIANT_NEW_PASSWORD, COMPLIANT_NEW_PASSWORD)))
                 .andExpect(status().isNoContent());
 
         mockMvc.perform(get(BASE + "/me")
@@ -391,8 +391,8 @@ class StudentAuthControllerIntegrationTest {
         mockMvc.perform(post(BASE + "/reset-password/confirm")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(String.format("""
-                                {"token":"%s","newPassword":"%s"}
-                                """, rawToken, "alllowercase12!")))
+                                {"token":"%s","newPassword":"%s","confirmNewPassword":"%s"}
+                                """, rawToken, "alllowercase12!", "alllowercase12!")))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errorCode").value("VALIDATION_ERROR"))
                 .andExpect(jsonPath("$.message").value(PasswordPolicy.REQUIREMENTS_MESSAGE));
@@ -410,8 +410,8 @@ class StudentAuthControllerIntegrationTest {
         mockMvc.perform(post(BASE + "/reset-password/confirm")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(String.format("""
-                                {"token":"%s","newPassword":"%s"}
-                                """, rawToken, COMPLIANT_NEW_PASSWORD)))
+                                {"token":"%s","newPassword":"%s","confirmNewPassword":"%s"}
+                                """, rawToken, COMPLIANT_NEW_PASSWORD, COMPLIANT_NEW_PASSWORD)))
                 .andExpect(status().isNoContent());
     }
 
@@ -428,8 +428,8 @@ class StudentAuthControllerIntegrationTest {
         mockMvc.perform(post(BASE + "/reset-password/confirm")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(String.format("""
-                                {"token":"%s","newPassword":"%s"}
-                                """, rawToken, COMPLIANT_NEW_PASSWORD)))
+                                {"token":"%s","newPassword":"%s","confirmNewPassword":"%s"}
+                                """, rawToken, COMPLIANT_NEW_PASSWORD, COMPLIANT_NEW_PASSWORD)))
                 .andExpect(status().isNoContent());
 
         mockMvc.perform(get(BASE + "/me")

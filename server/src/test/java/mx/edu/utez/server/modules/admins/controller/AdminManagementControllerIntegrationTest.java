@@ -139,7 +139,7 @@ class AdminManagementControllerIntegrationTest {
                   "lastNamePaternal": "Administrador",
                   "lastNameMaternal": "SIGASe",
                   "password": "Password123!",
-                  "role": "ADMIN_TI",
+                  "role": "ADMIN_BIBLIOTECA",
                   "status": "ACTIVE"
                 }
                 """;

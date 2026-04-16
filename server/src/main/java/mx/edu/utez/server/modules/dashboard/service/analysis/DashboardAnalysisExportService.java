@@ -11,7 +11,6 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -295,16 +294,14 @@ public class DashboardAnalysisExportService {
         }
 
         if (root.isObject()) {
-            Iterator<Map.Entry<String, JsonNode>> fields = root.fields();
-            while (fields.hasNext()) {
-                Map.Entry<String, JsonNode> entry = fields.next();
+            root.properties().forEach(entry -> {
                 JsonNode value = entry.getValue();
                 if (value.isArray()) {
                     tables.add(buildTable(entry.getKey(), value));
                 } else {
                     flattenObject(entry.getKey(), value, metadata);
                 }
-            }
+            });
             return new WidgetExportContent(metadata, tables);
         }
 
@@ -324,11 +321,9 @@ public class DashboardAnalysisExportService {
         for (JsonNode item : arrayNode) {
             LinkedHashMap<String, String> row = new LinkedHashMap<>();
             if (item.isObject()) {
-                Iterator<Map.Entry<String, JsonNode>> fields = item.fields();
-                while (fields.hasNext()) {
-                    Map.Entry<String, JsonNode> entry = fields.next();
+                item.properties().forEach(entry -> {
                     flattenObject(entry.getKey(), entry.getValue(), row);
-                }
+                });
             } else if (item.isArray()) {
                 row.put("value", item.toString());
             } else {
@@ -350,14 +345,12 @@ public class DashboardAnalysisExportService {
             values.put("value", stringify(node));
             return values;
         }
-        Iterator<Map.Entry<String, JsonNode>> fields = node.fields();
-        while (fields.hasNext()) {
-            Map.Entry<String, JsonNode> entry = fields.next();
+        node.properties().forEach(entry -> {
             if (entry.getValue().isArray()) {
-                continue;
+                return;
             }
             flattenObject(entry.getKey(), entry.getValue(), values);
-        }
+        });
         return values;
     }
 
@@ -371,11 +364,9 @@ public class DashboardAnalysisExportService {
             return;
         }
         if (node.isObject()) {
-            Iterator<Map.Entry<String, JsonNode>> fields = node.fields();
-            while (fields.hasNext()) {
-                Map.Entry<String, JsonNode> entry = fields.next();
+            node.properties().forEach(entry -> {
                 flattenObject(prefix + "." + entry.getKey(), entry.getValue(), target);
-            }
+            });
             return;
         }
         target.put(prefix, node.toString());

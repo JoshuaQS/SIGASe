@@ -61,20 +61,7 @@ class StudentControllerIntegrationTest {
     private static final String CAREER_DSM_CODE = "DSM";
     private static final String CAREER_DSM_NAME = "Desarrollo de Software Multiplataforma";
 
-    private static final String STUDENT_EMAIL = "alicia@utez.edu.mx";
-    private static final String STUDENT_CREATE_PAYLOAD = """
-            {
-              "enrollmentId": "2026A0101",
-              "name": "Alicia",
-              "lastNamePaternal": "Ramirez",
-              "lastNameMaternal": "Lopez",
-              "sex": "FEMALE",
-              "quarter": 4,
-              "institutionalEmail": "alicia@utez.edu.mx",
-              "careerCode": "DSM"
-            }
-            """;
-
+    private static final String STUDENT_EMAIL = "2026a01010@utez.edu.mx";
     @Autowired
     private MockMvc mockMvc;
 
@@ -112,12 +99,13 @@ class StudentControllerIntegrationTest {
     private StudentPasswordResetNotifier studentPasswordResetNotifier;
 
     private Admin adminTi;
+    private Career careerDsm;
 
     @BeforeEach
     void setUp() {
         tearDown();
         adminTi = saveAdminTi();
-        saveCareerDsm();
+        careerDsm = saveCareerDsm();
     }
 
     @AfterEach
@@ -143,15 +131,15 @@ class StudentControllerIntegrationTest {
 
         mockMvc.perform(post(ApiRoutes.httpPath(ApiRoutes.STUDENTS))
                         .with(authAdminTi(adminTi))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(STUDENT_CREATE_PAYLOAD))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(studentCreatePayload()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success", is(true)))
                 .andExpect(jsonPath("$.status", is(201)))
                 .andExpect(jsonPath("$.data.id", notNullValue()))
                 .andExpect(jsonPath("$.data.career.code", is(CAREER_DSM_CODE)))
                 .andExpect(jsonPath("$.data.mustChangePassword", is(true)))
-                .andExpect(jsonPath("$.data.status", is("ACTIVE")));
+                .andExpect(jsonPath("$.data.status", is("PENDING")));
 
         org.junit.jupiter.api.Assertions.assertEquals(1, auditLogRepository.count());
         org.junit.jupiter.api.Assertions.assertEquals(1, notificationRepository.count());
@@ -178,10 +166,10 @@ class StudentControllerIntegrationTest {
 
         mockMvc.perform(post(ApiRoutes.httpPath(ApiRoutes.STUDENTS))
                         .with(authAdminTi(adminTi))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(STUDENT_CREATE_PAYLOAD))
-                .andExpect(status().isServiceUnavailable())
-                .andExpect(jsonPath("$.errorCode", is("SERVICE_UNAVAILABLE")));
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(studentCreatePayload()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success", is(true)));
     }
 
     @Test
@@ -233,12 +221,27 @@ class StudentControllerIntegrationTest {
         return adminRepository.save(admin);
     }
 
-    private void saveCareerDsm() {
+    private Career saveCareerDsm() {
         Career career = new Career();
         career.setCode(CAREER_DSM_CODE);
         career.setName(CAREER_DSM_NAME);
         career.setStatus(CareerStatus.ACTIVE);
-        careerRepository.save(career);
+        return careerRepository.save(career);
+    }
+
+    private String studentCreatePayload() {
+        return """
+                {
+                  "enrollmentId": "2026A01010",
+                  "name": "Alicia",
+                  "lastNamePaternal": "Ramirez",
+                  "lastNameMaternal": "Lopez",
+                  "sex": "FEMALE",
+                  "quarter": 4,
+                  "institutionalEmail": "2026a01010@utez.edu.mx",
+                  "careerId": "%s"
+                }
+                """.formatted(careerDsm.getId());
     }
 
     private mx.edu.utez.server.modules.students.entity.Student saveStudent(

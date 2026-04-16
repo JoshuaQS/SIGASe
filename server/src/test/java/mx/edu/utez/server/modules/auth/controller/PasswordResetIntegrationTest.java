@@ -113,7 +113,11 @@ class PasswordResetIntegrationTest {
 
         mockMvc.perform(post(CONFIRM_URL)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(toJson(Map.of("token", rawToken, "newPassword", VALID_PASSWORD))))
+                        .content(toJson(Map.of(
+                                "token", rawToken,
+                                "newPassword", VALID_PASSWORD,
+                                "confirmNewPassword", VALID_PASSWORD
+                        ))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success", is(true)))
                 .andExpect(jsonPath("$.message", is("Contraseña restablecida exitosamente.")));
@@ -132,7 +136,11 @@ class PasswordResetIntegrationTest {
     void shouldRejectConfirmWithInvalidToken() throws Exception {
         mockMvc.perform(post(CONFIRM_URL)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(toJson(Map.of("token", "invalid_random_token_value", "newPassword", VALID_PASSWORD))))
+                        .content(toJson(Map.of(
+                                "token", "invalid_random_token_value",
+                                "newPassword", VALID_PASSWORD,
+                                "confirmNewPassword", VALID_PASSWORD
+                        ))))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.errorCode", is("INVALID_TOKEN")));
     }
@@ -145,7 +153,11 @@ class PasswordResetIntegrationTest {
 
         mockMvc.perform(post(CONFIRM_URL)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(toJson(Map.of("token", rawToken, "newPassword", VALID_PASSWORD))))
+                        .content(toJson(Map.of(
+                                "token", rawToken,
+                                "newPassword", VALID_PASSWORD,
+                                "confirmNewPassword", VALID_PASSWORD
+                        ))))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.errorCode", is("INVALID_TOKEN")));
     }
@@ -161,7 +173,11 @@ class PasswordResetIntegrationTest {
 
         mockMvc.perform(post(CONFIRM_URL)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(toJson(Map.of("token", rawToken, "newPassword", VALID_PASSWORD))))
+                        .content(toJson(Map.of(
+                                "token", rawToken,
+                                "newPassword", VALID_PASSWORD,
+                                "confirmNewPassword", VALID_PASSWORD
+                        ))))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.errorCode", is("INVALID_TOKEN")));
     }
@@ -174,7 +190,11 @@ class PasswordResetIntegrationTest {
 
         mockMvc.perform(post(CONFIRM_URL)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(toJson(Map.of("token", rawToken, "newPassword", "short"))))
+                        .content(toJson(Map.of(
+                                "token", rawToken,
+                                "newPassword", "short",
+                                "confirmNewPassword", "short"
+                        ))))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errorCode", is("VALIDATION_ERROR")));
     }
@@ -215,7 +235,11 @@ class PasswordResetIntegrationTest {
 
         mockMvc.perform(post(CONFIRM_URL)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(toJson(Map.of("token", rawToken, "newPassword", VALID_PASSWORD))))
+                        .content(toJson(Map.of(
+                                "token", rawToken,
+                                "newPassword", VALID_PASSWORD,
+                                "confirmNewPassword", VALID_PASSWORD
+                        ))))
                 .andExpect(status().isOk());
 
         Admin refreshed = adminRepository.findById(activeAdmin.getId()).orElseThrow();
@@ -232,7 +256,11 @@ class PasswordResetIntegrationTest {
 
         mockMvc.perform(post(CONFIRM_URL)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(toJson(Map.of("token", rawToken, "newPassword", VALID_PASSWORD))))
+                        .content(toJson(Map.of(
+                                "token", rawToken,
+                                "newPassword", VALID_PASSWORD,
+                                "confirmNewPassword", VALID_PASSWORD
+                        ))))
                 .andExpect(status().isOk());
 
         mockMvc.perform(post("/api/v1/auth/admin/logout")
@@ -256,7 +284,11 @@ class PasswordResetIntegrationTest {
 
         mockMvc.perform(post(CONFIRM_URL)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(toJson(Map.of("token", rawToken, "newPassword", VALID_PASSWORD))))
+                        .content(toJson(Map.of(
+                                "token", rawToken,
+                                "newPassword", VALID_PASSWORD,
+                                "confirmNewPassword", VALID_PASSWORD
+                        ))))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.errorCode", is("BUSINESS_RULE_VIOLATION")));
     }

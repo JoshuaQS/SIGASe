@@ -1,7 +1,5 @@
 package mx.edu.utez.server.modules.dashboard.service.analysis;
 
-import mx.edu.utez.server.modules.dashboard.dto.DashboardFilterMode;
-import mx.edu.utez.server.modules.dashboard.dto.DashboardFilterScope;
 import mx.edu.utez.server.modules.dashboard.dto.DashboardLayoutType;
 import mx.edu.utez.server.shared.exception.BusinessException;
 import mx.edu.utez.server.shared.exception.ErrorCode;

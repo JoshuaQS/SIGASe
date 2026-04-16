@@ -2,7 +2,6 @@ package mx.edu.utez.server.modules.notifications.controller;
 
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
-import static org.hamcrest.Matchers.notNullValue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
@@ -142,7 +141,7 @@ class NotificationControllerIntegrationTest {
 
     @Test
     void shouldCreateStudentNotificationAndExposeItThroughNotificationsApi() throws Exception {
-        when(studentPasswordResetNotifier.sendStudentOnboardingPasswordSetup(eq("alicia@utez.edu.mx"), anyString()))
+        when(studentPasswordResetNotifier.sendStudentOnboardingPasswordSetup(eq("2026a01010@utez.edu.mx"), anyString()))
                 .thenReturn(true);
 
         mockMvc.perform(post(ApiRoutes.httpPath(ApiRoutes.STUDENTS))
@@ -150,16 +149,16 @@ class NotificationControllerIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                  "enrollmentId": "2026A0101",
+                                  "enrollmentId": "2026A01010",
                                   "name": "Alicia",
                                   "lastNamePaternal": "Ramirez",
                                   "lastNameMaternal": "Lopez",
                                   "sex": "FEMALE",
                                   "quarter": 4,
-                                  "institutionalEmail": "alicia@utez.edu.mx",
-                                  "careerCode": "DSM"
+                                  "institutionalEmail": "2026a01010@utez.edu.mx",
+                                  "careerId": "%s"
                                 }
-                                """))
+                                """.formatted(career.getId())))
                 .andExpect(status().isOk());
 
         mockMvc.perform(get(ApiRoutes.httpPath(ApiRoutes.NOTIFICATIONS + "/unread-count"))
@@ -250,7 +249,7 @@ class NotificationControllerIntegrationTest {
 
     @Test
     void shouldHonorNotificationPreferencesForStudentChanges() throws Exception {
-        when(studentPasswordResetNotifier.sendStudentOnboardingPasswordSetup(eq("brenda@utez.edu.mx"), anyString()))
+        when(studentPasswordResetNotifier.sendStudentOnboardingPasswordSetup(eq("2026a01020@utez.edu.mx"), anyString()))
                 .thenReturn(true);
 
         mockMvc.perform(get(ApiRoutes.httpPath(ApiRoutes.NOTIFICATIONS + "/preferences"))
@@ -279,16 +278,16 @@ class NotificationControllerIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                  "enrollmentId": "2026A0102",
+                                  "enrollmentId": "2026A01020",
                                   "name": "Brenda",
                                   "lastNamePaternal": "Lopez",
                                   "lastNameMaternal": "Perez",
                                   "sex": "FEMALE",
                                   "quarter": 4,
-                                  "institutionalEmail": "brenda@utez.edu.mx",
-                                  "careerCode": "DSM"
+                                  "institutionalEmail": "2026a01020@utez.edu.mx",
+                                  "careerId": "%s"
                                 }
-                                """))
+                                """.formatted(career.getId())))
                 .andExpect(status().isOk());
 
         mockMvc.perform(get(ApiRoutes.httpPath(ApiRoutes.NOTIFICATIONS + "/unread-count"))

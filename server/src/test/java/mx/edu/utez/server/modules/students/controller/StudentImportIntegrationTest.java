@@ -85,8 +85,8 @@ class StudentImportIntegrationTest {
     @Test
     void shouldImportValidCsvSuccessfully() throws Exception {
         String csv = csvHeader()
-                + "2026A0001,Alice,Paternal,Maternal,alice@utez.edu.mx,DSM,3,FEMALE\n"
-                + "2026A0002,Bob,Gomez,,bob@utez.edu.mx,IRD,5,MALE\n";
+                + "2026A00010,Alice,Paternal,Maternal,alice@utez.edu.mx,DSM,3,FEMALE\n"
+                + "2026A00020,Bob,Gomez,,bob@utez.edu.mx,IRD,5,MALE\n";
 
         MockMultipartFile file = csvFile(csv);
 
@@ -104,12 +104,12 @@ class StudentImportIntegrationTest {
     @Test
     void shouldImportValidXlsxSuccessfully() throws Exception {
         MockMultipartFile file = xlsxFile(
-                List.of("enrollmentId", "name", "lastNamePaternal", "lastNameMaternal", "institutionalEmail", "careerCode", "quarter", "sex"),
-                List.of(
-                        List.of("2026A0091", "Alicia", "Paternal", "Maternal", "alicia91@utez.edu.mx", "DSM", "3", "FEMALE"),
-                        List.of("2026A0092", "Bruno", "Gomez", "", "bruno92@utez.edu.mx", "IRD", "5", "MALE")
-                )
-        );
+                        List.of("enrollmentId", "name", "lastNamePaternal", "lastNameMaternal", "institutionalEmail", "careerCode", "quarter", "sex"),
+                        List.of(
+                                List.of("2026A00910", "Alicia", "Paternal", "Maternal", "alicia91@utez.edu.mx", "DSM", "3", "FEMALE"),
+                                List.of("2026A00920", "Bruno", "Gomez", "", "bruno92@utez.edu.mx", "IRD", "5", "MALE")
+                        )
+                );
 
         mockMvc.perform(multipart("/api/v1/students/import")
                         .file(file)
@@ -127,7 +127,7 @@ class StudentImportIntegrationTest {
     void shouldReportRowLevelValidationErrors() throws Exception {
         String csv = csvHeader()
                 + ",Alice,Paternal,Maternal,alice@utez.edu.mx,DSM,3,FEMALE\n"  // missing enrollmentId
-                + "2026A0003,Bob,Gomez,,invalid-email,IRD,5,MALE\n";            // invalid email
+                + "2026A00030,Bob,Gomez,,invalid-email,IRD,5,MALE\n";            // invalid email
 
         MockMultipartFile file = csvFile(csv);
 
@@ -147,8 +147,8 @@ class StudentImportIntegrationTest {
     @Test
     void shouldReportDuplicateMatriculaInFile() throws Exception {
         String csv = csvHeader()
-                + "2026A0010,Alice,Paternal,Maternal,alice10@utez.edu.mx,DSM,3,FEMALE\n"
-                + "2026A0010,Bob,Gomez,,bob10@utez.edu.mx,IRD,5,MALE\n";
+                + "2026A00100,Alice,Paternal,Maternal,alice10@utez.edu.mx,DSM,3,FEMALE\n"
+                + "2026A00100,Bob,Gomez,,bob10@utez.edu.mx,IRD,5,MALE\n";
 
         MockMultipartFile file = csvFile(csv);
 
@@ -166,8 +166,8 @@ class StudentImportIntegrationTest {
     @Test
     void shouldReportDuplicateEmailInFile() throws Exception {
         String csv = csvHeader()
-                + "2026A0020,Alice,Paternal,Maternal,shared@utez.edu.mx,DSM,3,FEMALE\n"
-                + "2026A0021,Bob,Gomez,,shared@utez.edu.mx,IRD,5,MALE\n";
+                + "2026A00200,Alice,Paternal,Maternal,shared@utez.edu.mx,DSM,3,FEMALE\n"
+                + "2026A00210,Bob,Gomez,,shared@utez.edu.mx,IRD,5,MALE\n";
 
         MockMultipartFile file = csvFile(csv);
 
@@ -184,10 +184,10 @@ class StudentImportIntegrationTest {
 
     @Test
     void shouldReportDuplicateMatriculaInDb() throws Exception {
-        saveStudent(adminTi, "2026A0030", "existing30@utez.edu.mx", "DSM", StudentStatus.ACTIVE);
+        saveStudent(adminTi, "2026A00300", "existing30@utez.edu.mx", "DSM", StudentStatus.ACTIVE);
 
         String csv = csvHeader()
-                + "2026A0030,Alice,Paternal,Maternal,new30@utez.edu.mx,DSM,3,FEMALE\n";
+                + "2026A00300,Alice,Paternal,Maternal,new30@utez.edu.mx,DSM,3,FEMALE\n";
 
         MockMultipartFile file = csvFile(csv);
 
@@ -203,10 +203,10 @@ class StudentImportIntegrationTest {
 
     @Test
     void shouldReportDuplicateEmailInDb() throws Exception {
-        saveStudent(adminTi, "2026A0040", "existing40@utez.edu.mx", "DSM", StudentStatus.ACTIVE);
+        saveStudent(adminTi, "2026A00400", "existing40@utez.edu.mx", "DSM", StudentStatus.ACTIVE);
 
         String csv = csvHeader()
-                + "2026A0041,Alice,Paternal,Maternal,existing40@utez.edu.mx,DSM,3,FEMALE\n";
+                + "2026A00410,Alice,Paternal,Maternal,existing40@utez.edu.mx,DSM,3,FEMALE\n";
 
         MockMultipartFile file = csvFile(csv);
 
@@ -235,7 +235,7 @@ class StudentImportIntegrationTest {
     @Test
     void shouldRejectImportForStudentRole() throws Exception {
         String csv = csvHeader()
-                + "2026A0050,Alice,Paternal,Maternal,alice50@utez.edu.mx,DSM,3,FEMALE\n";
+                + "2026A00500,Alice,Paternal,Maternal,alice50@utez.edu.mx,DSM,3,FEMALE\n";
 
         MockMultipartFile file = csvFile(csv);
 

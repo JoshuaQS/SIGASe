@@ -359,13 +359,6 @@ public class AdminManagementService {
         };
     }
 
-    private String trimToNull(String value) {
-        if (!StringUtils.hasText(value)) {
-            return null;
-        }
-        return value.trim();
-    }
-
     private String normalizeRequiredName(String value) {
         String normalized = DomainTextPolicy.normalizeHumanNameWithInitialCaps(value);
         if (!StringUtils.hasText(normalized) || normalized.length() < 2 || normalized.length() > 100 || !DomainTextPolicy.isValidHumanName(normalized)) {
