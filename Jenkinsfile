@@ -77,24 +77,9 @@ stage('Run Backend Tests') {
     steps {
         sh '''
             set -eu
-            set -a
-            . ./.env
-            set +a
-
-            until docker compose --env-file .env -f "${COMPOSE_FILE}" exec -T mysql sh -lc 'mysqladmin ping -h 127.0.0.1 -uroot -p"$MYSQL_ROOT_PASSWORD" --silent'; do
-                echo "Esperando a MySQL..."
-                sleep 3
-            done
 
             docker run --rm \
-                --network "${COMPOSE_PROJECT_NAME}-network" \
-                --env-file server/.env \
                 -e SPRING_PROFILES_ACTIVE=test \
-                -e SERVER_PORT=8080 \
-                -e SPRING_JPA_HIBERNATE_DDL_AUTO=update \
-                -e SPRING_DATASOURCE_URL="jdbc:mysql://mysql:3306/${MYSQL_DATABASE}?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC" \
-                -e SPRING_DATASOURCE_USERNAME="${MYSQL_USER}" \
-                -e SPRING_DATASOURCE_PASSWORD="${MYSQL_PASSWORD}" \
                 -e HOME=/tmp \
                 -u 0:0 \
                 --volumes-from jenkins \
