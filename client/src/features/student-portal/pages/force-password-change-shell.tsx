@@ -9,7 +9,6 @@ import { changeStudentPassword, confirmStudentPasswordReset } from '@/features/a
 import { authSession } from '@/features/auth/store/auth-session-store'
 import ForceTopBar from '@/features/student-portal/components/layout/force-top-bar'
 import { StudentForcePasswordChangeView } from '@/features/student-portal/components/force-password-change-form'
-import { BubbleBackground } from '@/features/student-portal/components/layout/bubble-background'
 import portalEffects from '@/features/student-portal/pages/portal-effects.module.css'
 import ElibroCtaCard from '@/features/student-portal/components/cta-card/elibro-cta-card'
 
@@ -17,7 +16,6 @@ import { useAppToast } from '@/shared/components/ui/app-toast-provider'
 import { TooltipProvider } from '@/shared/components/ui/tooltip'
 import { Card } from '@/shared/components/ui/card'
 import { cn } from '@/shared/lib/utils'
-import { useTheme } from '@/shared/hooks/use-theme'
 import { ApiClientError } from '@/shared/lib/http/api-client'
 
 type ActivityTone = 'bg-success' | 'bg-warning' | 'bg-info'
@@ -80,7 +78,6 @@ export default function ForcePasswordChangeShell() {
   const ctaStatusMessage = 'Autenticación segura vía SSO institucional'
   const cardHoverClass = 'transition-transform duration-300 will-change-transform hover:scale-[1.01]'
 
-  const { isDark } = useTheme()
   const navigate = useNavigate()
   const location = useLocation()
   const user = useAuthUser()
@@ -151,29 +148,6 @@ export default function ForcePasswordChangeShell() {
   return (
     <TooltipProvider delayDuration={0}>
       <div className="relative flex h-screen flex-col overflow-hidden bg-background">
-        <BubbleBackground
-          className="pointer-events-none z-0 bg-gradient-to-br from-[hsl(var(--background))] via-[hsl(var(--background))] to-emerald-100/40 opacity-40 dark:from-slate-950 dark:via-slate-950 dark:to-emerald-950/35 dark:opacity-46"
-          colors={
-            isDark
-              ? {
-                  first: '16,185,129',
-                  second: '52,211,153',
-                  third: '45,212,191',
-                  fourth: '15,118,110',
-                  fifth: '74,222,128',
-                  sixth: '7,89,75',
-                }
-              : {
-                  first: '74,222,128',
-                  second: '110,231,183',
-                  third: '45,212,191',
-                  fourth: '167,243,208',
-                  fifth: '52,211,153',
-                  sixth: '187,247,208',
-                }
-          }
-        />
-
         <ForceTopBar />
 
         <main className="relative z-10 min-h-0 flex-1 overflow-hidden">

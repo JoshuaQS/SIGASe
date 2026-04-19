@@ -4,7 +4,6 @@ import { LogOut, Settings, User } from 'lucide-react';
 
 import { authSession } from '@/features/auth/store/auth-session-store';
 import { useAuthSession } from '@/features/auth/hooks/use-auth-user';
-import { ROLE_ADMIN_TI } from '@/features/auth/types/auth-user';
 import { AdminProfileModal } from '@/features/admins/components/modals/admin-profile-modal';
 import { useAppToast } from '@/shared/components/ui/app-toast-provider';
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
@@ -23,6 +22,7 @@ export function AdminProfileMenu() {
   const navigate = useNavigate();
   const { showToast } = useAppToast();
   const [profileOpen, setProfileOpen] = useState(false);
+  const [profileInitialTab, setProfileInitialTab] = useState<'profile' | 'alerts'>('profile');
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
   const [logoutLoading, setLogoutLoading] = useState(false);
 
@@ -42,8 +42,6 @@ export function AdminProfileMenu() {
       .slice(0, 2)
       .map((part) => part[0]?.toUpperCase() ?? '')
       .join('') || email[0]?.toUpperCase() || 'A';
-
-  const settingsPath = user?.role === ROLE_ADMIN_TI ? '/admin/elibro-status' : '/admin/monitoreo-reportes';
 
   const handleLogout = async () => {
     if (logoutLoading) return;
@@ -87,7 +85,14 @@ export function AdminProfileMenu() {
         onConfirm={() => { if (!logoutLoading) void handleLogout(); }}
       />
 
-      <AdminProfileModal open={profileOpen} onClose={() => setProfileOpen(false)} />
+      <AdminProfileModal
+        open={profileOpen}
+        initialTab={profileInitialTab}
+        onClose={() => {
+          setProfileOpen(false);
+          setProfileInitialTab('profile');
+        }}
+      />
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -113,11 +118,23 @@ export function AdminProfileMenu() {
             <p className="mt-0.5 truncate text-xs font-normal text-muted-foreground">{email}</p>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem className="cursor-pointer" onSelect={() => setProfileOpen(true)}>
+          <DropdownMenuItem
+            className="cursor-pointer"
+            onSelect={() => {
+              setProfileInitialTab('profile');
+              setProfileOpen(true);
+            }}
+          >
             <User className="h-4 w-4" />
             Ver perfil
           </DropdownMenuItem>
-          <DropdownMenuItem className="cursor-pointer" onSelect={() => navigate(settingsPath)}>
+          <DropdownMenuItem
+            className="cursor-pointer"
+            onSelect={() => {
+              setProfileInitialTab('alerts');
+              setProfileOpen(true);
+            }}
+          >
             <Settings className="h-4 w-4" />
             Configuraciones
           </DropdownMenuItem>

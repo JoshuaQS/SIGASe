@@ -1,10 +1,13 @@
 package mx.edu.utez.server.config;
 
 import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.SplittableRandom;
 import mx.edu.utez.server.modules.admins.entity.Admin;
 import mx.edu.utez.server.modules.admins.repository.AdminRepository;
 import mx.edu.utez.server.modules.careers.entity.Career;
@@ -29,8 +32,9 @@ import org.springframework.transaction.annotation.Transactional;
 public class DashboardDemoSeedRunner implements ApplicationRunner {
 
     private static final Logger log = LoggerFactory.getLogger(DashboardDemoSeedRunner.class);
-    private static final long SEED_RANGE_DAYS = 28L;
-    private static final int TARGET_SEED_STUDENTS = 160;
+    private static final long SEED_RANGE_DAYS = 45L;
+    private static final int TARGET_SEED_STUDENTS = 320;
+    private static final ZoneId SEED_ZONE = ZoneId.of("America/Mexico_City");
 
     private static final List<StudentSeedItem> STUDENT_SEEDS = List.of(
             new StudentSeedItem("Sofía", "Hernández", "García", Sex.FEMALE),
@@ -91,6 +95,11 @@ public class DashboardDemoSeedRunner implements ApplicationRunner {
             ElibroAccessResult.FAILED_NEXT_URL_VALIDATION,
             ElibroAccessResult.FAILED_INTERNAL_ERROR
     );
+    private static final List<String> NAME_SUFFIXES = List.of(
+            "Alejandra", "Daniel", "Fernanda", "Javier", "Marisol",
+            "Emmanuel", "Carolina", "Ricardo", "Patricia", "Adolfo",
+            "Nadia", "Hugo", "Claudia", "Esteban", "Paola"
+    );
 
     private final StudentRepository studentRepository;
     private final AdminRepository adminRepository;
@@ -138,8 +147,9 @@ public class DashboardDemoSeedRunner implements ApplicationRunner {
 
         for (int index = 0; index < TARGET_SEED_STUDENTS; index++) {
             StudentSeedItem item = seedItemFor(index);
-            String enrollmentId = String.format("20263TN%03d", index + 1);
+            String enrollmentId = String.format("2026A%05d", 10_001 + index);
             String email = (enrollmentId + "@utez.edu.mx").toLowerCase(Locale.ROOT);
+            SplittableRandom studentRandom = new SplittableRandom(31_337L + (long) (index + 1) * 97L);
 
             Student student = studentRepository.findByInstitutionalEmailNormalized(email).orElseGet(Student::new);
             boolean isNewStudent = student.getInstitutionalEmailNormalized() == null;
@@ -149,10 +159,10 @@ public class DashboardDemoSeedRunner implements ApplicationRunner {
             student.setLastNamePaternal(item.lastNamePaternal());
             student.setLastNameMaternal(item.lastNameMaternal());
             student.setSex(item.sex());
-            student.setQuarter((index % 11) + 1);
+            student.setQuarter(studentRandom.nextInt(1, 12));
             student.setInstitutionalEmail(email);
             student.setInstitutionalEmailNormalized(email);
-            student.setCareer(careers.get(index % careers.size()));
+            student.setCareer(careers.get(studentRandom.nextInt(careers.size())));
             student.setStatus(StudentStatus.ACTIVE);
             student.setCreatedByAdmin(seedAdmin);
             student.setUpdatedByAdmin(seedAdmin);
@@ -168,7 +178,7 @@ public class DashboardDemoSeedRunner implements ApplicationRunner {
                 replacedLogs += (int) removed;
             }
 
-            List<ElibroAccessLog> logs = buildSeedLogs(student, email, enrollmentId, index);
+            List<ElibroAccessLog> logs = buildSeedLogs(student, email, enrollmentId, studentRandom);
             accessLogRepository.saveAll(logs);
             createdLogs += logs.size();
         }
@@ -187,28 +197,47 @@ public class DashboardDemoSeedRunner implements ApplicationRunner {
         if (cohort == 1) {
             return base;
         }
+        String extraName = NAME_SUFFIXES.get((cohort - 2) % NAME_SUFFIXES.size());
         return new StudentSeedItem(
-                base.name() + " " + cohort,
+                base.name() + " " + extraName,
                 base.lastNamePaternal(),
                 base.lastNameMaternal(),
                 base.sex()
         );
     }
 
-    private List<ElibroAccessLog> buildSeedLogs(Student student, String email, String enrollmentId, int index) {
+    private List<ElibroAccessLog> buildSeedLogs(Student student, String email, String enrollmentId, SplittableRandom random) {
         List<ElibroAccessLog> logs = new ArrayList<>();
-        int attempts = attemptsForIndex(index);
-        Instant end = Instant.now().truncatedTo(ChronoUnit.HOURS);
+        int attempts = attemptsForSeed(random);
+        Instant end = ZonedDateTime.now(SEED_ZONE)
+                .minusDays(1)
+                .withHour(23)
+                .withMinute(50)
+                .withSecond(0)
+                .withNano(0)
+                .toInstant();
         Instant start = end
                 .minus(SEED_RANGE_DAYS, ChronoUnit.DAYS)
-                .plus(index % 6, ChronoUnit.HOURS)
-                .truncatedTo(ChronoUnit.HOURS);
+                .plus(random.nextInt(0, 36), ChronoUnit.HOURS)
+                .plus(random.nextInt(0, 50), ChronoUnit.MINUTES);
+
+        long windowMinutes = Math.max(480L, ChronoUnit.MINUTES.between(start, end));
+        long timelineCursor = random.nextLong(0, Math.max(60L, windowMinutes / 10L));
+        int successRate = random.nextInt(68, 94);
 
         for (int attempt = 0; attempt < attempts; attempt++) {
-            boolean successful = isSuccessfulAttempt(index, attempt);
+            boolean successful = isSuccessfulAttempt(random, attempt, successRate);
+            ElibroAccessResult failureResult = successful ? null : failureResultFor(random);
             ElibroAccessResult result = successful
                     ? ElibroAccessResult.SUCCESS
-                    : FAILURE_RESULTS.get((index + attempt) % FAILURE_RESULTS.size());
+                    : failureResult;
+
+            Instant occurredAt = start.plus(Math.min(timelineCursor, windowMinutes), ChronoUnit.MINUTES);
+            long jumpMinutes = random.nextLong(40L, 2_100L);
+            if (attempt % 9 == 0) {
+                jumpMinutes += random.nextLong(240L, 2_880L);
+            }
+            timelineCursor = Math.min(windowMinutes, timelineCursor + jumpMinutes);
 
             ElibroAccessLog logItem = new ElibroAccessLog();
             logItem.setStudent(student);
@@ -216,11 +245,11 @@ public class DashboardDemoSeedRunner implements ApplicationRunner {
             logItem.setNormalizedEmail(email);
             logItem.setResult(result);
             logItem.setErrorCode(successful ? null : result.name());
-            logItem.setErrorDetail(successful ? null : "Fallo simulado para validar filtros del dashboard.");
-            logItem.setLatencyMs(successful ? 85L + ((index + attempt) % 5) * 20L : 180L + ((index + attempt) % 6) * 35L);
+            logItem.setErrorDetail(successful ? null : "Fallo simulado en proveedor eLibro para dataset dashboard.");
+            logItem.setLatencyMs(successful ? random.nextLong(90L, 1_150L) : random.nextLong(320L, 3_900L));
             logItem.setRequestId(requestPrefix(enrollmentId, attempt));
             logItem.setCorrelationId("corr-" + enrollmentId + "-" + String.format("%02d", attempt + 1));
-            logItem.setIpAddressMasked("192.168.*." + ((index + attempt) % 40 + 10));
+            logItem.setIpAddressMasked("10.20.*." + random.nextInt(12, 250));
             logItem.setIpAddressHash("seed-hash-" + enrollmentId + "-" + (attempt + 1));
             logItem.setUserAgentSanitized("SIGASe dashboard demo seed");
             logItem.setHttpMethod("GET");
@@ -228,17 +257,14 @@ public class DashboardDemoSeedRunner implements ApplicationRunner {
             logItem.setChannelNameSnapshot("Portal estudiantil eLibro");
             logItem.setOrigin("http://localhost:5173");
             logItem.setReferer("http://localhost:5173/student/portal");
-            logItem.setProviderStatusCode(successful ? 302 : ((index + attempt) % 2 == 0 ? 502 : 408));
+            logItem.setProviderStatusCode(successful ? 302 : providerStatusCodeFor(result, random));
             logItem.setProviderErrorCode(successful ? null : "SEED_" + result.name());
             logItem.setProviderErrorMessage(successful ? null : "Respuesta simulada de proveedor para pruebas.");
-            logItem.setMetadataJson("{\"seed\":true,\"dataset\":\"dashboard-demo\"}");
+            logItem.setMetadataJson("{\"seed\":true,\"dataset\":\"dashboard-demo\",\"windowDays\":45}");
             logItem.setNextUrl("https://www.elibro.net/es/lc/utez/");
             logItem.setRedirectUrl(successful ? "https://www.elibro.net/es/lc/utez/inicio" : null);
-            Instant occurredAt = start
-                    .plus((attempt * 3L + (index % 3)) % (SEED_RANGE_DAYS - 1), ChronoUnit.DAYS)
-                    .plus((index + attempt) % 12, ChronoUnit.HOURS);
             if (occurredAt.isAfter(end)) {
-                occurredAt = end.minus((index + attempt) % 6, ChronoUnit.HOURS);
+                occurredAt = end.minus(random.nextInt(1, 180), ChronoUnit.MINUTES);
             }
             logItem.setOccurredAt(occurredAt);
             logs.add(logItem);
@@ -247,27 +273,43 @@ public class DashboardDemoSeedRunner implements ApplicationRunner {
         return logs;
     }
 
-    private int attemptsForIndex(int index) {
-        int bucket = index % 16;
-        if (bucket <= 3) {
-            return 2 + (index % 4); // 2..5 accesos
+    private int attemptsForSeed(SplittableRandom random) {
+        int bucket = random.nextInt(100);
+        if (bucket < 20) {
+            return random.nextInt(3, 9); // bajo
         }
-        if (bucket <= 7) {
-            return 6 + (index % 9); // 6..14 accesos
+        if (bucket < 52) {
+            return random.nextInt(9, 22); // medio
         }
-        if (bucket <= 11) {
-            return 15 + (index % 18); // 15..32 accesos
+        if (bucket < 78) {
+            return random.nextInt(22, 48); // alto
         }
-        if (bucket <= 14) {
-            return 33 + (index % 28); // 33..60 accesos
+        if (bucket < 94) {
+            return random.nextInt(48, 92); // muy alto
         }
-        return 70 + (index % 31); // 70..100 accesos (heavy users)
+        return random.nextInt(92, 151); // power users
     }
 
-    private boolean isSuccessfulAttempt(int index, int attempt) {
-        int reliability = (index % 9);
-        int failureStep = reliability <= 2 ? 5 : (reliability <= 6 ? 7 : 9);
-        return ((attempt + index) % failureStep) != 0;
+    private boolean isSuccessfulAttempt(SplittableRandom random, int attempt, int successRate) {
+        int adjustedSuccessRate = successRate;
+        if (attempt % 11 == 0 && attempt > 0) {
+            adjustedSuccessRate = Math.max(45, successRate - random.nextInt(15, 33));
+        }
+        return random.nextInt(100) < adjustedSuccessRate;
+    }
+
+    private ElibroAccessResult failureResultFor(SplittableRandom random) {
+        return FAILURE_RESULTS.get(random.nextInt(FAILURE_RESULTS.size()));
+    }
+
+    private int providerStatusCodeFor(ElibroAccessResult result, SplittableRandom random) {
+        return switch (result) {
+            case FAILED_ELIBRO_TIMEOUT -> random.nextBoolean() ? 408 : 504;
+            case FAILED_ELIBRO_API -> random.nextBoolean() ? 500 : 503;
+            case FAILED_NEXT_URL_VALIDATION -> 422;
+            case FAILED_INTERNAL_ERROR -> 500;
+            default -> 500;
+        };
     }
 
     private String requestPrefix(String enrollmentId, int attempt) {

@@ -24,9 +24,6 @@
   --bg-3: #117c66;
   --btn-radius: 16px;
   --edge-speed: 2.9s;
-  --shake-a: 1.15px;
-  --shake-b: 0.85px;
-  --shake-c: 0.6px;
   position: relative;
   width: 100%;
   min-width: 320px;
@@ -49,7 +46,6 @@
     0 0 0 1px rgba(121, 234, 227, 0.2);
   transform: translate3d(0, 0, 0);
   transition: filter 220ms ease, transform 220ms ease, box-shadow 220ms ease;
-  animation: idle-shake 1.22s ease-in-out infinite;
   overflow: visible;
   outline: none;
 }
@@ -76,16 +72,12 @@
 
 .button:hover {
   --edge-speed: 1.7s;
-  --shake-a: 3.1px;
-  --shake-b: 2.25px;
-  --shake-c: 1.5px;
   filter: saturate(1.15);
   box-shadow:
     0 14px 34px rgba(0, 25, 54, 0.48),
     0 0 24px rgba(61, 251, 255, 0.45),
     0 0 38px rgba(184, 255, 59, 0.32),
     inset 0 1px 0 rgba(255, 255, 255, 0.22);
-  animation-duration: 0.52s;
 }
 
 .button:active {
@@ -107,7 +99,6 @@
 .button.busy,
 .button.exploding {
   --edge-speed: 1.15s;
-  animation-duration: 0.62s;
 }
 
 .edgeField {
@@ -236,34 +227,6 @@
   }
   100% {
     stroke-dashoffset: -100;
-  }
-}
-
-@keyframes idle-shake {
-  0%,
-  100% {
-    transform: translateX(0);
-  }
-  12.5% {
-    transform: translateX(calc(-1 * var(--shake-a)));
-  }
-  25% {
-    transform: translateX(var(--shake-a));
-  }
-  37.5% {
-    transform: translateX(calc(-1 * var(--shake-b)));
-  }
-  50% {
-    transform: translateX(var(--shake-b));
-  }
-  62.5% {
-    transform: translateX(calc(-1 * var(--shake-c)));
-  }
-  75% {
-    transform: translateX(var(--shake-c));
-  }
-  87.5% {
-    transform: translateX(calc(-1 * (var(--shake-c) * 0.55)));
   }
 }
 

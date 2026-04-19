@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Bell, Clock3, Settings, Trash2 } from 'lucide-react';
+import { Bell, CheckCheck, Clock3, Settings, Trash2 } from 'lucide-react';
 
 import { useAuthUser } from '@/features/auth/hooks/use-auth-user';
 import {
@@ -390,11 +390,13 @@ export function NotificationsPopover() {
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                className="text-xs text-primary hover:underline disabled:text-muted-foreground disabled:no-underline"
+                className="inline-flex h-6 w-6 items-center justify-center rounded-md text-blue-600 transition-colors hover:bg-blue-500/10 disabled:text-muted-foreground"
                 onClick={() => void handleMarkAllRead()}
                 disabled={notifications.length === 0 || mutating}
+                aria-label="Marcar todas como leídas"
+                title="Marcar todas como leídas"
               >
-                Marcar todas
+                <CheckCheck className="h-4 w-4" />
               </button>
               <button
                 type="button"

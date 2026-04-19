@@ -485,7 +485,7 @@ useEffect(() => {
 
               <AuthHeader
                 title="Bienvenido/a estudiante"
-                description="Accede con tu correo institucional o con Google para eLibro"
+                description="Accede con tu cuenta de Google para entrar aeLibro"
               />
             </div>
 

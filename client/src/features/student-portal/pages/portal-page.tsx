@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ArrowRight, Clock3, ShieldCheck, User, Zap } from 'lucide-react';
 import { Card } from '@/shared/components/ui/card';
+import GlassSurface from '@/shared/components/reactbits/glass-surface';
 import { useAppToast } from '@/shared/components/ui/app-toast-provider';
 import ElibroCtaCard from '@/features/student-portal/components/cta-card/elibro-cta-card';
 import { useAuthUser } from '@/features/auth/hooks/use-auth-user';
@@ -11,7 +12,6 @@ import {
   type StudentPortalSummaryResponse,
 } from '@/features/student-portal/api/student-portal-api';
 import { cn } from '@/shared/lib/utils';
-import portalEffects from './portal-effects.module.css';
 
 type ActivityTone = 'bg-success' | 'bg-warning' | 'bg-info';
 
@@ -189,6 +189,18 @@ const Portal = () => {
     void loadSummary();
   }, [loadSummary]);
 
+  useEffect(() => {
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousHtmlOverflow = document.documentElement.style.overflow;
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = previousBodyOverflow;
+      document.documentElement.style.overflow = previousHtmlOverflow;
+    };
+  }, []);
+
   const handleElibroAccess = useCallback(async () => {
     const disabledReason = resolveDisabledReason(summary);
     if (disabledReason) {
@@ -290,20 +302,18 @@ const Portal = () => {
     : isAccountActive
       ? 'Autenticación segura vía SSO institucional'
       : 'Acceso temporalmente restringido';
-  const cardHoverClass = 'transition-transform duration-300 will-change-transform hover:-translate-y-0.5 hover:scale-[1.01]';
   const portalGlassCardClass =
-    'relative overflow-hidden rounded-3xl border border-white/70 bg-white/72 shadow-[0_22px_60px_rgba(15,23,42,0.14)] ring-1 ring-white/35 backdrop-blur-2xl dark:border-white/10 dark:bg-slate-950/55 dark:shadow-[0_24px_70px_rgba(0,0,0,0.36)] dark:ring-white/5';
+    'relative flex w-full min-h-0 flex-col overflow-hidden rounded-3xl border border-white/40 bg-white/10 shadow-none backdrop-blur-none dark:border-white/10 dark:bg-slate-950/15';
 
   return (
     <div className="relative flex h-full min-h-0 flex-1 flex-col overflow-hidden">
-      <div className="relative z-10 mx-auto flex h-full w-full max-w-full flex-1 items-center px-2 py-4 lg:px-4 lg:py-6">
-        <div className="grid w-full grid-cols-1 gap-y-4 xl:grid-cols-12 xl:grid-rows-none xl:items-start xl:gap-x-4 xl:gap-y-5">
+      <div className="relative z-10 mx-auto flex h-full w-full max-w-full flex-1 items-stretch px-2 py-4 lg:px-4 lg:py-6">
+        <div className="grid w-full grid-cols-1 gap-y-4 xl:grid-cols-12 xl:grid-rows-none xl:items-stretch xl:gap-x-4 xl:gap-y-5">
           <section className="xl:col-span-12">
             <ElibroCtaCard
               className={cn(
-                cardHoverClass,
                 'portal-cta-lg',
-                'relative overflow-hidden rounded-[2rem] border border-white/75 bg-white/75 shadow-[0_26px_72px_rgba(15,23,42,0.16)] ring-1 ring-white/40 backdrop-blur-2xl dark:border-white/10 dark:bg-slate-950/55 dark:shadow-[0_28px_80px_rgba(0,0,0,0.4)] dark:ring-white/5',
+                'w-full',
               )}
               onTrigger={handleElibroAccess}
               busy={isOpeningElibro}
@@ -316,169 +326,216 @@ const Portal = () => {
 
           <section className="grid min-h-0 gap-4 xl:col-span-12 xl:grid-rows-[auto_1fr]">
             <div className="grid grid-cols-1 gap-4">
-              <Card
-                className={cn(
-                  portalGlassCardClass,
-                  'p-4 md:p-5',
-                  cardHoverClass,
-                )}
-              >
-                <div className="mb-2.5 flex items-center text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                  <User className="mr-2 h-4 w-4" />
-                  Información del estudiante
-                </div>
-
-                <div className="grid grid-cols-1 gap-x-4 gap-y-2.5 sm:grid-cols-2 xl:grid-cols-4">
-                  <div>
-                    <span className="mb-1 block text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-                      Nombre:
-                    </span>
-                    <div className="text-sm font-medium text-foreground lg:text-base">{displayFirstNames} {displayLastNames}</div>
-                  </div>
-                  <div>
-                    <span className="mb-1 block text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-                      Correo institucional:
-                    </span>
-                    <div className="truncate text-sm font-medium text-foreground lg:text-base">{displayEmail}</div>
-                  </div>
-
-                  <div>
-                    <span className="mb-1 block text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-                      Matrícula:
-                    </span>
-                    <div className="font-mono text-sm font-medium text-foreground lg:text-base">{enrollmentId}</div>
-                  </div>
-
-                  <div className="xl:col-span-1">
-                    <span className="mb-1 block text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-                      Carrera:
-                    </span>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <div className="text-sm font-medium leading-5 text-foreground">{career}</div>
-                      <span className="rounded-full border border-primary/35 bg-primary/15 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-primary">
-                        {careerAcronym}
-                      </span>
+              <div className="flex min-h-0 w-full">
+                <GlassSurface
+                  width="100%"
+                  height="100%"
+                  borderRadius={28}
+                  borderWidth={0.08}
+                  brightness={58}
+                  opacity={0.9}
+                  blur={10}
+                  displace={0.45}
+                  backgroundOpacity={0.1}
+                  saturation={1.2}
+                  performanceMode="lite"
+                  className="flex h-full min-h-0 w-full"
+                >
+                  <Card className={cn(portalGlassCardClass, 'h-full p-5 md:p-6')}>
+                    <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/60 to-transparent" />
+                    <div className="mb-4 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      <User className="h-5 w-5 shrink-0" />
+                      Información del estudiante
                     </div>
-                  </div>
-                </div>
-              </Card>
+
+                    <div className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2 xl:grid-cols-4">
+                      <div>
+                        <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                          Nombre:
+                        </span>
+                        <div className="text-base font-medium leading-snug text-foreground">{displayFirstNames} {displayLastNames}</div>
+                      </div>
+                      <div>
+                        <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                          Correo institucional:
+                        </span>
+                        <div className="truncate text-base font-medium leading-snug text-foreground">{displayEmail}</div>
+                      </div>
+
+                      <div>
+                        <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                          Matrícula:
+                        </span>
+                        <div className="font-mono text-base font-medium leading-snug text-foreground">{enrollmentId}</div>
+                      </div>
+
+                      <div className="xl:col-span-1">
+                        <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                          Carrera:
+                        </span>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <div className="text-base font-medium leading-snug text-foreground">{career}</div>
+                          <span className="rounded-full border border-primary/35 bg-primary/15 px-2.5 py-1 text-xs font-semibold uppercase tracking-wide text-primary">
+                            {careerAcronym}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+                </GlassSurface>
+              </div>
             </div>
 
             <div className="grid min-h-0 grid-cols-1 gap-4 lg:grid-cols-12 lg:items-stretch lg:gap-4">
-              <Card
-                className={cn(
-                  portalGlassCardClass,
-                  'p-4 md:p-5 lg:col-span-4',
-                  cardHoverClass,
-                )}
-              >
-                <div className="mb-2.5 flex items-center justify-between">
-                  <h3 className="flex items-center text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                    <Clock3 className="mr-2 h-4 w-4" />
-                    Accesos recientes
-                  </h3>
-
-                  <span className="rounded-md bg-primary/10 px-2 py-1 text-[11px] font-medium text-primary">
-                    Últimos 7 días
-                  </span>
-                </div>
-
-                <div className="relative space-y-2 pl-1">
-                  <div className="absolute bottom-1 left-[0.4rem] top-1 w-px bg-border/60" />
-
-                  {activityItems.map((item) => (
-                    <div key={item.id} className="relative flex gap-4 pl-6">
-                      <div
-                        className={`absolute left-0 top-1.5 h-2.5 w-2.5 rounded-full ${item.tone} ring-4 ring-background/75`}
-                      />
-                      <div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="text-[11px] font-medium text-foreground">{item.title}</span>
-                          {item.badge ? (
-                            <span className="rounded-md bg-warning/10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.14em] text-warning">
-                              {item.badge}
-                            </span>
-                          ) : null}
-                        </div>
-                        <div className="mt-0.5 text-[10px] text-muted-foreground">{item.meta}</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </Card>
-
-              <div className="grid min-h-0 grid-cols-1 gap-2.5 lg:col-span-8 lg:grid-cols-2">
-                <Card
-                  className={cn(
-                    portalGlassCardClass,
-                    'group flex min-h-0 flex-1 flex-col p-4 md:p-5',
-                    portalEffects.zapTrailGroup,
-                    cardHoverClass,
-                  )}
+              <div className="flex min-h-0 w-full lg:col-span-4">
+                <GlassSurface
+                  width="100%"
+                  height="100%"
+                  borderRadius={28}
+                  borderWidth={0.08}
+                  brightness={58}
+                  opacity={0.9}
+                  blur={10}
+                  displace={0.45}
+                  backgroundOpacity={0.1}
+                  saturation={1.2}
+                  performanceMode="lite"
+                  className="flex h-full min-h-0 w-full"
                 >
-                  <div className={cn('absolute bottom-0 right-0 translate-x-3 translate-y-3 opacity-16', portalEffects.readingZapIcon)}>
-                    <Zap className={cn('h-24 w-24 text-emerald-500/65', portalEffects.readingZap)} strokeWidth={1.25} />
-                  </div>
+                  <Card className={cn(portalGlassCardClass, 'h-full p-5 md:p-6')}>
+                    <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/60 to-transparent" />
+                    <div className="mb-4 flex items-center justify-between gap-3">
+                      <h3 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        <Clock3 className="h-5 w-5 shrink-0" />
+                        Accesos recientes
+                      </h3>
 
-                  <div className="relative z-10 flex flex-1 flex-col justify-center">
-                    <span className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                      Racha de lectura
-                    </span>
-
-                    <div className="flex items-end gap-2">
-                      <span className="bg-gradient-to-br from-foreground to-muted-foreground bg-clip-text text-4xl font-extrabold text-transparent lg:text-[2.5rem]">
-                        {streakDays}
+                      <span className="shrink-0 rounded-md bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
+                        Últimos 7 días
                       </span>
-                      <span className="pb-0.5 text-sm font-medium text-muted-foreground">días</span>
                     </div>
 
-                    <span className="mt-1.5 flex items-center text-[11px] font-medium text-primary">
-                      <ArrowRight className="mr-1 h-3 w-3 rotate-[-45deg]" />
-                      {streakDays > 0 ? 'Excelente consistencia' : 'Comienza tu racha hoy'}
-                    </span>
-                  </div>
-                </Card>
+                    <div className="relative flex min-h-0 flex-1 flex-col space-y-4 pl-1">
+                      <div className="absolute bottom-1 left-[0.4rem] top-1 w-px bg-border/60" />
 
-                <Card
-                  className={cn(
-                    portalGlassCardClass,
-                    'flex min-h-0 flex-1 flex-col p-4 md:p-5',
-                    cardHoverClass,
-                  )}
-                >
-                  <div className="mb-2 flex items-center text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                    <ShieldCheck className="mr-2 h-4 w-4" />
-                    Estado actual de la cuenta
-                  </div>
+                      {activityItems.map((item) => (
+                        <div key={item.id} className="relative flex gap-4 pl-6">
+                          <div
+                            className={`absolute left-0 top-2 h-2.5 w-2.5 rounded-full ${item.tone} ring-4 ring-background/75`}
+                          />
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="text-sm font-medium leading-snug text-foreground">{item.title}</span>
+                              {item.badge ? (
+                                <span className="rounded-md bg-warning/10 px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-warning">
+                                  {item.badge}
+                                </span>
+                              ) : null}
+                            </div>
+                            <div className="mt-1 text-xs leading-snug text-muted-foreground">{item.meta}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </Card>
+                </GlassSurface>
+              </div>
 
-                  <div className="flex flex-1 flex-col justify-center">
-                    <div className="mb-2 flex items-end gap-3">
-                      <div
-                        className={cn(
-                          'flex h-9 w-9 items-center justify-center rounded-xl',
-                          isAccountActive ? 'bg-success/15 text-success' : 'bg-warning/15 text-warning',
-                        )}
-                      >
-                        <ShieldCheck className="h-4.5 w-4.5" />
+              <div className="grid min-h-0 grid-cols-1 gap-2.5 lg:col-span-8 lg:grid-cols-2 lg:items-stretch">
+                <div className="flex min-h-0 w-full">
+                  <GlassSurface
+                    width="100%"
+                    height="100%"
+                    borderRadius={28}
+                    borderWidth={0.08}
+                    brightness={58}
+                    opacity={0.9}
+                    blur={10}
+                    displace={0.45}
+                    backgroundOpacity={0.1}
+                    saturation={1.2}
+                    performanceMode="lite"
+                    className="flex h-full min-h-0 w-full"
+                  >
+                    <Card className={cn(portalGlassCardClass, 'h-full p-5 md:p-6')}>
+                      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/60 to-transparent" />
+                      <div className="pointer-events-none absolute bottom-0 right-0 translate-x-3 translate-y-3 opacity-15">
+                        <Zap className="h-24 w-24 text-emerald-500/65" strokeWidth={1.25} />
                       </div>
-                      <span className="text-lg font-bold text-foreground">{accountStatusTitle}</span>
-                    </div>
 
-                    <p className="text-sm leading-5 text-muted-foreground">
-                      {isAccountActive ? (
-                        <>
-                          <span className="font-medium text-success">Sin restricciones.</span>{' '}
-                          {accountStatusMessage}
-                        </>
-                      ) : (
-                        <>
-                          <span className="font-medium text-warning">Acceso restringido.</span>{' '}
-                          {accountStatusMessage}
-                        </>
-                      )}
-                    </p>
-                  </div>
-                </Card>
+                      <div className="relative z-10 flex min-h-0 flex-1 flex-col justify-center gap-3">
+                        <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                          Racha de lectura
+                        </span>
+
+                        <div className="flex items-end gap-3">
+                          <span className="bg-gradient-to-br from-foreground to-muted-foreground bg-clip-text text-5xl font-extrabold text-transparent lg:text-6xl">
+                            {streakDays}
+                          </span>
+                          <span className="pb-1 text-base font-medium text-muted-foreground">días</span>
+                        </div>
+
+                        <span className="flex items-center gap-1.5 text-sm font-medium text-primary">
+                          <ArrowRight className="h-4 w-4 shrink-0 rotate-[-45deg]" />
+                          {streakDays > 0 ? 'Excelente consistencia' : 'Comienza tu racha hoy'}
+                        </span>
+                      </div>
+                    </Card>
+                  </GlassSurface>
+                </div>
+
+                <div className="flex min-h-0 w-full">
+                  <GlassSurface
+                    width="100%"
+                    height="100%"
+                    borderRadius={28}
+                    borderWidth={0.08}
+                    brightness={58}
+                    opacity={0.9}
+                    blur={10}
+                    displace={0.45}
+                    backgroundOpacity={0.1}
+                    saturation={1.2}
+                    performanceMode="lite"
+                    className="flex h-full min-h-0 w-full"
+                  >
+                    <Card className={cn(portalGlassCardClass, 'h-full p-5 md:p-6')}>
+                      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/60 to-transparent" />
+                      <div className="mb-4 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        <ShieldCheck className="h-5 w-5 shrink-0" />
+                        Estado actual de la cuenta
+                      </div>
+
+                      <div className="flex flex-1 flex-col justify-center gap-4">
+                        <div className="flex items-end gap-3">
+                          <div
+                            className={cn(
+                              'flex h-11 w-11 items-center justify-center rounded-xl',
+                              isAccountActive ? 'bg-success/15 text-success' : 'bg-warning/15 text-warning',
+                            )}
+                          >
+                            <ShieldCheck className="h-5 w-5" />
+                          </div>
+                          <span className="text-xl font-bold text-foreground">{accountStatusTitle}</span>
+                        </div>
+
+                        <p className="text-base leading-relaxed text-muted-foreground">
+                          {isAccountActive ? (
+                            <>
+                              <span className="font-medium text-success">Sin restricciones.</span>{' '}
+                              {accountStatusMessage}
+                            </>
+                          ) : (
+                            <>
+                              <span className="font-medium text-warning">Acceso restringido.</span>{' '}
+                              {accountStatusMessage}
+                            </>
+                          )}
+                        </p>
+                      </div>
+                    </Card>
+                  </GlassSurface>
+                </div>
               </div>
             </div>
           </section>

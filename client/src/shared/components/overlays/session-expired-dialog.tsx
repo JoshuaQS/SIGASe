@@ -24,12 +24,9 @@ export function SessionExpiredDialog() {
     <AppConfirmDialog
       open={open}
       title="Sesión expirada"
-      description="Tu sesión ha expirado por inactividad. Inicia sesión de nuevo para continuar."
-      confirmColor="info"
-      confirmText="Iniciar sesión"
-      cancelText="Cerrar"
+      description="Por seguridad cerramos tu sesión luego de (x) minutos de inactividad. Vuelve a iniciar para continuar."
       animateIcon
-      size="md"
+      size="lg"
       onCancel={onClose}
       onConfirm={onClose}
     />

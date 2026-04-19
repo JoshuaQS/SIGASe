@@ -15,7 +15,7 @@ const templateColumns = [
 
 function SectionLabel({ children }: { children: ReactNode }) {
   return (
-    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground leading-none">
+    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground leading-none">
       {children}
     </p>
   );
@@ -83,7 +83,7 @@ export function CsvImportTabLayout({
                   <td className="px-4 py-3 text-right">
                     <span
                       className={cn(
-                        "inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
+                        "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wide leading-none",
                         col.required
                           ? "border-primary/20 bg-primary/10 text-primary"
                           : "border-border bg-muted/40 text-muted-foreground"

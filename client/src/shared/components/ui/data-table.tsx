@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ChangeEvent, type ReactNode } from "react";
 import { ChevronLeft, ChevronRight, LayoutGrid, LayoutList, Search } from "lucide-react";
 
 type View = "table" | "cards";
@@ -27,10 +27,8 @@ type PaginationConfig = {
   pageSize?: number;
   pageSizeOptions?: number[];
   onPageSizeChange?: (pageSize: number) => void;
-  /** Allow user to type any page size. */
   pageSizeFreeInput?: boolean;
 
-  /** Optional "go to page" control (1-based for users). */
   pageJump?: {
     value: string;
     onChange: (value: string) => void;
@@ -44,17 +42,17 @@ export type DataTableProps = {
   meta?: string;
 
   search?: SearchConfig;
-  toolbarRight?: React.ReactNode;
+  toolbarRight?: ReactNode;
 
   initialView?: View;
   viewToggle?: boolean;
   tableLabel?: string;
   cardsLabel?: string;
 
-  renderTable: () => React.ReactNode;
-  renderCards?: () => React.ReactNode;
+  renderTable: () => ReactNode;
+  renderCards?: () => ReactNode;
 
-  toolbarBelow?: React.ReactNode;
+  toolbarBelow?: ReactNode;
   pagination?: PaginationConfig;
 };
 
@@ -83,37 +81,37 @@ export function DataTable({
   const searchValue = search?.value ?? "";
   const onSearchChange = useMemo(() => {
     if (!search?.onChange) return undefined;
-    return (e: React.ChangeEvent<HTMLInputElement>) => search.onChange?.(e.target.value);
+    return (e: ChangeEvent<HTMLInputElement>) => search.onChange?.(e.target.value);
   }, [search]);
   const isSearchControlled = Boolean(search?.onChange);
 
   return (
-    <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-4 border-b border-border">
+    <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+      <div className="flex flex-col justify-between gap-3 border-b border-border px-5 py-4 sm:flex-row sm:items-center">
         <div>
           <h3 className="text-sm font-semibold text-foreground">{title}</h3>
           {meta ? <p className="text-xs text-muted-foreground">{meta}</p> : null}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {search ? (
             <div className="relative">
               <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" />
               <input
                 {...(isSearchControlled ? { value: searchValue, onChange: onSearchChange } : {})}
                 placeholder={search.placeholder ?? "Search…"}
-                className="h-8 pl-7 pr-3 text-xs rounded-md border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring w-44 transition-all"
+                className="h-8 w-44 rounded-md border border-border bg-background pl-7 pr-3 text-xs text-foreground placeholder:text-muted-foreground transition-all focus:outline-none focus:ring-2 focus:ring-ring"
               />
             </div>
           ) : null}
 
           {canToggleView ? (
-            <div className="flex items-center rounded-md border border-border bg-muted p-0.5 gap-0.5">
+            <div className="flex items-center gap-0.5 rounded-md border border-border bg-muted p-0.5">
               <button
                 type="button"
                 onClick={() => setView("table")}
                 title="Table view"
-                className={`inline-flex items-center gap-1.5 h-7 px-2.5 rounded text-xs font-medium transition-all ${
+                className={`inline-flex h-7 items-center gap-1.5 rounded px-2.5 text-xs font-medium transition-all ${
                   isTable ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
                 }`}
               >
@@ -124,7 +122,7 @@ export function DataTable({
                 type="button"
                 onClick={() => setView("cards")}
                 title="Cards view"
-                className={`inline-flex items-center gap-1.5 h-7 px-2.5 rounded text-xs font-medium transition-all ${
+                className={`inline-flex h-7 items-center gap-1.5 rounded px-2.5 text-xs font-medium transition-all ${
                   isCards ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
                 }`}
               >
@@ -138,16 +136,15 @@ export function DataTable({
         </div>
       </div>
 
-      {toolbarBelow ? <div className="px-5 py-3 border-b border-border bg-secondary/30">{toolbarBelow}</div> : null}
+      {toolbarBelow ? <div className="border-b border-border bg-secondary/30 px-5 py-3">{toolbarBelow}</div> : null}
 
       {isTable ? renderTable() : renderCards?.()}
 
       {pagination ? (
-        <div className="flex items-center justify-between px-5 py-3.5 border-t border-border">
+        <div className="flex flex-col justify-between gap-3 border-t border-border px-5 py-3.5 sm:flex-row sm:items-center">
           <p className="text-xs text-muted-foreground">{pagination.summary ?? ""}</p>
-          <div className="flex items-center gap-2">
-            {typeof pagination.pageSize === "number" &&
-            pagination.onPageSizeChange ? (
+          <div className="flex flex-wrap items-center gap-2">
+            {typeof pagination.pageSize === "number" && pagination.onPageSizeChange ? (
               <div className="flex items-center gap-2">
                 <span className="text-xs text-muted-foreground">Filas:</span>
                 <input
@@ -203,9 +200,9 @@ export function DataTable({
                       key={`${p}-${i}`}
                       type="button"
                       onClick={() => pagination.onItemClick?.(p)}
-                      className={`h-7 min-w-7 px-1.5 text-xs rounded-md transition-colors ${
+                      className={`h-7 min-w-7 rounded-md px-1.5 text-xs transition-colors ${
                         isActive
-                          ? "bg-primary text-primary-foreground font-semibold"
+                          ? "bg-primary font-semibold text-primary-foreground"
                           : "text-muted-foreground hover:bg-accent hover:text-foreground"
                       }`}
                     >
@@ -217,7 +214,7 @@ export function DataTable({
             )}
 
             {pagination.pageJump ? (
-              <div className="flex items-center gap-2 ml-2">
+              <div className="ml-2 flex items-center gap-2">
                 <span className="text-xs text-muted-foreground">{pagination.pageJump.label ?? "Ir a:"}</span>
                 <input
                   value={pagination.pageJump.value}
@@ -228,7 +225,7 @@ export function DataTable({
                 <button
                   type="button"
                   onClick={() => pagination.pageJump?.onSubmit()}
-                  className="h-7 px-2 text-xs font-medium border border-border rounded-md hover:bg-accent transition-colors text-foreground"
+                  className="h-7 rounded-md border border-border px-2 text-xs font-medium text-foreground transition-colors hover:bg-accent"
                 >
                   Ir
                 </button>

@@ -169,7 +169,7 @@ export async function createElibroConfig(payload: UpsertElibroConfigRequest) {
 }
 
 export async function updateElibroConfig(configId: string, payload: PatchElibroConfigRequest) {
-  const response = await api.put<ApiEnvelope<ElibroConfigResponse>>(`/elibro/config/${configId}`, payload);
+  const response = await api.patch<ApiEnvelope<ElibroConfigResponse>>(`/elibro/config/${configId}`, payload);
   return response.data;
 }
 

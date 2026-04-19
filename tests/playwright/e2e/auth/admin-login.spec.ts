@@ -10,8 +10,8 @@ test.describe('Admin Login', () => {
     });
 
     test('should login successfully with valid credentials', async ({ page }) => {
-        // These would normally be in .env.test or similar
-        await loginPage.login('admin@sigase.com', 'Admin123!');
+        
+        await loginPage.login('admin.ti@utez.edu.mx', 'ChangeMe123!');
         
         // Wait for redirection - assuming it goes to /admin or /dashboard
         await expect(page).toHaveURL(/.*admin.*/);

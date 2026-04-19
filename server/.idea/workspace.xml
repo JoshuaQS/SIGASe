@@ -5,21 +5,37 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="5ddae72a-7e26-41dc-8744-da8fff9ed1e9" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/admins/service/AdminManagementService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/admins/service/AdminManagementService.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/dashboard/service/analysis/DashboardAnalysisExportService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/dashboard/service/analysis/DashboardAnalysisExportService.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/dashboard/service/analysis/DashboardLayoutResolver.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/dashboard/service/analysis/DashboardLayoutResolver.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/dashboard/service/analysis/DashboardOptionsService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/dashboard/service/analysis/DashboardOptionsService.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/logs/audit/service/AuditLogQueryService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/logs/audit/service/AuditLogQueryService.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/reports/service/ReportService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/reports/service/ReportService.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/shared/validation/PersonNamePolicy.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/shared/validation/PersonNamePolicy.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/test/java/mx/edu/utez/server/modules/admins/controller/AdminManagementControllerIntegrationTest.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/test/java/mx/edu/utez/server/modules/admins/controller/AdminManagementControllerIntegrationTest.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/test/java/mx/edu/utez/server/modules/auth/controller/PasswordResetIntegrationTest.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/test/java/mx/edu/utez/server/modules/auth/controller/PasswordResetIntegrationTest.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/test/java/mx/edu/utez/server/modules/auth/controller/StudentAuthControllerIntegrationTest.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/test/java/mx/edu/utez/server/modules/auth/controller/StudentAuthControllerIntegrationTest.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/test/java/mx/edu/utez/server/modules/dashboard/controller/DashboardControllerIntegrationTest.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/test/java/mx/edu/utez/server/modules/dashboard/controller/DashboardControllerIntegrationTest.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/test/java/mx/edu/utez/server/modules/dashboard/service/analysis/DashboardOptionsServiceTest.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/test/java/mx/edu/utez/server/modules/dashboard/service/analysis/DashboardOptionsServiceTest.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/test/java/mx/edu/utez/server/modules/notifications/controller/NotificationControllerIntegrationTest.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/test/java/mx/edu/utez/server/modules/notifications/controller/NotificationControllerIntegrationTest.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/test/java/mx/edu/utez/server/modules/students/controller/StudentControllerIntegrationTest.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/test/java/mx/edu/utez/server/modules/students/controller/StudentControllerIntegrationTest.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/test/java/mx/edu/utez/server/modules/students/controller/StudentImportIntegrationTest.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/test/java/mx/edu/utez/server/modules/students/controller/StudentImportIntegrationTest.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../asdas.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/app/router/layouts/admin-layout.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/app/router/layouts/admin-layout.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/app/router/layouts/admin-profile-menu.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/app/router/layouts/admin-profile-menu.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/app/router/layouts/student-layout.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/app/router/layouts/student-layout.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/app/router/route-config.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/app/router/route-config.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/features/admins/components/modals/admin-profile-modal.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/features/admins/components/modals/admin-profile-modal.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/features/auth/components/students-login-card.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/features/auth/components/students-login-card.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/features/dashboard/components/composer/composer-shell.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/features/dashboard/components/composer/composer-shell.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/features/dashboard/components/composer/composer.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/features/dashboard/components/composer/composer.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/features/dashboard/components/composer/stepper.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/features/dashboard/components/composer/stepper.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/features/dashboard/components/composer/useFilterComposer.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/features/dashboard/components/composer/useFilterComposer.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/features/elibro-config/api/elibro-config-api.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/features/elibro-config/api/elibro-config-api.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/features/notifications/components/notifications-popover.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/features/notifications/components/notifications-popover.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/features/student-portal/components/cta-card/elibro-cta-card.css" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/features/student-portal/components/cta-card/elibro-cta-card.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/features/student-portal/components/cta-card/elibro-cta-card.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/features/student-portal/components/cta-card/elibro-cta-card.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/features/student-portal/components/layout/bubble-background.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/features/student-portal/components/layout/force-top-bar.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/features/student-portal/components/layout/force-top-bar.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/features/student-portal/pages/force-password-change-shell.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/features/student-portal/pages/force-password-change-shell.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/features/student-portal/pages/portal-page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/features/student-portal/pages/portal-page.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/features/students/components/import/csv-import-modal.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/features/students/components/import/csv-import-modal.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/features/students/components/import/csv-import-tab-layout.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/features/students/components/import/csv-import-tab-layout.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/features/students/components/import/csv-import.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/features/students/components/import/csv-import.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/shared/components/overlays/session-expired-dialog.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/shared/components/overlays/session-expired-dialog.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/shared/components/ui/data-table.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/shared/components/ui/data-table.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/shared/components/ui/dialog.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/shared/components/ui/dialog.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../client/src/shared/components/ui/skeleton.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../client/src/shared/components/ui/skeleton.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/elibro/controller/ElibroConfigController.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/mx/edu/utez/server/modules/elibro/controller/ElibroConfigController.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../tests/playwright/e2e/auth/admin-login.spec.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../tests/playwright/e2e/auth/admin-login.spec.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../tests/playwright/pages/auth/login.page.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../tests/playwright/pages/auth/login.page.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../tests/playwright/playwright.config.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../tests/playwright/playwright.config.ts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -57,6 +73,15 @@
     &quot;accountId&quot;: &quot;b5424419-1b83-4182-87bc-d57cafe8339a&quot;
   }
 }</component>
+  <component name="JavaAutoRunManager">
+    <enabled-run-configurations>
+      <run-configuration type="JUnit" name="Rerun Failed Tests" />
+    </enabled-run-configurations>
+  </component>
+  <component name="KubernetesApiPersistence">{}</component>
+  <component name="KubernetesApiProvider">{
+  &quot;isMigrated&quot;: true
+}</component>
   <component name="MavenImportPreferences">
     <option name="generalSettings">
       <MavenGeneralSettings>
@@ -77,49 +102,49 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "JUnit.All in server.executor": "Run",
-    "Maven.server [clean,compile].executor": "Run",
-    "Maven.server [clean].executor": "Run",
-    "Maven.server [compile].executor": "Run",
-    "ModuleVcsDetector.initialDetectionPerformed": "true",
-    "RequestMappingsPanelOrder0": "0",
-    "RequestMappingsPanelOrder1": "1",
-    "RequestMappingsPanelWidth0": "75",
-    "RequestMappingsPanelWidth1": "75",
-    "RunOnceActivity.MCP Project settings loaded": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
-    "Spring Boot.ServerApplication.executor": "Run",
-    "codeWithMe.voiceChat.enabledByDefault": "false",
-    "com.intellij.ml.llm.matterhorn.ej.ui.settings.DefaultModelSelectionForGA.v1": "true",
-    "git-widget-placeholder": "develop",
-    "junie.onboarding.icon.badge.shown": "true",
-    "kotlin-language-version-configured": "true",
-    "last_directory_selection": "/Users/joshqs/Documents/refactor/sigase/src/test/java",
-    "last_opened_file_path": "/Users/joshqs/Documents/GitHub/115-ELIBRO-1/server",
-    "node.js.detected.package.eslint": "true",
-    "node.js.detected.package.tslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "node.js.selected.package.tslint": "(autodetect)",
-    "nodejs_package_manager_path": "npm",
-    "project.structure.last.edited": "SDKs",
-    "project.structure.proportion": "0.15",
-    "project.structure.side.proportion": "0.0",
-    "settings.editor.selected.configurable": "preferences.pluginManager",
-    "to.speed.mode.migration.done": "true",
-    "vue.rearranger.settings.migration": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;JUnit.All in server.executor&quot;: &quot;Run&quot;,
+    &quot;Maven.server [clean,compile].executor&quot;: &quot;Run&quot;,
+    &quot;Maven.server [clean].executor&quot;: &quot;Run&quot;,
+    &quot;Maven.server [compile].executor&quot;: &quot;Run&quot;,
+    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
+    &quot;RequestMappingsPanelOrder0&quot;: &quot;0&quot;,
+    &quot;RequestMappingsPanelOrder1&quot;: &quot;1&quot;,
+    &quot;RequestMappingsPanelWidth0&quot;: &quot;75&quot;,
+    &quot;RequestMappingsPanelWidth1&quot;: &quot;75&quot;,
+    &quot;RunOnceActivity.MCP Project settings loaded&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,
+    &quot;Spring Boot.ServerApplication.executor&quot;: &quot;Run&quot;,
+    &quot;codeWithMe.voiceChat.enabledByDefault&quot;: &quot;false&quot;,
+    &quot;com.intellij.ml.llm.matterhorn.ej.ui.settings.DefaultModelSelectionForGA.v1&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;develop&quot;,
+    &quot;junie.onboarding.icon.badge.shown&quot;: &quot;true&quot;,
+    &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
+    &quot;last_directory_selection&quot;: &quot;/Users/joshqs/Documents/refactor/sigase/src/test/java&quot;,
+    &quot;last_opened_file_path&quot;: &quot;/Users/joshqs/Documents/GitHub/SIGASe/server&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;project.structure.last.edited&quot;: &quot;SDKs&quot;,
+    &quot;project.structure.proportion&quot;: &quot;0.15&quot;,
+    &quot;project.structure.side.proportion&quot;: &quot;0.0&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.pluginManager&quot;,
+    &quot;to.speed.mode.migration.done&quot;: &quot;true&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
-}]]></component>
+}</component>
   <component name="RecentsManager">
     <key name="MoveClassesOrPackagesDialog.RECENTS_KEY">
       <recent name="mx.edu.utez.server" />
     </key>
   </component>
-  <component name="RunManager" selected="JUnit.All in server">
+  <component name="RunManager" selected="Spring Boot.ServerApplication">
     <configuration name="All in server" type="JUnit" factoryName="JUnit" temporary="true" nameIsGenerated="true">
       <module name="server" />
       <option name="PACKAGE_NAME" value="" />
@@ -177,11 +202,25 @@
       <workItem from="1776136319031" duration="14949000" />
       <workItem from="1776359085226" duration="606000" />
       <workItem from="1776364520475" duration="299000" />
+      <workItem from="1776388009688" duration="34000" />
+      <workItem from="1776388202138" duration="802000" />
+      <workItem from="1776407163783" duration="17318000" />
     </task>
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="3" />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>

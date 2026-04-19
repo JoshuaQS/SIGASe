@@ -109,6 +109,19 @@ public class ElibroConfigController {
         return new ApiResponse<>(true, "Configuración eLibro actualizada.", response, HttpStatus.OK.value());
     }
 
+    @PatchMapping("/{configId}")
+    @Operation(summary = "Actualizar parcialmente configuración eLibro")
+    public ApiResponse<ElibroConfigResponse> patchUpdate(
+            @PathVariable UUID configId,
+            @Valid @RequestBody PatchElibroConfigRequest request,
+            Authentication authentication,
+            HttpServletRequest httpRequest
+    ) {
+        Admin actor = adminContextService.requireCurrentAdmin(authentication);
+        ElibroConfigResponse response = elibroConfigService.update(configId, request, actor, httpRequest);
+        return new ApiResponse<>(true, "Configuración eLibro actualizada.", response, HttpStatus.OK.value());
+    }
+
     @PatchMapping("/{configId}/activate")
     @Operation(summary = "Activar configuración eLibro")
     public ApiResponse<ElibroConfigResponse> activate(

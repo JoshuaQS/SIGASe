@@ -37,6 +37,7 @@ import { cn } from '@/shared/lib/utils'
 type AdminProfileModalProps = {
   open: boolean
   onClose: () => void
+  initialTab?: Tab
 }
 
 type Tab = 'profile' | 'alerts'
@@ -117,7 +118,7 @@ function formatRoleLabel(role?: string) {
   return 'Administrador'
 }
 
-export function AdminProfileModal({ open, onClose }: AdminProfileModalProps) {
+export function AdminProfileModal({ open, onClose, initialTab = 'profile' }: AdminProfileModalProps) {
   const user = useAuthUser()
   const navigate = useNavigate()
   const { showToast } = useAppToast()
@@ -167,7 +168,7 @@ export function AdminProfileModal({ open, onClose }: AdminProfileModalProps) {
 
   useEffect(() => {
     if (!open) return
-    setActiveTab('profile')
+    setActiveTab(initialTab)
     setPrefsError(null)
     setPasswordError(null)
     resetPasswordForm({
@@ -175,7 +176,7 @@ export function AdminProfileModal({ open, onClose }: AdminProfileModalProps) {
       newPassword: '',
       confirmNewPassword: '',
     })
-  }, [open])
+  }, [open, initialTab, resetPasswordForm])
 
   useEffect(() => {
     if (!open || activeTab !== 'alerts') return

@@ -17,7 +17,7 @@ export interface FilterState {
   scope: Scope | null
   selectedStudent: string | null
   selectedCareers: string[]
-  accessType: AccessType
+  accessType: AccessType | null
   dateFilter: boolean
   dateRange: DateRange
   sortOrder: SortOrder
@@ -33,7 +33,7 @@ export const DEFAULT_FILTER_STATE: FilterState = {
   scope: null,
   selectedStudent: null,
   selectedCareers: [],
-  accessType: 'ambos',
+  accessType: null,
   dateFilter: false,
   dateRange: { from: undefined, to: undefined },
   sortOrder: 'desc',
@@ -41,7 +41,9 @@ export const DEFAULT_FILTER_STATE: FilterState = {
   topN: 10,
 }
 
-export function supportsRankingForState(state: Pick<FilterState, 'filterType' | 'scope'>): boolean {
+export function supportsRankingForState(
+  state: Pick<FilterState, 'filterType' | 'scope'>,
+): boolean {
   if (state.filterType === 'alumno') {
     return state.scope === 'todos'
   }
@@ -57,26 +59,45 @@ export function getCurrentStep(state: FilterState): number {
   if (!state.filterType) return 0
   if (!state.scope) return 1
 
-  if (state.filterType === 'alumno' && state.scope === 'individual' && !state.selectedStudent) return 2
-  if (state.filterType === 'carrera' && state.scope === 'individual' && state.selectedCareers.length === 0) return 2
-  if (state.filterType === 'carrera' && state.scope === 'varias' && state.selectedCareers.length < 2) return 2
+  if (
+    state.filterType === 'alumno' &&
+    state.scope === 'individual' &&
+    !state.selectedStudent
+  )
+    return 2
+  if (
+    state.filterType === 'carrera' &&
+    state.scope === 'individual' &&
+    state.selectedCareers.length === 0
+  )
+    return 2
+  if (
+    state.filterType === 'carrera' &&
+    state.scope === 'varias' &&
+    state.selectedCareers.length < 2
+  )
+    return 2
 
   return 3
 }
 
 export function isFilterComplete(state: FilterState): boolean {
   if (!state.filterType || !state.scope) return false
+  if (!state.accessType) return false
 
   if (state.filterType === 'alumno') {
     if (state.scope === 'individual' && !state.selectedStudent) return false
   }
 
   if (state.filterType === 'carrera') {
-    if (state.scope === 'individual' && state.selectedCareers.length === 0) return false
-    if (state.scope === 'varias' && state.selectedCareers.length < 2) return false
+    if (state.scope === 'individual' && state.selectedCareers.length === 0)
+      return false
+    if (state.scope === 'varias' && state.selectedCareers.length < 2)
+      return false
   }
 
-  if (state.dateFilter && (!state.dateRange.from || !state.dateRange.to)) return false
+  if (state.dateFilter && (!state.dateRange.from || !state.dateRange.to))
+    return false
   if (state.ranking && !state.topN) return false
 
   return true
@@ -120,7 +141,7 @@ export function useFilterComposer() {
     }))
   }, [])
 
-  const setAccessType = useCallback((type: AccessType) => {
+  const setAccessType = useCallback((type: AccessType | null) => {
     setState((prev) => ({ ...prev, accessType: type }))
   }, [])
 
@@ -156,7 +177,8 @@ export function useFilterComposer() {
 
   const isGroupScope = useMemo(() => {
     if (state.filterType === 'alumno') return state.scope === 'todos'
-    if (state.filterType === 'carrera') return state.scope === 'varias' || state.scope === 'todas'
+    if (state.filterType === 'carrera')
+      return state.scope === 'varias' || state.scope === 'todas'
     return false
   }, [state.filterType, state.scope])
 

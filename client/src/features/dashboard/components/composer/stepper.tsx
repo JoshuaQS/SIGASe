@@ -20,17 +20,19 @@ export interface StepperProps {
   className?: string
 }
 
-const H_STEP_CONNECTOR =
-  'h-0.5 w-5 shrink-0 transition-colors duration-300 sm:w-7'
-const H_STEP_SPACER = 'w-5 shrink-0 sm:w-7'
-const H_STEP_COL =
-  'flex w-[5.25rem] shrink-0 flex-col items-center sm:w-28'
+const H_STEP_CONNECTOR = 'h-0.5 min-w-4 flex-1 transition-colors duration-300'
+const H_STEP_SPACER = 'min-w-4 flex-1'
+const H_STEP_COL = 'flex min-w-0 flex-1 flex-col items-center'
 
 function stepStatus(
   i: number,
   currentStep: number,
 ): 'completed' | 'active' | 'upcoming' {
-  return i < currentStep ? 'completed' : i === currentStep ? 'active' : 'upcoming'
+  return i < currentStep
+    ? 'completed'
+    : i === currentStep
+      ? 'active'
+      : 'upcoming'
 }
 
 export function StepperHorizontalLabels({
@@ -43,23 +45,13 @@ export function StepperHorizontalLabels({
   className?: string
 }) {
   return (
-    <div
-      className={cn(
-        'flex w-full items-start justify-center',
-        className,
-      )}
-    >
+    <div className={cn('flex w-full items-start justify-center', className)}>
       {steps.map((step, i) => {
         const status = stepStatus(i, currentStep)
         return (
           <React.Fragment key={`${step.id}-label`}>
             {i > 0 && <div className={H_STEP_SPACER} aria-hidden />}
-            <div
-              className={cn(
-                H_STEP_COL,
-                'min-w-0 px-0.5 text-center',
-              )}
-            >
+            <div className={cn(H_STEP_COL, 'min-w-0 px-0.5 text-center')}>
               <p
                 className={cn(
                   'text-sm font-semibold leading-tight',
@@ -105,8 +97,7 @@ function StepIndicator({
 }) {
   const Icon = step.icon
   const isClickable = onClick && status !== 'active'
-  const base =
-    size === 'sm' ? 'h-8 w-8 text-xs' : 'h-10 w-10 text-sm'
+  const base = size === 'sm' ? 'h-8 w-8 text-xs' : 'h-10 w-10 text-sm'
 
   const indicator = (
     <div
@@ -161,19 +152,14 @@ export function Stepper({
         {steps.map((step, i) => {
           const status = getStatus(i)
           return (
-            <div
-              key={step.id}
-              className={cn('flex', showLabels && 'gap-3.5')}
-            >
+            <div key={step.id} className={cn('flex', showLabels && 'gap-3.5')}>
               <div className='flex flex-col items-center'>
                 <StepIndicator
                   step={step}
                   index={i}
                   status={status}
                   size={size}
-                  onClick={
-                    onStepClick ? () => onStepClick(i) : undefined
-                  }
+                  onClick={onStepClick ? () => onStepClick(i) : undefined}
                 />
                 {i < steps.length - 1 && (
                   <div
@@ -243,9 +229,7 @@ export function Stepper({
                 index={i}
                 status={getStatus(i)}
                 size={size}
-                onClick={
-                  onStepClick ? () => onStepClick(i) : undefined
-                }
+                onClick={onStepClick ? () => onStepClick(i) : undefined}
               />
             </div>
           </React.Fragment>

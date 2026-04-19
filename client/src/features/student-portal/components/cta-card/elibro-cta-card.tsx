@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { ArrowRight, Loader2, ShieldCheck } from 'lucide-react';
 import { Card } from '@/shared/components/ui/card';
+import GlassSurface from '@/shared/components/reactbits/glass-surface';
 import { cn } from '@/shared/lib/utils';
 import './elibro-cta-card.css';
 
@@ -14,6 +15,7 @@ type ElibroCtaCardProps = {
   errorMessage?: string | null;
   onRetry?: () => Promise<void> | void;
   className?: string;
+  glassPerformanceMode?: 'full' | 'lite';
 };
 
 type ButtonPhase = 'idle' | 'exploding';
@@ -231,53 +233,69 @@ export default function ElibroCtaCard({
   errorMessage,
   onRetry,
   className,
+  glassPerformanceMode = 'full',
 }: ElibroCtaCardProps) {
   return (
     <section id="section-elibro" className={cn('elibro-cta-card', className)}>
-      <Card className="relative flex flex-col items-center justify-center overflow-hidden rounded-3xl min-h-[340px] border-border/50 bg-card/40 px-6 py-10 text-center shadow-2xl shadow-primary/25 backdrop-blur-2xl lg:px-12 lg:py-16">
-        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/60 to-transparent" />
+      <GlassSurface
+        width="100%"
+        height="auto"
+        borderRadius={28}
+        borderWidth={0.08}
+        brightness={58}
+        opacity={0.9}
+        blur={10}
+        displace={0.45}
+        backgroundOpacity={0.1}
+        saturation={1.2}
+        performanceMode={glassPerformanceMode}
+        className="w-full"
+      >
+        <Card className="relative flex w-full min-h-[340px] flex-col items-center justify-center overflow-hidden rounded-3xl border border-white/40 bg-white/10 px-6 py-10 text-center shadow-none backdrop-blur-none dark:border-white/10 dark:bg-slate-950/15 lg:px-12 lg:py-16">
+          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/60 to-transparent" />
 
-        <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1.5 xl:mb-8">
-          <span className="relative flex h-2 w-2">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
-          </span>
-          <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary">
-            Servicio eLibro en línea
-          </span>
-        </div>
+          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1.5 xl:mb-8">
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
+            </span>
+            <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary">
+              Servicio eLibro en línea
+            </span>
+          </div>
 
-        <h1 className="max-w-4xl text-balance text-3xl font-black tracking-tight text-foreground lg:text-4xl 2xl:text-5xl">
-          Accede a tu{' '}
-          <span className="bg-gradient-to-r from-primary via-info to-primary bg-[length:200%_auto] animate-shimmer bg-clip-text text-transparent">
-            Biblioteca Digital
-          </span>
-        </h1>
+          <h1 className="max-w-4xl text-balance text-3xl font-black tracking-tight text-foreground lg:text-4xl 2xl:text-5xl">
+            Accede a tu{' '}
+            <span className="bg-gradient-to-r from-primary via-info to-primary bg-[length:200%_auto] animate-shimmer bg-clip-text text-transparent">
+              Biblioteca Digital
+            </span>
+          </h1>
 
-        <p className="mt-6 max-w-2xl text-base leading-relaxed text-muted-foreground lg:text-lg xl:text-xl">
-          Acceso directo al acervo de eLibro mediante tu identidad institucional. Explora
-          miles de recursos académicos sin fricciones.
-        </p>
+          <p className="mt-6 max-w-2xl text-base leading-relaxed text-muted-foreground lg:text-lg xl:text-xl">
+            Acceso directo al acervo de eLibro mediante tu identidad institucional. Explora
+            miles de recursos académicos sin fricciones.
+          </p>
 
-        <div className="mt-9 w-full sm:max-w-md">
-          <EnergyElibroCtaButton onTrigger={onTrigger} busy={busy} disabled={disabled} />
-        </div>
+          <div className="mt-9 w-full sm:max-w-md">
+            <EnergyElibroCtaButton onTrigger={onTrigger} busy={busy} disabled={disabled} />
+          </div>
 
-        <div className="mt-6 flex items-center text-sm font-medium text-muted-foreground lg:text-base">
-          <ShieldCheck className="mr-2 h-4 w-4 text-primary/80" />
-          {statusMessage}
-        </div>
+          <div className="mt-6 flex items-center text-sm font-medium text-muted-foreground lg:text-base">
+            <ShieldCheck className="mr-2 h-4 w-4 text-primary/80" />
+            {statusMessage}
+          </div>
 
-        {errorMessage && onRetry ? (
-          <button
-            type="button"
-            onClick={() => void onRetry()}
-            className="mt-5 rounded-xl border border-warning/40 bg-warning/10 px-3 py-1.5 text-xs font-semibold text-warning transition hover:bg-warning/15"
-          >
-            Reintentar carga de resumen
-          </button>
-        ) : null}
-      </Card>
+          {errorMessage && onRetry ? (
+            <button
+              type="button"
+              onClick={() => void onRetry()}
+              className="mt-5 rounded-xl border border-warning/40 bg-warning/10 px-3 py-1.5 text-xs font-semibold text-warning transition hover:bg-warning/15"
+            >
+              Reintentar carga de resumen
+            </button>
+          ) : null}
+        </Card>
+      </GlassSurface>
     </section>
   );
 }

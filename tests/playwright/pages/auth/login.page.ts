@@ -1,5 +1,4 @@
 import { Page, Locator } from '@playwright/test';
-import { testIds } from '@helpers/selectors/test-ids';
 
 export class LoginPage {
     readonly page: Page;
@@ -10,14 +9,15 @@ export class LoginPage {
 
     constructor(page: Page) {
         this.page = page;
-        this.emailInput = page.getByTestId(testIds.auth.email);
-        this.passwordInput = page.getByTestId(testIds.auth.password);
-        this.submitButton = page.getByTestId(testIds.auth.submit);
-        this.errorMessage = page.getByTestId(testIds.auth.error);
+        this.emailInput = page.getByRole('textbox', { name: 'Correo' });
+        this.passwordInput = page.getByPlaceholder('Ingresa tu contraseña');
+        this.submitButton = page.getByRole('button', { name: /Iniciar sesión|Ingresando\.\.\./ });
+        this.errorMessage = page.locator('[role="alert"], .text-destructive').filter({ hasText: /.+/ }).first();
     }
 
     async goto() {
-        await this.page.goto('/login');
+        await this.page.goto('/login?mode=admin');
+        await this.page.getByRole('heading', { name: 'Acceso administrador' }).waitFor();
     }
 
     async fillEmail(email: string) {
@@ -47,9 +47,6 @@ export class LoginPage {
     }
 
     async isSubmitting() {
-        // Checking for aria-disabled or just button being disabled
-        const isDisabled = await this.submitButton.isDisabled();
-        // Or if there's a specific loading state we want to check
-        return isDisabled;
+        return this.submitButton.isDisabled();
     }
 }

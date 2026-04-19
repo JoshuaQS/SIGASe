@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
-import { BookOpen } from 'lucide-react';
 
 import { Badge } from '@/shared/components/ui/badge';
+import { useTheme } from '@/shared/hooks/use-theme';
 import StudentForceMenu from './student-force-menu';
 
 type PortalTopBarProps = {
@@ -9,12 +9,21 @@ type PortalTopBarProps = {
 };
 
 const ForceTopBar = ({ children }: PortalTopBarProps) => {
+  const { isDark, mounted } = useTheme();
+
   return (
     <header className="sticky top-0 z-50 border-b border-border/70 bg-topbar/85 shadow-lg shadow-black/5 backdrop-blur supports-[backdrop-filter]:bg-topbar/75">
       <div className="flex items-center justify-between px-6 py-5">
         <div className="flex items-center gap-4">
-          <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-primary shadow-lg shadow-primary/20">
-            <BookOpen className="h-7 w-7 text-primary-foreground" />
+          <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-lg border border-border/60 bg-background shadow-lg shadow-black/5">
+            <img
+              src={mounted && isDark ? '/dark.png' : '/light.png'}
+              alt="SIGASe"
+              className="h-9 w-9 object-contain"
+              width={36}
+              height={36}
+              decoding="async"
+            />
           </div>
           <div>
             <div className="flex items-center gap-2">

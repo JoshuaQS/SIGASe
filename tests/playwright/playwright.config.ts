@@ -8,6 +8,9 @@ import path from 'path';
  */
 dotenv.config({ path: path.resolve(__dirname, '.env') });
 
+const defaultBaseUrl = 'http://localhost:5173';
+const baseURL = process.env.BASE_URL?.trim() || defaultBaseUrl;
+
 /**
  * See https://playwright.dev/docs/test-configuration.
  */
@@ -25,8 +28,8 @@ export default defineConfig({
   reporter: 'html',
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
-    /* Base URL to use in actions like `await page.goto('/')`. */
-    baseURL: process.env.BASE_URL,
+    /* Base URL to use in actions like `await page.goto('/')`. Must be set or relative goto() fails. */
+    baseURL,
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
@@ -54,7 +57,7 @@ export default defineConfig({
   webServer: {
     command: 'npm run dev',
     cwd: '../../client',
-    url: process.env.BASE_URL || 'http://localhost:5173',
+    url: baseURL,
     reuseExistingServer: !process.env.CI,
   },
 });

@@ -231,11 +231,11 @@ export function CsvImport({
         )}
       >
         <div className="flex items-center gap-4 p-5 border-b border-border">
-          <div className="h-10 w-10 rounded-xl bg-[hsl(142_72%_42%/0.1)] flex items-center justify-center flex-shrink-0">
+          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-success/15">
             {isXlsx ? (
-              <FileSpreadsheet className="h-5 w-5 text-[hsl(142_72%_42%)]" />
+              <FileSpreadsheet className="h-5 w-5 text-success" />
             ) : (
-              <FileText className="h-5 w-5 text-[hsl(142_72%_42%)]" />
+              <FileText className="h-5 w-5 text-success" />
             )}
           </div>
           <div className="flex-1 min-w-0">
@@ -271,8 +271,8 @@ export function CsvImport({
               <p className="text-xs font-semibold text-muted-foreground mb-3 uppercase tracking-wider">
                 Vista previa — primeras {Math.min(previewRowCount, parsed.rows.length)} filas
               </p>
-              <div className={cn("rounded-lg border border-border overflow-x-auto text-xs", fullWidth ? "min-h-0 flex-1" : "")}>
-                <table className="w-full min-w-[280px]">
+              <div className={cn("overflow-x-auto rounded-lg border border-border text-xs", fullWidth ? "min-h-0 flex-1" : "")}>
+                <table className="w-full min-w-72">
                   <thead className="bg-secondary">
                     <tr>
                       {displayCols.map((h, idx) => (
@@ -286,7 +286,7 @@ export function CsvImport({
                     {preview.map((row, i) => (
                       <tr key={i} className="border-t border-border">
                         {row.map((cell, j) => (
-                          <td key={j} className="px-3 py-2 text-foreground max-w-[200px] truncate" title={cell}>
+                          <td key={j} className="max-w-56 truncate px-3 py-2 text-foreground" title={cell}>
                             {cell}
                           </td>
                         ))}
@@ -348,7 +348,7 @@ export function CsvImport({
           <AlertCircle className="h-6 w-6 text-destructive" />
         </div>
         <p className="text-sm font-semibold text-foreground mb-1">No se pudo importar el CSV</p>
-        <p className="text-[11px] text-muted-foreground mb-2">Se aceptan archivos .csv y .xlsx.</p>
+        <p className="text-xs text-muted-foreground mb-2">Se aceptan archivos .csv y .xlsx.</p>
         <p className="text-xs text-muted-foreground mb-5">{errorMessage}</p>
         <div className="flex justify-center gap-2">
           <button
@@ -391,12 +391,12 @@ export function CsvImport({
         onDrop={onDrop}
         onClick={openPicker}
         className={cn(
-          "relative cursor-pointer rounded-2xl border-2 border-dashed text-center transition-all select-none",
+          "relative cursor-pointer select-none rounded-2xl border-2 border-dashed text-center transition-all",
           fullWidth
             ? "flex min-h-0 flex-1 flex-col items-center justify-center px-6 py-10"
             : "p-10",
           state === "over"
-            ? "border-primary bg-accent/50 scale-[1.01]"
+            ? "border-primary bg-accent/50"
             : "border-border bg-card/70 hover:border-primary/50 hover:bg-accent/20"
         )}
       >
