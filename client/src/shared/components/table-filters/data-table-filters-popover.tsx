@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { SlidersHorizontal } from "lucide-react";
+import { Filter } from "lucide-react";
 
 import { Button } from "@/shared/components/ui/button";
 import {
@@ -23,6 +23,7 @@ type DataTableFiltersPopoverProps<TState extends FilterState> = {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   activeCountValue?: TState;
+  defaultValue?: TState;
   align?: "start" | "center" | "end";
   side?: "top" | "right" | "bottom" | "left";
   className?: string;
@@ -39,6 +40,7 @@ export const DataTableFiltersPopover = <TState extends FilterState>({
   open,
   onOpenChange,
   activeCountValue,
+  defaultValue,
   align = "end",
   side = "bottom",
   className,
@@ -46,7 +48,7 @@ export const DataTableFiltersPopover = <TState extends FilterState>({
   const [internalOpen, setInternalOpen] = useState(false);
   const resolvedOpen = open ?? internalOpen;
   const handleOpenChange = onOpenChange ?? setInternalOpen;
-  const activeFiltersCount = countActiveFilters(activeCountValue ?? value);
+  const activeFiltersCount = countActiveFilters(fields, activeCountValue ?? value, defaultValue);
 
   const handleApply = () => {
     onApply?.();
@@ -61,11 +63,11 @@ export const DataTableFiltersPopover = <TState extends FilterState>({
     <Popover open={resolvedOpen} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <Button variant="outline" className="gap-2">
-          <SlidersHorizontal size={16} />
+          <Filter size={16} className="text-primary" />
           Filtros
 
           {activeFiltersCount > 0 ? (
-            <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground">
+            <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary/10 px-1.5 text-[10px] font-semibold text-primary">
               {activeFiltersCount}
             </span>
           ) : null}
@@ -82,6 +84,7 @@ export const DataTableFiltersPopover = <TState extends FilterState>({
           title={title}
           fields={fields}
           value={value}
+          defaultValue={defaultValue}
           onChange={onChange}
           onApply={handleApply}
           onClear={handleClear}

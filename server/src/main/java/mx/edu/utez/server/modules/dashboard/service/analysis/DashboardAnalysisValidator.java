@@ -34,7 +34,9 @@ public class DashboardAnalysisValidator {
         DashboardRankingMode effectiveRankingMode = request.rankingMode() == null
                 ? DashboardRankingMode.NONE
                 : request.rankingMode();
-        boolean studentRankingLayout = supportMatrix.isStudentRanking(request.scope(), request.mode(), effectiveRankingMode);
+        boolean studentRankingLayout = request.scope() == DashboardFilterScope.STUDENTS
+                && request.mode() == DashboardFilterMode.ALL
+                && effectiveRankingMode == DashboardRankingMode.TOP;
         boolean careerRankingLayout = supportMatrix.isCareerRankingFamily(request.scope(), request.mode(), effectiveRankingMode);
         if (effectiveRankingMode != DashboardRankingMode.NONE && !studentRankingLayout && !careerRankingLayout) {
             throw new BusinessException(
@@ -95,6 +97,14 @@ public class DashboardAnalysisValidator {
                         ErrorCode.VALIDATION_ERROR,
                         "topN no pertenece al catálogo soportado para STUDENT_RANKING."
                 );
+            }
+            DashboardAccessResultFilter effectiveAccessResult = request.accessResult() == null
+                    ? DashboardAccessResultFilter.ALL
+                    : request.accessResult();
+            if (effectiveAccessResult != DashboardAccessResultFilter.ALL
+                    && effectiveAccessResult != DashboardAccessResultFilter.SUCCESS
+                    && effectiveAccessResult != DashboardAccessResultFilter.FAILED) {
+                throw new BusinessException(ErrorCode.VALIDATION_ERROR, "accessResult no soportado para ranking de estudiantes.");
             }
             return;
         }

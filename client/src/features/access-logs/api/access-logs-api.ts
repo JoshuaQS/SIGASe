@@ -59,6 +59,13 @@ export type AccessLogMetricsDto = {
   }>;
 };
 
+export type AccessLogSummaryDto = {
+  total: number;
+  successful: number;
+  failed: number;
+  uniqueActors: number;
+};
+
 function clean(value?: string | null) {
   const next = value?.trim();
   return next ? next : undefined;
@@ -97,6 +104,17 @@ export async function getAccessLogMetrics(
   const qs = new URLSearchParams(query.replace(/^\?/, ''));
   qs.set('windowDays', String(windowDays));
   const response = await api.get<ApiEnvelope<AccessLogMetricsDto>>(`/access-logs/metrics?${qs.toString()}`);
+  return response.data;
+}
+
+export async function getAccessLogSummary(
+  params: AccessLogQueryParams = {},
+  windowDays = 7,
+) {
+  const query = buildQuery(params, false);
+  const qs = new URLSearchParams(query.replace(/^\?/, ''));
+  qs.set('windowDays', String(windowDays));
+  const response = await api.get<ApiEnvelope<AccessLogSummaryDto>>(`/access-logs/summary?${qs.toString()}`);
   return response.data;
 }
 

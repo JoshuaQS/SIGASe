@@ -8,6 +8,7 @@ import mx.edu.utez.server.modules.elibro.dto.ElibroConfigStatusChangeRequest;
 import mx.edu.utez.server.modules.elibro.dto.ElibroConfigValidationResponse;
 import mx.edu.utez.server.modules.elibro.dto.ElibroControlledValidationRequest;
 import mx.edu.utez.server.modules.elibro.dto.ElibroControlledValidationResponse;
+import mx.edu.utez.server.modules.elibro.dto.ElibroDraftValidationRequest;
 import mx.edu.utez.server.modules.elibro.dto.PatchElibroConfigRequest;
 import mx.edu.utez.server.modules.elibro.dto.UpsertElibroConfigRequest;
 import mx.edu.utez.server.modules.elibro.service.ElibroConfigOverviewService;
@@ -158,6 +159,18 @@ public class ElibroConfigController {
         Admin actor = adminContextService.requireCurrentAdmin(authentication);
         ElibroConfigValidationResponse response = elibroConfigService.validate(configId, actor, httpRequest);
         return new ApiResponse<>(true, "Validación ejecutada.", response, HttpStatus.OK.value());
+    }
+
+    @PostMapping("/validate-draft")
+    @Operation(summary = "Validar conexión eLibro con datos del formulario sin persistir")
+    public ApiResponse<ElibroConfigValidationResponse> validateDraft(
+            @Valid @RequestBody ElibroDraftValidationRequest request,
+            Authentication authentication,
+            HttpServletRequest httpRequest
+    ) {
+        Admin actor = adminContextService.requireCurrentAdmin(authentication);
+        ElibroConfigValidationResponse response = elibroConfigService.validateDraft(request, actor, httpRequest);
+        return new ApiResponse<>(true, "Validación temporal ejecutada.", response, HttpStatus.OK.value());
     }
 
     @PostMapping("/{configId}/validate-controlled")

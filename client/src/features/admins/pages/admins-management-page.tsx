@@ -91,6 +91,8 @@ const AdminsManagement = () => {
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [page, setPage] = useState(0)
   const [pageSize, setPageSize] = useState(PAGE_SIZE)
+  const [sortBy, setSortBy] = useState<'updatedAt' | 'email' | 'name' | 'role' | 'status' | 'lastLoginAt'>('updatedAt')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
   const {
     filtersOpen,
     setFiltersOpen,
@@ -162,8 +164,8 @@ const AdminsManagement = () => {
         status: appliedFilters.status === 'todos' ? undefined : appliedFilters.status,
         page,
         size: pageSize,
-        sortBy: 'updatedAt',
-        sortDir: 'desc',
+        sortBy,
+        sortDir,
       })
       setAdmins(response.content)
       setTotalElements(response.totalElements)
@@ -174,7 +176,7 @@ const AdminsManagement = () => {
     } finally {
       setAdminsLoading(false)
     }
-  }, [appliedFilters.role, appliedFilters.status, debouncedSearch, page, pageSize, showToast])
+  }, [appliedFilters.role, appliedFilters.status, debouncedSearch, page, pageSize, showToast, sortBy, sortDir])
 
   // ── Effects ───────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -189,7 +191,7 @@ const AdminsManagement = () => {
 
   useEffect(() => {
     setPage(0)
-  }, [appliedFilters.role, appliedFilters.status])
+  }, [appliedFilters.role, appliedFilters.status, debouncedSearch, sortBy, sortDir])
 
   // ── Table rows ────────────────────────────────────────────────────────────
   const rows = useMemo(
@@ -406,7 +408,7 @@ const AdminsManagement = () => {
       <SectionHeader
         icon={Users}
         title="Gestión de Administradores"
-        subtitle={`${summary.total} administradores · ${summary.active} activos`}
+        subtitle="Gestiona cuentas administrativas y controla quién puede operar el sistema."
         actions={
           <div className="flex items-center gap-2">
             <Button
@@ -432,12 +434,12 @@ const AdminsManagement = () => {
 
       {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard className="min-h-[120px]" title="Total Admins" value={summary.total} icon={Users} variant="primary" delay={0} />
-        <StatCard className="min-h-[120px]" title="Admin TI" value={summary.adminTi} icon={Shield} variant="warning" delay={0.05} />
-        <StatCard className="min-h-[120px]" title="Activos" value={summary.active} icon={UserCheck} variant="success" delay={0.1} />
+        <StatCard className="min-h-[120px]" title="Administradores totales" value={summary.total} icon={Users} variant="primary" delay={0} />
+        <StatCard className="min-h-[120px]" title="Administradores de Biblioteca totales" value={summary.adminTi} icon={Shield} variant="warning" delay={0.05} />
+        <StatCard className="min-h-[120px]" title="Administradores habilitados" value={summary.active} icon={UserCheck} variant="success" delay={0.1} />
           <StatCard
             className="min-h-[120px]"
-            title="Acciones hoy"
+            title="Acciones de hoy"
             value={summary.actionsToday}
             icon={Clock}
             variant="info"
@@ -453,7 +455,14 @@ const AdminsManagement = () => {
       <AdminsTable
         rows={rows}
         searchInput={searchInput}
-        onSearchInputChange={(value) => { setSearchInput(value); setPage(0) }}
+        onSearchInputChange={setSearchInput}
+        sortBy={sortBy}
+        sortDir={sortDir}
+        onSortChange={(nextSortBy) => {
+          setSortDir((currentDir) => (sortBy === nextSortBy ? (currentDir === 'asc' ? 'desc' : 'asc') : 'asc'))
+          setSortBy(nextSortBy)
+          setPage(0)
+        }}
         filteredCount={totalElements}
         loading={adminsLoading}
         page={page}

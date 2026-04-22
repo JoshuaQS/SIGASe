@@ -1,7 +1,10 @@
-import { Check, Search } from 'lucide-react'
-import { InputGroup, InputGroupAddon, InputGroupInput } from '@/shared/components/ui/input-group'
-import type { FilterFieldConfig, FilterState } from './filter-types'
+import { Calendar, Check, ChevronDown, Search } from 'lucide-react'
 import { cn, toggleMultiValue } from './filter-utils'
+import {
+  filterPopoverInputClass,
+  filterPopoverLabelClass,
+} from './filter-popover-classes'
+import type { FilterFieldConfig, FilterState } from './filter-types'
 
 type FilterFieldRendererProps<TState extends FilterState> = {
   field: FilterFieldConfig
@@ -18,27 +21,30 @@ export const FilterFieldRenderer = <TState extends FilterState>({
     return (
       <div>
         {field.label ? (
-          <label className="text-xs font-semibold text-muted-foreground">{field.label}</label>
+          <label htmlFor={`filter-${field.id}`} className={filterPopoverLabelClass}>
+            {field.label}
+          </label>
         ) : null}
 
-        <div className="mt-1">
-          <InputGroup size="sm" variant="filled">
-            <InputGroupAddon size="sm">
-              <Search size={14} className="text-muted-foreground" />
-            </InputGroupAddon>
-            <InputGroupInput
-              size="sm"
-              type="text"
-              value={typeof value[field.id] === 'string' ? value[field.id] : ''}
-              onChange={(e) =>
-                onChange({
-                  ...value,
-                  [field.id]: e.target.value,
-                } as TState)
-              }
-              placeholder={field.placeholder}
-            />
-          </InputGroup>
+        <div className={field.label ? 'relative mt-1' : 'relative'}>
+          <Search
+            className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground"
+            aria-hidden
+          />
+          <input
+            id={`filter-${field.id}`}
+            type="search"
+            autoComplete="off"
+            className={cn(filterPopoverInputClass, 'pl-7')}
+            value={typeof value[field.id] === 'string' ? value[field.id] : ''}
+            onChange={(e) =>
+              onChange({
+                ...value,
+                [field.id]: e.target.value,
+              } as TState)
+            }
+            placeholder={field.placeholder ?? 'Buscar…'}
+          />
         </div>
       </div>
     )
@@ -47,23 +53,23 @@ export const FilterFieldRenderer = <TState extends FilterState>({
   if (field.type === 'text') {
     return (
       <div>
-        <label className="text-xs font-semibold text-muted-foreground">{field.label}</label>
-        <div className="mt-1">
-          <InputGroup size="sm" variant="filled">
-            <InputGroupInput
-              size="sm"
-              type="text"
-              value={typeof value[field.id] === 'string' ? value[field.id] : ''}
-              onChange={(e) =>
-                onChange({
-                  ...value,
-                  [field.id]: e.target.value,
-                } as TState)
-              }
-              placeholder={field.placeholder}
-            />
-          </InputGroup>
-        </div>
+        <label htmlFor={`filter-${field.id}`} className={filterPopoverLabelClass}>
+          {field.label}
+        </label>
+        <input
+          id={`filter-${field.id}`}
+          type="text"
+          autoComplete="off"
+          className={cn(filterPopoverInputClass, 'mt-1')}
+          value={typeof value[field.id] === 'string' ? value[field.id] : ''}
+          onChange={(e) =>
+            onChange({
+              ...value,
+              [field.id]: e.target.value,
+            } as TState)
+          }
+          placeholder={field.placeholder}
+        />
       </div>
     )
   }
@@ -73,29 +79,37 @@ export const FilterFieldRenderer = <TState extends FilterState>({
 
     return (
       <div>
-        <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{field.label}</label>
-
-        <div className="mt-1.5 flex flex-wrap gap-1">
+        <p className={filterPopoverLabelClass}>{field.label}</p>
+        <div className="mt-1 space-y-1 rounded-md border border-border bg-card p-2">
           {field.options.map((option) => {
             const isActive = selectedValues.includes(option.value)
 
             return (
-              <button
+              <label
                 key={option.value}
-                type="button"
-                onClick={() =>
-                  onChange(toggleMultiValue(value, field.id, option.value) as TState)
-                }
-                className={cn(
-                  'rounded border px-2 py-1 text-xs transition-colors',
-                  isActive
-                    ? 'border-primary bg-primary text-primary-foreground'
-                    : 'border-border bg-secondary text-secondary-foreground hover:bg-accent',
-                )}
+                className="flex cursor-pointer items-center gap-2 text-xs text-foreground"
               >
-                {isActive ? <Check size={10} className="mr-0.5 inline" /> : null}
+                <input
+                  type="checkbox"
+                  className="sr-only"
+                  checked={isActive}
+                  onChange={() =>
+                    onChange(toggleMultiValue(value, field.id, option.value) as TState)
+                  }
+                />
+                <span
+                  className={cn(
+                    'flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded border',
+                    isActive
+                      ? 'border-primary bg-primary text-primary-foreground'
+                      : 'border-border bg-card',
+                  )}
+                  aria-hidden
+                >
+                  {isActive ? <Check className="h-2.5 w-2.5" strokeWidth={3} /> : null}
+                </span>
                 {option.label}
-              </button>
+              </label>
             )
           })}
         </div>
@@ -104,26 +118,43 @@ export const FilterFieldRenderer = <TState extends FilterState>({
   }
 
   if (field.type === 'select') {
+    const rawValue = value[field.id]
+    const selectedValue = typeof rawValue === 'string' ? rawValue : ''
+    const hasEmptyOption = field.options.some((o) => o.value === '')
+
     return (
       <div>
-        <label className="text-xs font-semibold text-muted-foreground">{field.label}</label>
-        <select
-          value={typeof value[field.id] === 'string' ? value[field.id] : ''}
-          onChange={(e) =>
-            onChange({
-              ...value,
-              [field.id]: e.target.value,
-            } as TState)
-          }
-          className="mt-1 h-8 w-full rounded border border-border bg-secondary px-2.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-        >
-          <option value="">{field.placeholder ?? 'Selecciona una opción'}</option>
-          {field.options.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
+        <label htmlFor={`filter-${field.id}`} className={filterPopoverLabelClass}>
+          {field.label}
+        </label>
+        <div className="relative mt-1">
+          <select
+            id={`filter-${field.id}`}
+            className={cn(filterPopoverInputClass, 'appearance-none pr-7')}
+            value={selectedValue}
+            onChange={(e) =>
+              onChange({
+                ...value,
+                [field.id]: e.target.value,
+              } as TState)
+            }
+          >
+            {field.placeholder && !hasEmptyOption ? (
+              <option value="" disabled>
+                {field.placeholder}
+              </option>
+            ) : null}
+            {field.options.map((option) => (
+              <option key={option.value === '' ? `${field.id}-empty` : option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          <ChevronDown
+            className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground"
+            aria-hidden
+          />
+        </div>
       </div>
     )
   }
@@ -131,24 +162,29 @@ export const FilterFieldRenderer = <TState extends FilterState>({
   if (field.type === 'datetime-local') {
     return (
       <div>
-        <label className="text-xs font-semibold text-muted-foreground">{field.label}</label>
-        <div className="mt-1">
-          <InputGroup size="sm" variant="filled">
-            <InputGroupInput
-              size="sm"
-              type="datetime-local"
-              min={field.min}
-              max={field.max}
-              step={field.step}
-              value={typeof value[field.id] === 'string' ? value[field.id] : ''}
-              onChange={(e) =>
-                onChange({
-                  ...value,
-                  [field.id]: e.target.value,
-                } as TState)
-              }
-            />
-          </InputGroup>
+        <label htmlFor={`filter-${field.id}`} className={filterPopoverLabelClass}>
+          {field.label}
+        </label>
+        <div className="relative mt-1">
+          <Calendar
+            className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground"
+            aria-hidden
+          />
+          <input
+            id={`filter-${field.id}`}
+            type="datetime-local"
+            min={field.min}
+            max={field.max}
+            step={field.step}
+            className={cn(filterPopoverInputClass, 'pl-7')}
+            value={typeof value[field.id] === 'string' ? value[field.id] : ''}
+            onChange={(e) =>
+              onChange({
+                ...value,
+                [field.id]: e.target.value,
+              } as TState)
+            }
+          />
         </div>
       </div>
     )

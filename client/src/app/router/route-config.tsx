@@ -33,9 +33,7 @@ const AdminsManagementPage = lazy(
 const MonitoringAndReportsPage = lazy(
   () => import('@/features/dashboard/pages/monitoring-and-reports-page'),
 )
-const DesignSystemView = lazy(
-  () => import('@/features/design-system/views/design-system-view'),
-)
+
 const AccessLogsPage = lazy(
   () => import('@/features/access-logs/pages/access-logs-page'),
 )
@@ -102,10 +100,6 @@ export const routes: RouteObject[] = [
             element: <AdminLayout />,
             children: [
               { index: true, element: <Navigate to="monitoreo-reportes" replace /> },
-              {
-                path: 'design-system',
-                element: withSuspense(<DesignSystemView />),
-              },
               {
                 path: 'monitoreo-reportes',
                 element: withSuspense(<MonitoringAndReportsPage />),

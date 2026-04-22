@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { ArrowLeftRight, CheckCircle2, XCircle } from 'lucide-react'
 import { Badge } from '@/shared/components/ui/badge'
 import { Button } from '@/shared/components/ui/button'
-import { Dialog, DialogContent } from '@/shared/components/ui/dialog'
+import { Dialog, DialogContent, DialogTitle } from '@/shared/components/ui/dialog'
 import { Textarea } from '@/shared/components/ui/textarea'
 import {
   ModalFormBody,
@@ -78,6 +78,7 @@ export function StudentStatusChangeModal({
         animation="fade"
         className="max-w-2xl border-0 bg-transparent p-0 shadow-none"
       >
+        <DialogTitle className="sr-only">{title}</DialogTitle>
         <div className={modalFormShellClass}>
           <ModalFormHeader
             avatar={<ArrowLeftRight className="h-5 w-5 text-primary" />}

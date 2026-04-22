@@ -66,6 +66,9 @@ public class Student extends BaseAuditableEntity {
     @Column(name = "last_login_at")
     private Instant lastLoginAt;
 
+    @Column(name = "last_activity_at")
+    private Instant lastActivityAt;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "created_by_admin_id", nullable = false)
     private Admin createdByAdmin;
@@ -186,6 +189,14 @@ public class Student extends BaseAuditableEntity {
 
     public void setLastLoginAt(Instant lastLoginAt) {
         this.lastLoginAt = lastLoginAt;
+    }
+
+    public Instant getLastActivityAt() {
+        return lastActivityAt;
+    }
+
+    public void setLastActivityAt(Instant lastActivityAt) {
+        this.lastActivityAt = lastActivityAt;
     }
 
     public Admin getCreatedByAdmin() {

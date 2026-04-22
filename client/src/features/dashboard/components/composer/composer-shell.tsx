@@ -1,6 +1,5 @@
-import { useCallback, useId, useRef, useState, type PointerEvent } from 'react'
+import { useId, useState } from 'react'
 import {
-  ChevronRight,
   Download,
   FileSpreadsheet,
   FileText,
@@ -8,15 +7,14 @@ import {
   Sparkles,
 } from 'lucide-react'
 
-import Composer from '@/features/dashboard/components/composer/composer'
+import { DashboardAnalysisComposer } from '@/features/dashboard/components/composer'
 import type {
   DashboardAnalysisMetadataResponse,
   DashboardAnalysisRequest,
   DashboardAnalysisResponse,
   DashboardExportFormat,
 } from '@/features/dashboard/api/dashboard-api'
-import GlassSurface from '@/shared/components/reactbits/glass-surface'
-import { Card, CardDescription, CardTitle } from '@/shared/components/ui/card'
+import { Card } from '@/shared/components/ui/card'
 import { AnimatedGradientText } from '@/shared/components/ui/animated-gradient-text'
 import { Button } from '@/shared/components/ui/button'
 import {
@@ -25,8 +23,6 @@ import {
   PopoverTrigger,
 } from '@/shared/components/ui/popover'
 import { cn } from '@/shared/lib/utils'
-
-type Ripple = { id: number; x: number; y: number }
 
 type ComposerShellProps = {
   metadata: DashboardAnalysisMetadataResponse | null
@@ -51,33 +47,9 @@ const ComposerShell = ({
 }: ComposerShellProps) => {
   const gradId = useId().replace(/:/g, '')
   const arrowGradId = `${gradId}-arrow`
-  const shellRef = useRef<HTMLDivElement>(null)
-  const rippleSeq = useRef(0)
-  const [ripples, setRipples] = useState<Ripple[]>([])
   const [composerOpen, setComposerOpen] = useState(false)
   const [exportOpen, setExportOpen] = useState(false)
   const [composerResetSignal, setComposerResetSignal] = useState(0)
-
-  const spawnRipple = useCallback(
-    (event: PointerEvent<HTMLDivElement>) => {
-      if (event.button !== 0 || disabled || !metadata) return
-      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
-
-      const element = shellRef.current
-      if (!element) return
-
-      const rect = element.getBoundingClientRect()
-      const x = event.clientX - rect.left
-      const y = event.clientY - rect.top
-      const id = ++rippleSeq.current
-
-      setRipples((prev) => [...prev, { id, x, y }])
-      window.setTimeout(() => {
-        setRipples((prev) => prev.filter((ripple) => ripple.id !== id))
-      }, 650)
-    },
-    [disabled, metadata],
-  )
 
   const summaryLabel =
     'Ajusta el filtrado para poder visualizar y descargar las estadísticas de accesos a eLibro mostradas dinámicamente en el panel de monitoreo.'
@@ -92,31 +64,19 @@ const ComposerShell = ({
 
   return (
     <Card className='border-0 bg-transparent p-0 shadow-none'>
-      <GlassSurface
-        width='100%'
-        height={92}
-        borderRadius={10}
-        borderWidth={0.08}
-        brightness={58}
-        opacity={0.9}
-        blur={10}
-        displace={0.45}
-        backgroundOpacity={0.1}
-        saturation={1.2}
-        performanceMode='lite'
+      <Card
         className={cn(
-          'group relative w-full overflow-hidden shadow-2xl transition-[box-shadow,transform] duration-300 ease-in-out',
+          'group relative h-[70px] w-full overflow-hidden border bg-card p-0 transition-all duration-200',
           disabled || !metadata
             ? 'cursor-not-allowed opacity-70'
             : 'cursor-pointer',
-          !disabled && metadata && 'hover:shadow-xl',
+          !disabled && metadata && 'hover:shadow-lg',
         )}
       >
         <div
-          ref={shellRef}
           role='button'
           tabIndex={disabled || !metadata ? -1 : 0}
-          onPointerDown={spawnRipple}
+          data-testid='open-dashboard-composer'
           onClick={() => {
             if (!disabled && metadata) {
               setComposerOpen(true)
@@ -129,43 +89,57 @@ const ComposerShell = ({
               setComposerOpen(true)
             }
           }}
-          className='relative flex h-[92px] w-full flex-col'
+          className='relative flex h-[70px] w-full items-center px-4 py-2'
         >
-          <div className='pointer-events-none absolute inset-x-0 top-0 z-[2] h-px bg-gradient-to-r from-transparent via-primary/60 to-transparent' />
-          <div className='relative z-10 flex h-full w-full items-center px-4 py-3'>
-            <span
-              className='pointer-events-none absolute inset-0 z-[5] overflow-hidden rounded-[inherit]'
-              aria-hidden
-            >
-              {ripples.map((ripple) => (
-                <span
-                  key={ripple.id}
-                  className='pointer-events-none absolute'
-                  style={{
-                    left: ripple.x,
-                    top: ripple.y,
-                    transform: 'translate(-50%, -50%)',
-                  }}
-                >
-                  <span className='block size-14 rounded-full bg-primary/25 animate-rippling' />
-                </span>
-              ))}
-            </span>
+          <div className='flex min-w-0 flex-1 items-center gap-3 sm:gap-4'>
+            <div className='flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-muted/60'>
+              <Sparkles
+                className={cn(
+                  'h-5 w-5 overflow-visible',
+                  'motion-safe:animate-hue-slow motion-reduce:animate-none',
+                )}
+                color={`url(#${gradId})`}
+                strokeWidth={2}
+                aria-hidden
+              >
+                <defs>
+                  <linearGradient
+                    id={gradId}
+                    x1='0'
+                    y1='0'
+                    x2='24'
+                    y2='24'
+                    gradientUnits='userSpaceOnUse'
+                  >
+                    <stop offset='0%' stopColor='#ffaa40' />
+                    <stop offset='100%' stopColor='#9c40ff' />
+                  </linearGradient>
+                </defs>
+              </Sparkles>
+            </div>
 
-            <div className='flex min-w-0 flex-1 items-center gap-3 sm:gap-4'>
-              <div className='relative flex h-13 w-13 shrink-0 items-center justify-center rounded-lg border-2 border-border/20 bg-card/80 shadow-sm ring-1 ring-border/10 backdrop-blur-sm'>
-                <Sparkles
+            <div className='min-w-0 flex-1'>
+              <div className='flex items-center gap-1'>
+                <AnimatedGradientText className='truncate text-base font-bold leading-none sm:text-lg'>
+                  Compositor de análisis
+                </AnimatedGradientText>
+                <svg
+                  xmlns='http://www.w3.org/2000/svg'
+                  viewBox='0 0 24 24'
+                  fill='none'
+                  stroke={`url(#${arrowGradId})`}
+                  strokeWidth='2'
+                  strokeLinecap='round'
+                  strokeLinejoin='round'
                   className={cn(
-                    'size-8 overflow-visible',
+                    'size-4 shrink-0 transition-transform duration-300 ease-in-out group-hover:translate-x-0.5',
                     'motion-safe:animate-hue-slow motion-reduce:animate-none',
                   )}
-                  color={`url(#${gradId})`}
-                  strokeWidth={2}
-                  aria-hidden
+                  aria-hidden='true'
                 >
                   <defs>
                     <linearGradient
-                      id={gradId}
+                      id={arrowGradId}
                       x1='0'
                       y1='0'
                       x2='24'
@@ -173,57 +147,22 @@ const ComposerShell = ({
                       gradientUnits='userSpaceOnUse'
                     >
                       <stop offset='0%' stopColor='#ffaa40' />
-                      <stop offset='100%' stopColor='#9c40ff' />
+                      <stop offset='50%' stopColor='#9c40ff' />
+                      <stop offset='100%' stopColor='#ffaa40' />
                     </linearGradient>
                   </defs>
-                </Sparkles>
+                  <path d='M17 12H3' />
+                  <path d='m11 18 6-6-6-6' />
+                  <path d='M21 5v14' />
+                </svg>
               </div>
+              <p className='mt-1 line-clamp-1 text-xs text-muted-foreground'>
+                {summaryLabel}
+              </p>
+            </div>
 
-              <div className='min-w-0 flex-1 flex flex-col gap-1'>
-                <CardTitle className='flex flex-wrap items-center gap-1 text-xl font-semibold sm:text-2xl'>
-                  <AnimatedGradientText className='text-lg font-semibold sm:text-xl'>
-                    Compositor de análisis
-                  </AnimatedGradientText>
-                  <svg
-                    xmlns='http://www.w3.org/2000/svg'
-                    viewBox='0 0 24 24'
-                    fill='none'
-                    stroke={`url(#${arrowGradId})`}
-                    strokeWidth='2'
-                    strokeLinecap='round'
-                    strokeLinejoin='round'
-                    className={cn(
-                      'size-4 shrink-0 transition-transform duration-300 ease-in-out group-hover:translate-x-0.5',
-                      'motion-safe:animate-hue-slow motion-reduce:animate-none',
-                    )}
-                    aria-hidden='true'
-                  >
-                    <defs>
-                      <linearGradient
-                        id={arrowGradId}
-                        x1='0'
-                        y1='0'
-                        x2='24'
-                        y2='24'
-                        gradientUnits='userSpaceOnUse'
-                      >
-                        <stop offset='0%' stopColor='#ffaa40' />
-                        <stop offset='50%' stopColor='#9c40ff' />
-                        <stop offset='100%' stopColor='#ffaa40' />
-                      </linearGradient>
-                    </defs>
-                    <path d='M17 12H3' />
-                    <path d='m11 18 6-6-6-6' />
-                    <path d='M21 5v14' />
-                  </svg>
-                </CardTitle>
-                <CardDescription className='-mt-0.5 text-sm sm:text-sm'>
-                  {summaryLabel}
-                </CardDescription>
-              </div>
-
-              {canShowInlineActions ? (
-                <div className='ml-auto flex shrink-0 items-center gap-2 self-center'>
+            {canShowInlineActions ? (
+              <div className='ml-auto flex shrink-0 items-center gap-2 self-center'>
                   <Popover open={exportOpen} onOpenChange={setExportOpen}>
                     <PopoverTrigger asChild>
                       <Button
@@ -293,15 +232,14 @@ const ComposerShell = ({
                     <RotateCcw className='h-4 w-4' />
                     Reiniciar
                   </Button>
-                </div>
-              ) : null}
-            </div>
+              </div>
+            ) : null}
           </div>
         </div>
-      </GlassSurface>
+      </Card>
 
       {metadata ? (
-        <Composer
+        <DashboardAnalysisComposer
           open={composerOpen}
           onOpenChange={setComposerOpen}
           metadata={metadata}

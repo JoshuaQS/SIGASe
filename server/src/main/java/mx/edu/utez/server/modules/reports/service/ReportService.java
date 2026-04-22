@@ -3,9 +3,11 @@ package mx.edu.utez.server.modules.reports.service;
 import jakarta.servlet.http.HttpServletRequest;
 import java.io.OutputStream;
 import java.time.Instant;
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
+import java.text.Normalizer;
+import java.util.Locale;
 import java.util.UUID;
 import mx.edu.utez.server.modules.admins.entity.Admin;
 import mx.edu.utez.server.modules.elibro.entity.ElibroAccessLog;
@@ -25,7 +27,7 @@ public class ReportService {
     public static final String[] AUDIT_LOG_HEADERS = AuditLogReportService.AUDIT_LOG_HEADERS;
 
     private static final DateTimeFormatter FILENAME_FORMATTER =
-            DateTimeFormatter.ofPattern("yyyy-MM-dd_HHmmss");
+            DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
     private final StudentReportService studentReportService;
     private final AccessLogReportService accessLogReportService;
@@ -203,7 +205,21 @@ public class ReportService {
     }
 
     public static String generateFilename(String reportType, String extension) {
-        String timestamp = FILENAME_FORMATTER.format(LocalDateTime.now(ZoneOffset.UTC));
-        return reportType + "_" + timestamp + "." + extension;
+        String datePart = FILENAME_FORMATTER.format(LocalDate.now(ZoneOffset.UTC));
+        String safeType = normalizeToken(reportType);
+        String safeExt = normalizeToken(extension);
+        return safeType + "-" + datePart + "." + (safeExt.isBlank() ? "csv" : safeExt);
+    }
+
+    private static String normalizeToken(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return "";
+        }
+        return Normalizer.normalize(raw, Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "")
+                .toLowerCase(Locale.ROOT)
+                .replaceAll("[^a-z0-9-]+", "-")
+                .replaceAll("-{2,}", "-")
+                .replaceAll("(^-|-$)", "");
     }
 }

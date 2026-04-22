@@ -121,7 +121,9 @@ public class AdminAuthService {
 
             admin.setFailedLoginAttempts(0);
             admin.setLockedUntil(null);
-            admin.setLastLoginAt(Instant.now());
+            Instant now = Instant.now();
+            admin.setLastLoginAt(now);
+            admin.setLastActivityAt(now);
             adminRepository.save(admin);
 
             String role = mapRole(admin);

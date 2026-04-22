@@ -6,6 +6,7 @@ public record DashboardFilterSummary(
         DashboardFilterScope scope,
         DashboardFilterMode mode,
         DashboardAccessResultFilter accessResult,
+        DashboardDateFilterType dateFilterType,
         Instant dateFrom,
         Instant dateTo,
         DashboardRankingMode rankingMode,

@@ -31,6 +31,19 @@ const SESSION_PROBE_ENDPOINTS = new Set([
   '/auth/student/me',
 ]);
 
+function isSessionSensitiveEndpoint(endpoint: string) {
+  if (SESSION_PROBE_ENDPOINTS.has(endpoint)) {
+    return true;
+  }
+
+  // Notification polling must stop immediately when auth becomes invalid.
+  if (endpoint.startsWith('/notifications')) {
+    return true;
+  }
+
+  return false;
+}
+
 export class ApiClientError extends Error {
   status: number;
   errorCode?: string;
@@ -60,8 +73,17 @@ function debugApi(event: string, detail: Record<string, unknown>) {
   console.debug(`[API][${event}]`, detail);
 }
 
-function shouldInvalidateSessionOnUnauthorized(endpoint: string, errorCode?: string) {
-  if (SESSION_PROBE_ENDPOINTS.has(endpoint)) {
+function shouldInvalidateSessionOnUnauthorized(
+  endpoint: string,
+  options: { errorCode?: string; message?: string; hadToken: boolean },
+) {
+  // If request was sent without token, don't force a global logout.
+  // This avoids false "session expired" dialogs from transient/race requests.
+  if (!options.hadToken) {
+    return false;
+  }
+
+  if (options.errorCode && AUTH_INVALID_ERROR_CODES.has(options.errorCode)) {
     return true;
   }
 
@@ -70,11 +92,60 @@ function shouldInvalidateSessionOnUnauthorized(endpoint: string, errorCode?: str
     return false;
   }
 
-  if (errorCode && AUTH_INVALID_ERROR_CODES.has(errorCode)) {
+  if (isSessionSensitiveEndpoint(endpoint)) {
+    const normalizedMessage = (options.message || '').trim().toLowerCase();
+    const genericUnauthenticated =
+      options.errorCode === 'UNAUTHORIZED' &&
+      (normalizedMessage === 'no autenticado.' || normalizedMessage === 'no autenticado');
+
+    // Generic "No autenticado" on session probes is ambiguous (often header/race related).
+    // Keep session and let next request confirm whether token is actually invalid.
+    if (genericUnauthenticated) {
+      return false;
+    }
     return true;
   }
 
   return false;
+}
+
+function buildSessionExpiredReason(error: { message?: string; errorCode?: string }) {
+  const normalizedMessage = (error.message || '').trim();
+  const cleanedMessage = normalizedMessage
+    .replace(/^sesi[oó]n expirada\.?\s*/i, '')
+    .replace(/^inicia sesi[oó]n nuevamente\.?\s*/i, '')
+    .trim();
+
+  if (error.errorCode === 'SESSION_EXPIRED') {
+    if (cleanedMessage.length > 0) {
+      return `Motivo: sesión expirada (${error.errorCode}). ${cleanedMessage}`;
+    }
+    return `Motivo: sesión expirada (${error.errorCode}).`;
+  }
+
+  if (error.errorCode === 'JWT_EXPIRED' || error.errorCode === 'TOKEN_EXPIRED') {
+    if (cleanedMessage.length > 0) {
+      return `Motivo: token expirado (${error.errorCode}). ${cleanedMessage}`;
+    }
+    return `Motivo: token expirado (${error.errorCode}).`;
+  }
+
+  if (error.errorCode === 'INVALID_TOKEN') {
+    if (cleanedMessage.length > 0) {
+      return `Motivo: token inválido (${error.errorCode}). ${cleanedMessage}`;
+    }
+    return `Motivo: token inválido (${error.errorCode}).`;
+  }
+
+  if (cleanedMessage.length > 0) {
+    return `Motivo: ${cleanedMessage}`;
+  }
+
+  if (error.errorCode) {
+    return `Motivo: sesión inválida (${error.errorCode}).`;
+  }
+
+  return 'Motivo: la sesión ya no es válida.';
 }
 
 export function cancelPendingRequests() {
@@ -149,17 +220,22 @@ async function performRequest(endpoint: string, options: RequestInit = {}) {
 
     if (response.status === 401) {
       const error = await parseErrorResponse(response);
-      const shouldInvalidateSession = shouldInvalidateSessionOnUnauthorized(endpoint, error.errorCode);
+      const shouldInvalidateSession = shouldInvalidateSessionOnUnauthorized(endpoint, {
+        errorCode: error.errorCode,
+        message: error.message,
+        hadToken: Boolean(token),
+      });
 
       debugApi('401', {
         endpoint,
         method,
         errorCode: error.errorCode,
+        hadToken: Boolean(token),
         shouldInvalidateSession,
       });
 
       if (shouldInvalidateSession) {
-        authSession.triggerSessionExpired(error.message || 'Tu sesión ha expirado.');
+        authSession.triggerSessionExpired(buildSessionExpiredReason(error));
         authSession.clearSession();
       }
 

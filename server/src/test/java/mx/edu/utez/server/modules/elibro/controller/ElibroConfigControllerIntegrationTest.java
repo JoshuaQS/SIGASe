@@ -208,6 +208,62 @@ class ElibroConfigControllerIntegrationTest {
     }
 
     @Test
+    void shouldActivateNewConfigAndDeactivatePreviousActiveAutomatically() throws Exception {
+        ElibroConfig secondary = new ElibroConfig();
+        secondary.setName("Integración secundaria eLibro");
+        secondary.setAuthTokenEncrypted(aes256CryptoService.encrypt("auth-token-002"));
+        secondary.setChannelIdEncrypted(aes256CryptoService.encrypt("CH-UTEZ-002"));
+        secondary.setChannelSecretEncrypted(aes256CryptoService.encrypt("channel-secret-002"));
+        secondary.setChannelName("utez2");
+        secondary.setStatus(ElibroConfigStatus.INACTIVE);
+        secondary.setValidationStatus(ElibroValidationStatus.NOT_VALIDATED);
+        secondary.setValidationMessage("Pendiente");
+        secondary.setCreatedByAdmin(adminTi);
+        secondary.setUpdatedByAdmin(adminTi);
+        secondary = elibroConfigRepository.save(secondary);
+
+        mockMvc.perform(patch("/api/v1/elibro/config/{configId}/activate", secondary.getId())
+                        .with(auth(adminTi.getId().toString(), RoleConstants.ADMIN_TI))
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(java.util.Map.of("reason", "Cambio de proveedor"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.id").value(secondary.getId().toString()))
+                .andExpect(jsonPath("$.data.status").value("ACTIVE"));
+
+        long activeCount = elibroConfigRepository.findAll().stream()
+                .filter(item -> item.getStatus() == ElibroConfigStatus.ACTIVE)
+                .count();
+        org.junit.jupiter.api.Assertions.assertEquals(1, activeCount);
+
+        ElibroConfig previous = elibroConfigRepository.findById(config.getId()).orElseThrow();
+        org.junit.jupiter.api.Assertions.assertEquals(ElibroConfigStatus.INACTIVE, previous.getStatus());
+    }
+
+    @Test
+    void shouldValidateDraftWithoutPersistingConfigurationOrValidationRun() throws Exception {
+        long beforeRuns = validationRunRepository.count();
+
+        mockMvc.perform(post("/api/v1/elibro/config/validate-draft")
+                        .with(auth(adminTi.getId().toString(), RoleConstants.ADMIN_TI))
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(java.util.Map.of(
+                                "baseConfigId", config.getId().toString(),
+                                "authToken", "auth-token-002",
+                                "channelId", "CH-UTEZ-002",
+                                "channelSecret", "channel-secret-002",
+                                "nextUrl", "https://elibro.net/es/lc/utez/inicio"
+                        ))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.validationStatus").isNotEmpty())
+                .andExpect(jsonPath("$.data.validationMessage").isNotEmpty());
+
+        long afterRuns = validationRunRepository.count();
+        org.junit.jupiter.api.Assertions.assertEquals(beforeRuns, afterRuns);
+    }
+
+    @Test
     void shouldDeleteElibroConfig() throws Exception {
         mockMvc.perform(delete("/api/v1/elibro/config/{configId}", config.getId())
                         .with(auth(adminTi.getId().toString(), RoleConstants.ADMIN_TI)))

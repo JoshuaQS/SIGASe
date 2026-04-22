@@ -9,6 +9,7 @@ import mx.edu.utez.server.modules.careers.service.CareerService;
 import mx.edu.utez.server.modules.elibro.repository.ElibroAccessLogRepository;
 import mx.edu.utez.server.modules.logs.audit.service.AuditTrailService;
 import mx.edu.utez.server.modules.students.dto.CreateStudentRequest;
+import mx.edu.utez.server.modules.students.dto.StudentCareerDistributionResponse;
 import mx.edu.utez.server.modules.students.dto.StudentMetricsPointResponse;
 import mx.edu.utez.server.modules.students.dto.StudentMetricsResponse;
 import mx.edu.utez.server.modules.students.dto.StudentResponse;
@@ -61,7 +62,7 @@ public class StudentService {
     private static final Logger log = LoggerFactory.getLogger(StudentService.class);
 
     private static final Set<String> ALLOWED_SORT_FIELDS = Set.of(
-            "createdAt", "updatedAt", "name", "lastNamePaternal", "lastNameMaternal", "enrollmentId", "career", "status", "lastLoginAt"
+            "createdAt", "updatedAt", "name", "lastNamePaternal", "lastNameMaternal", "enrollmentId", "career", "quarter", "status", "lastLoginAt"
     );
 
     private final StudentRepository studentRepository;
@@ -195,6 +196,7 @@ public class StudentService {
             String enrollmentId,
             String lastNamePaternal,
             String lastNameMaternal,
+            String institutionalEmail,
             UUID careerId,
             String careerCode,
             Sex sex,
@@ -219,6 +221,7 @@ public class StudentService {
                 enrollmentId,
                 lastNamePaternal,
                 lastNameMaternal,
+                institutionalEmail,
                 careerId,
                 careerCode,
                 sex,
@@ -226,14 +229,19 @@ public class StudentService {
                 status
         );
         Page<Student> result = studentRepository.findAll(spec, pageable);
+        List<UUID> studentIds = result.getContent().stream().map(Student::getId).toList();
         Map<UUID, StudentAccessMetrics> accessMetrics = summarizeAccessMetrics(
-                result.getContent().stream().map(Student::getId).toList()
+                studentIds
         );
+        Map<UUID, Instant> lastEbookAccessAt = summarizeStudentLastAccess(studentIds);
         List<StudentResponse> content = result.getContent().stream()
                 .map(student -> {
                     StudentAccessMetrics metrics = accessMetrics.getOrDefault(student.getId(), StudentAccessMetrics.empty());
+                    // DataTables should reflect eLibro access only (Elseeder), not portal login.
+                    Instant resolvedLastLoginAt = lastEbookAccessAt.get(student.getId());
                     return studentMapper.toResponse(
                             student,
+                            resolvedLastLoginAt,
                             metrics.totalAccesses(),
                             metrics.successfulAccesses(),
                             metrics.failedAccesses()
@@ -284,6 +292,12 @@ public class StudentService {
             cursor = cursor.plusDays(1);
         }
 
+        List<StudentCareerDistributionResponse> careerDistribution = studentRepository
+                .summarizeCareerDistribution()
+                .stream()
+                .map(item -> new StudentCareerDistributionResponse(item.getCareerCode(), item.getTotal()))
+                .toList();
+
         return new StudentMetricsResponse(
                 totalStudents,
                 activeStudents,
@@ -292,7 +306,8 @@ public class StudentService {
                 successfulAccesses,
                 failedAccesses,
                 calculateSuccessRate(successfulAccesses, failedAccesses),
-                activityByDate
+                activityByDate,
+                careerDistribution
         );
     }
 
@@ -419,6 +434,7 @@ public class StudentService {
             String enrollmentId,
             String lastNamePaternal,
             String lastNameMaternal,
+            String institutionalEmail,
             UUID careerId,
             String careerCode,
             Sex sex,
@@ -467,6 +483,18 @@ public class StudentService {
                                 "%" + lastNameMaternal.trim().toLowerCase(Locale.ROOT) + "%"
                         )
                 );
+            }
+
+            if (StringUtils.hasText(institutionalEmail)) {
+                String raw = institutionalEmail.trim().toLowerCase(Locale.ROOT);
+                String localPart = raw.split("@", 2)[0].trim();
+                if (StringUtils.hasText(localPart)) {
+                    String pattern = "%" + localPart + "%";
+                    predicate = cb.and(
+                            predicate,
+                            cb.like(cb.lower(root.get("institutionalEmailNormalized")), pattern)
+                    );
+                }
             }
 
             if (careerId != null) {
@@ -543,12 +571,29 @@ public class StudentService {
     private StudentResponse toResponseWithAccessMetrics(Student student) {
         StudentAccessMetrics metrics = summarizeAccessMetrics(List.of(student.getId()))
                 .getOrDefault(student.getId(), StudentAccessMetrics.empty());
+        Instant lastEbookAccessAt = summarizeStudentLastAccess(List.of(student.getId())).get(student.getId());
+        // DataTables should reflect eLibro access only (Elseeder), not portal login.
+        Instant resolvedLastLoginAt = lastEbookAccessAt;
         return studentMapper.toResponse(
                 student,
+                resolvedLastLoginAt,
                 metrics.totalAccesses(),
                 metrics.successfulAccesses(),
                 metrics.failedAccesses()
         );
+    }
+
+    private Map<UUID, Instant> summarizeStudentLastAccess(List<UUID> studentIds) {
+        if (studentIds == null || studentIds.isEmpty()) {
+            return Map.of();
+        }
+
+        Map<UUID, Instant> summary = new HashMap<>();
+        for (var row : elibroAccessLogRepository.summarizeStudentLastAccess(studentIds)) {
+            if (row.getStudentId() == null || row.getLastOccurredAt() == null) continue;
+            summary.put(row.getStudentId(), row.getLastOccurredAt());
+        }
+        return summary;
     }
 
     private Map<UUID, StudentAccessMetrics> summarizeAccessMetrics(List<UUID> studentIds) {

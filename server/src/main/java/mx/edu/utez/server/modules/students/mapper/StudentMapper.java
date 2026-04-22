@@ -2,6 +2,7 @@ package mx.edu.utez.server.modules.students.mapper;
 
 import mx.edu.utez.server.modules.students.dto.StudentResponse;
 import mx.edu.utez.server.modules.students.entity.Student;
+import java.time.Instant;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -13,6 +14,7 @@ public class StudentMapper {
 
     public StudentResponse toResponse(
             Student student,
+            Instant resolvedLastLoginAt,
             long totalAccesses,
             long successfulAccesses,
             long failedAccesses
@@ -35,7 +37,7 @@ public class StudentMapper {
                         ),
                 student.getStatus(),
                 student.isMustChangePassword(),
-                student.getLastLoginAt(),
+                resolvedLastLoginAt,
                 totalAccesses,
                 successfulAccesses,
                 failedAccesses,
@@ -44,5 +46,14 @@ public class StudentMapper {
                 student.getCreatedAt(),
                 student.getUpdatedAt()
         );
+    }
+
+    public StudentResponse toResponse(
+            Student student,
+            long totalAccesses,
+            long successfulAccesses,
+            long failedAccesses
+    ) {
+        return toResponse(student, student.getLastLoginAt(), totalAccesses, successfulAccesses, failedAccesses);
     }
 }

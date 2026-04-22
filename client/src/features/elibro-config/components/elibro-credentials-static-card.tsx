@@ -8,10 +8,12 @@ import { useAppToast } from '@/shared/components/ui/app-toast-provider'
 import { AppConfirmDialog } from '@/shared/components/ui/confirmation-dialog'
 import { ApiClientError } from '@/shared/lib/http/api-client'
 import {
+  activateElibroConfig,
   createElibroConfig,
   getElibroConfigs,
   updateElibroConfig,
   deleteElibroConfig,
+  type ElibroDraftValidationRequest,
   type ElibroConfigResponse,
 } from '@/features/elibro-config/api/elibro-config-api'
 
@@ -39,7 +41,7 @@ interface ElibroCredentialsStaticCardProps {
   onConfigChanged?: () => Promise<void> | void
   onValidationStateChange?: (next: ValidationState) => void
   onSelectedConfigChange?: (configId: string | null) => void
-  onValidateConnection?: (configId: string) => Promise<void>
+  onValidateConnection?: (payload: ElibroDraftValidationRequest) => Promise<void>
   isValidationLoading?: boolean
   validationRefreshKey?: number
   endpoint: string
@@ -93,6 +95,7 @@ export function ElibroCredentialsStaticCard({
   const [isLoadingConfigs, setIsLoadingConfigs] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false)
+  const [isStatusChanging, setIsStatusChanging] = useState(false)
 
   const secondaryActionButtonClass = 'min-w-[170px] justify-center gap-2'
 
@@ -101,21 +104,12 @@ export function ElibroCredentialsStaticCard({
     [configs, selectedConfigId],
   )
   const isFormEditable = mode === 'create' || mode === 'edit-current'
-  const canValidate = Boolean(selectedConfig?.id) && !isLoadingConfigs && !isValidationLoading
   const hasConfigs = configs.length > 0
-  const requiredDraftFieldsFilled = Boolean(
-    form.name.trim()
-      && form.channelName.trim()
-      && (
-        mode === 'edit-current'
-          ? ((selectedConfig?.hasAuthToken ?? false) || form.authToken.trim())
-            && ((selectedConfig?.hasChannelId ?? false) || form.channelId.trim())
-            && ((selectedConfig?.hasChannelSecret ?? false) || form.channelSecret.trim())
-          : form.authToken.trim() && form.channelId.trim() && form.channelSecret.trim()
-      ),
-  )
-  const hasSelectedConfigToValidate = Boolean(selectedConfig?.id) && !isLoadingConfigs
-  const shouldShowValidateButton = hasSelectedConfigToValidate && (!isFormEditable || requiredDraftFieldsFilled)
+  const hasActiveConfig = configs.some((config) => config.status === 'ACTIVE')
+  const protectedDisplayState = hasActiveConfig ? 'protected' : 'pending'
+  const hasDraftCredentials = Boolean(form.authToken.trim() && form.channelId.trim() && form.channelSecret.trim())
+  const shouldShowValidateButton = isFormEditable
+  const canValidateDraft = isFormEditable && hasDraftCredentials && !isLoadingConfigs && !isValidationLoading && !isSaving
 
   const connectionBadge = useMemo(() => {
     if (!selectedConfig) {
@@ -260,6 +254,7 @@ export function ElibroCredentialsStaticCard({
       return
     }
     setMode('edit-current')
+    onSelectedConfigChange?.(null)
     syncForm(selectedConfig)
   }
 
@@ -304,7 +299,7 @@ export function ElibroCredentialsStaticCard({
           authToken,
           channelId,
           channelSecret,
-          status: 'ACTIVE',
+          status: 'INACTIVE',
         })
       } else {
         if (!selectedConfig?.id) {
@@ -316,14 +311,38 @@ export function ElibroCredentialsStaticCard({
           return
         }
 
-        saved = await updateElibroConfig(selectedConfig.id, {
-          name,
-          nextUrl,
-          channelName,
-          ...(authToken ? { authToken } : {}),
-          ...(channelId ? { channelId } : {}),
-          ...(channelSecret ? { channelSecret } : {}),
-        })
+        const patchPayload: Parameters<typeof updateElibroConfig>[1] = {}
+
+        if (name && name !== selectedConfig.name) {
+          patchPayload.name = name
+        }
+        const selectedNextUrl = selectedConfig.nextUrl?.trim() ?? ''
+        if (nextUrl !== selectedNextUrl) {
+          patchPayload.nextUrl = nextUrl
+        }
+        if (channelName && channelName !== selectedConfig.channelName) {
+          patchPayload.channelName = channelName
+        }
+        if (authToken) {
+          patchPayload.authToken = authToken
+        }
+        if (channelId) {
+          patchPayload.channelId = channelId
+        }
+        if (channelSecret) {
+          patchPayload.channelSecret = channelSecret
+        }
+
+        if (Object.keys(patchPayload).length === 0) {
+          showToast({
+            severity: 'info',
+            title: 'Sin cambios por guardar',
+            description: 'No detectamos cambios en la configuración seleccionada.',
+          })
+          return
+        }
+
+        saved = await updateElibroConfig(selectedConfig.id, patchPayload)
       }
 
       showToast({
@@ -346,16 +365,63 @@ export function ElibroCredentialsStaticCard({
     }
   }
 
+  const handleActivateConfig = async (config: ElibroConfigResponse) => {
+    if (config.status === 'ACTIVE') return
+
+    setIsStatusChanging(true)
+    try {
+      await activateElibroConfig(config.id, { reason: 'Selección manual de configuración activa' })
+      showToast({
+        severity: 'success',
+        title: 'Configuración activa actualizada',
+        description: `Ahora está activa: ${config.name}.`,
+      })
+      await loadConfigs({ preferredConfigId: config.id })
+      await onConfigChanged?.()
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'No se pudo activar la configuración.'
+      showToast({
+        severity: 'error',
+        title: 'Error al activar configuración',
+        description: message,
+      })
+    } finally {
+      setIsStatusChanging(false)
+    }
+  }
+
   const handleValidateConnection = async () => {
-    if (!selectedConfig?.id) {
+    const authToken = form.authToken.trim()
+    const channelId = form.channelId.trim()
+    const channelSecret = form.channelSecret.trim()
+    const nextUrl = form.nextUrl.trim()
+
+    if (!isFormEditable) {
       showToast({
         severity: 'warning',
-        title: 'Sin configuración seleccionada',
-        description: 'Selecciona una configuración para validar.',
+        title: 'Modo solo lectura',
+        description: 'Para probar conexión, entra a crear o editar y captura las credenciales a evaluar.',
       })
       return
     }
-    await onValidateConnection?.(selectedConfig.id)
+
+    if (!authToken || !channelId || !channelSecret) {
+      showToast({
+        severity: 'warning',
+        title: 'Credenciales incompletas',
+        description: 'Probar conexión requiere Auth Token, Channel ID y Channel Secret en el formulario actual.',
+      })
+      return
+    }
+
+    const payload: ElibroDraftValidationRequest = {
+      baseConfigId: mode === 'edit-current' ? selectedConfig?.id : undefined,
+      authToken,
+      channelId,
+      channelSecret,
+      ...(nextUrl ? { nextUrl } : {}),
+    }
+    await onValidateConnection?.(payload)
   }
 
   const handleDeleteCurrent = async () => {
@@ -389,8 +455,9 @@ export function ElibroCredentialsStaticCard({
   }, [loadConfigs, selectedConfig?.id, validationRefreshKey])
 
   useEffect(() => {
+    if (isFormEditable) return
     onSelectedConfigChange?.(selectedConfig?.id ?? null)
-  }, [onSelectedConfigChange, selectedConfig?.id])
+  }, [isFormEditable, onSelectedConfigChange, selectedConfig?.id])
 
   return (
     <div className="flex gap-0 overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
@@ -421,26 +488,42 @@ export function ElibroCredentialsStaticCard({
             configs.map((config) => {
               const isSelected = config.id === selectedConfigId
               return (
-                <button
+                <div
                   key={config.id}
-                  type="button"
-                  onClick={() => handleSelectConfig(config)}
-                  className={`w-full border-l-[3px] px-4 py-2.5 text-left ${
-                    isSelected
-                      ? 'border-primary bg-primary/5'
-                      : 'border-transparent hover:bg-accent/40'
-                  }`}
+                  className={`w-full border-l-[3px] px-3 py-2.5 ${isSelected ? 'border-primary bg-primary/5' : 'border-transparent hover:bg-accent/40'}`}
                 >
-                  <p className="text-sm font-medium text-foreground truncate">{config.name}</p>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-[10px] text-muted-foreground">{formatDateTime(config.updatedAt)}</span>
+                  <button
+                    type="button"
+                    onClick={() => handleSelectConfig(config)}
+                    className="w-full text-left"
+                  >
+                    <p className="text-sm font-medium text-foreground truncate">{config.name}</p>
+                    <div className="mt-1 flex items-center gap-2">
+                      <span className="text-[10px] text-muted-foreground">{formatDateTime(config.updatedAt)}</span>
+                      {config.status === 'ACTIVE' ? (
+                        <span className="rounded-full bg-success/10 px-1.5 py-0.5 text-[9px] font-medium text-success">Activa</span>
+                      ) : (
+                        <span className="rounded-full bg-muted px-1.5 py-0.5 text-[9px] font-medium text-muted-foreground">Inactiva</span>
+                      )}
+                    </div>
+                  </button>
+                  <div className="mt-2">
                     {config.status === 'ACTIVE' ? (
-                      <span className="text-[9px] font-medium text-success bg-success/10 px-1.5 py-0.5 rounded-full">Activa</span>
+                      <span className="text-[10px] font-medium text-success">En uso para integraciones</span>
                     ) : (
-                      <span className="text-[9px] font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">Inactiva</span>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-7 px-2 text-[11px]"
+                        onClick={() => void handleActivateConfig(config)}
+                        disabled={isStatusChanging || isSaving || isLoadingConfigs || isValidationLoading}
+                      >
+                        Activar esta
+                      </Button>
                     )}
                   </div>
-                </button>
+                </div>
               )
             })
           )}
@@ -455,7 +538,14 @@ export function ElibroCredentialsStaticCard({
               <span className={`flex items-center gap-1 text-xs ${connectionBadge.className}`}>
                 <ConnectionIcon className="h-3 w-3" /> {connectionBadge.text}
               </span>
-              <span className="text-xs text-muted-foreground">{selectedConfig?.status === 'ACTIVE' ? 'Activa' : 'Sin activar'}</span>
+              <span className={`text-xs ${selectedConfig?.status === 'ACTIVE' ? 'text-success' : 'text-muted-foreground'}`}>
+                {selectedConfig?.status === 'ACTIVE' ? 'Configuración activa (en uso)' : 'Configuración inactiva'}
+              </span>
+              {isFormEditable ? (
+                <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+                  {mode === 'create' ? 'Creando nueva configuración' : 'Editando configuración'}
+                </span>
+              ) : null}
             </div>
           </div>
           {!hasConfigs ? (
@@ -564,6 +654,7 @@ export function ElibroCredentialsStaticCard({
               onChange={(value) => updateField('channelId', value)}
               placeholder={mode === 'edit-current' ? 'Dejar vacío para conservar el valor actual' : 'Channel ID'}
               readOnly={!isFormEditable}
+              state={protectedDisplayState}
               label={!isFormEditable && selectedConfig?.channelIdMasked ? 'Channel ID configurado y protegido' : undefined}
             />
           </div>
@@ -575,6 +666,7 @@ export function ElibroCredentialsStaticCard({
               onChange={(value) => updateField('channelSecret', value)}
               placeholder={mode === 'edit-current' ? 'Dejar vacío para conservar el valor actual' : 'Channel Secret'}
               readOnly={!isFormEditable}
+              state={protectedDisplayState}
               label={!isFormEditable && selectedConfig?.hasChannelSecret ? 'Channel Secret configurado y protegido' : undefined}
             />
           </div>
@@ -586,6 +678,7 @@ export function ElibroCredentialsStaticCard({
               onChange={(value) => updateField('authToken', value)}
               placeholder={mode === 'edit-current' ? 'Dejar vacío para conservar el valor actual' : 'Token SSO'}
               readOnly={!isFormEditable}
+              state={protectedDisplayState}
               label={!isFormEditable && selectedConfig?.hasAuthToken ? 'Token configurado y protegido' : undefined}
             />
           </div>
@@ -604,9 +697,16 @@ export function ElibroCredentialsStaticCard({
         </div>
 
         <div className="mt-4 flex items-center justify-between gap-4 border-t border-border/50 pt-3">
-          <span className="text-[10px] text-muted-foreground">
-            Actualizado: {formatDateTime(selectedConfig?.updatedAt)} por {selectedConfig?.updatedByName ?? 'N/D'}
-          </span>
+          <div className="space-y-1">
+            <span className="block text-[10px] text-muted-foreground">
+              Actualizado: {formatDateTime(selectedConfig?.updatedAt)} por {selectedConfig?.updatedByName ?? 'N/D'}
+            </span>
+            {isFormEditable && !hasDraftCredentials ? (
+              <span className="block text-[10px] text-amber-600">
+                Para probar conexión captura Auth Token, Channel ID y Channel Secret en este formulario.
+              </span>
+            ) : null}
+          </div>
           <div className="flex items-center gap-2">
             {shouldShowValidateButton ? (
               <Button
@@ -614,7 +714,7 @@ export function ElibroCredentialsStaticCard({
                 size="md"
                 className={secondaryActionButtonClass}
                 onClick={() => void handleValidateConnection()}
-                disabled={!canValidate}
+                disabled={!canValidateDraft}
                 isLoading={isValidationLoading}
               >
                 {!isValidationLoading ? <Cable className="w-3.5 h-3.5" /> : null}

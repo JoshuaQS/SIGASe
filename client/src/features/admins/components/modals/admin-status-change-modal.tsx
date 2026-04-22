@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { ArrowLeftRight } from 'lucide-react'
 import { Badge } from '@/shared/components/ui/badge'
 import { Button } from '@/shared/components/ui/button'
-import { Dialog, DialogContent } from '@/shared/components/ui/dialog'
+import { Dialog, DialogContent, DialogTitle } from '@/shared/components/ui/dialog'
 import {
   ModalFormBody,
   ModalFormFooter,
@@ -63,6 +63,7 @@ export function AdminStatusChangeModal({
         animation="fade"
         className="max-w-2xl border-0 bg-transparent p-0 shadow-none"
       >
+        <DialogTitle className="sr-only">{title}</DialogTitle>
         <div className={modalFormShellClass}>
           <ModalFormHeader
             avatar={<ArrowLeftRight className="h-5 w-5 text-primary" />}

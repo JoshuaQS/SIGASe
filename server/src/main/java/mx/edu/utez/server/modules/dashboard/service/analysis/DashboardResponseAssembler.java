@@ -33,6 +33,7 @@ public class DashboardResponseAssembler {
                 context.scope(),
                 context.mode(),
                 context.accessResult(),
+                context.dateFilterType(),
                 context.effectiveDateFrom(),
                 context.effectiveDateTo(),
                 context.rankingMode(),

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Bell, CheckCheck, Clock3, Settings, Trash2 } from 'lucide-react';
 
-import { useAuthUser } from '@/features/auth/hooks/use-auth-user';
+import { useAuthSession, useAuthUser } from '@/features/auth/hooks/use-auth-user';
 import {
   ROLE_ADMIN_BIBLIOTECA,
   ROLE_ADMIN_TI,
@@ -74,9 +74,11 @@ function NotificationLoadingRow() {
 }
 
 export function NotificationsPopover() {
+  const { isSessionValidated } = useAuthSession();
   const authUser = useAuthUser();
   const { showToast } = useAppToast();
   const isAdmin = isAdminRole(authUser?.role);
+  const canFetchNotifications = isAdmin && isSessionValidated;
   const [open, setOpen] = useState(false);
   const [preferencesOpen, setPreferencesOpen] = useState(false);
   const [notifications, setNotifications] = useState<NotificationResponseDto[]>([]);
@@ -196,25 +198,25 @@ export function NotificationsPopover() {
   }, [open, showToast]);
 
   useEffect(() => {
-    if (!isAdmin) {
+    if (!canFetchNotifications) {
       return;
     }
 
     void refreshUnreadCount();
     void pollNotifications();
-  }, [isAdmin, pollNotifications, refreshUnreadCount]);
+  }, [canFetchNotifications, pollNotifications, refreshUnreadCount]);
 
   useEffect(() => {
-    if (!open || !isAdmin) {
+    if (!open || !canFetchNotifications) {
       return;
     }
 
     setExpanded(false);
     void refreshNotifications();
-  }, [open, isAdmin, refreshNotifications]);
+  }, [open, canFetchNotifications, refreshNotifications]);
 
   useEffect(() => {
-    if (!isAdmin) {
+    if (!canFetchNotifications) {
       return;
     }
 
@@ -223,7 +225,7 @@ export function NotificationsPopover() {
     }, 30000);
 
     return () => window.clearInterval(intervalId);
-  }, [isAdmin, pollNotifications]);
+  }, [canFetchNotifications, pollNotifications]);
 
   const updateAfterRead = (notificationId: number) => {
     setNotifications((prev) =>

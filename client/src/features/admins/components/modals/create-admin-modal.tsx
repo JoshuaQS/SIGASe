@@ -6,7 +6,7 @@ import { ShieldPlus, UserCog } from 'lucide-react'
 
 import { Badge } from '@/shared/components/ui/badge'
 import { Button } from '@/shared/components/ui/button'
-import { Dialog, DialogContent } from '@/shared/components/ui/dialog'
+import { Dialog, DialogContent, DialogTitle } from '@/shared/components/ui/dialog'
 import { Input } from '@/shared/components/ui/input'
 import {
   ModalFormBody,
@@ -112,6 +112,9 @@ export function CreateAdminModal({
         animation="fade"
         className="max-w-3xl border-0 bg-transparent p-0 shadow-none"
       >
+        <DialogTitle className="sr-only">
+          {isEdit ? 'Editar administrador' : 'Nuevo administrador'}
+        </DialogTitle>
         <form className={modalFormShellClass} onSubmit={onFormSubmit}>
           <ModalFormHeader
             avatar={isEdit ? <UserCog className="h-5 w-5 text-primary" /> : <ShieldPlus className="h-5 w-5 text-primary" />}

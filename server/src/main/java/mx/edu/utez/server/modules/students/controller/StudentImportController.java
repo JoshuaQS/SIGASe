@@ -53,16 +53,16 @@ public class StudentImportController {
     @GetMapping("/import-template")
     @Operation(summary = "Descargar plantilla de importación de estudiantes en CSV o XLSX")
     public void downloadTemplate(
-            @RequestParam(defaultValue = "csv") String format,
+            @RequestParam(defaultValue = "xlsx") String format,
             HttpServletResponse response
     ) throws Exception {
         String safeFormat = format.trim().toLowerCase();
         if ("xlsx".equals(safeFormat)) {
             response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-            response.setHeader("Content-Disposition", "attachment; filename=\"students-import-template.xlsx\"");
+            response.setHeader("Content-Disposition", "attachment; filename=\"plantilla-importacion-estudiantes.xlsx\"");
         } else {
             response.setContentType("text/csv; charset=UTF-8");
-            response.setHeader("Content-Disposition", "attachment; filename=\"students-import-template.csv\"");
+            response.setHeader("Content-Disposition", "attachment; filename=\"plantilla-importacion-estudiantes.csv\"");
         }
         studentImportService.writeTemplate(response.getOutputStream(), safeFormat);
     }

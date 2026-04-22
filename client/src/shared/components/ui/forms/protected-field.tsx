@@ -6,6 +6,7 @@ import { getFormControlSize } from '@/shared/components/ui/forms/form-control-st
 import type { FormControlSize } from '@/shared/components/ui/forms/form-control-contract'
 
 type ProtectedFieldMode = 'display' | 'edit'
+type ProtectedFieldState = 'protected' | 'pending'
 
 interface ProtectedFieldProps {
   mode: ProtectedFieldMode
@@ -17,6 +18,7 @@ interface ProtectedFieldProps {
   className?: string
   label?: string
   size?: FormControlSize
+  state?: ProtectedFieldState
 }
 
 /**
@@ -35,11 +37,13 @@ export function ProtectedField({
   readOnly = false,
   className,
   size = 'md',
+  state = 'protected',
 }: ProtectedFieldProps) {
   const [showPassword, setShowPassword] = useState(false)
   const cfg = getFormControlSize(size)
 
   if (mode === 'display') {
+    const isPending = state === 'pending'
     return (
       <div
         className={cn(
@@ -47,37 +51,53 @@ export function ProtectedField({
           cfg.control,
           cfg.text,
           cfg.px,
-          'border-2 border-border border-green-400 rounded-md bg-green-50 dark:bg-green-400/10',
+          'rounded-md border-2',
+          isPending
+            ? 'border-amber-400 bg-amber-50 dark:border-amber-400/70 dark:bg-amber-400/10'
+            : 'border-green-400 bg-green-50 dark:bg-green-400/10',
           className,
         )}
       >
         <span
           className={cn(
             'absolute -top-2 left-2 px-1.5 py-0 leading-none',
-            'bg-green-100 dark:bg-slate-950 border border-green-400 rounded-sm',
-            '!text-[10px] text-green-600 dark:text-green-400 font-bold uppercase tracking-wider',
+            'rounded-sm border !text-[10px] font-bold uppercase tracking-wider',
+            isPending
+              ? 'border-amber-300 bg-amber-100 text-amber-700 dark:border-amber-500/60 dark:bg-slate-950 dark:text-amber-300'
+              : 'border-green-400 bg-green-100 text-green-600 dark:bg-slate-950 dark:text-green-400',
             cfg.fieldLabel
           )}
         >
-          {'Protegido'}
+          {isPending ? 'Pendiente' : 'Protegido'}
         </span>
 
         <div className={cn('flex items-center', cfg.addonGap)}>
           <div className={cn('flex items-center flex-1', cfg.addonGap)}>
-            <div className={cn('flex items-center', cfg.addonGap)}>
-              {Array.from({ length: 16 }).map((_, i) => (
-                <div
-                  key={i}
-                  className={cn(
-                    'rounded-full bg-gray-900 dark:bg-gray-300',
-                    size === 'xs' ? 'w-1 h-1' : size === 'sm' ? 'w-1.5 h-1.5' : 'w-2 h-2'
-                  )}
-                />
+            {isPending ? (
+              <span className="text-xs font-semibold text-amber-700 dark:text-amber-300">Pendiente</span>
+            ) : (
+              <div className={cn('flex items-center', cfg.addonGap)}>
+                {Array.from({ length: 16 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className={cn(
+                      'rounded-full bg-gray-900 dark:bg-gray-300',
+                      size === 'xs' ? 'w-1 h-1' : size === 'sm' ? 'w-1.5 h-1.5' : 'w-2 h-2'
+                    )}
+                  />
 
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
-          <ShieldCheck className={cn(cfg.icon, 'text-green-400/95 flex-shrink-0', cfg.adornmentInsetEnd)} />
+          <ShieldCheck
+            className={cn(
+              cfg.icon,
+              'flex-shrink-0',
+              isPending ? 'text-amber-500/95 dark:text-amber-300' : 'text-green-400/95',
+              cfg.adornmentInsetEnd
+            )}
+          />
         </div>
       </div>
     )

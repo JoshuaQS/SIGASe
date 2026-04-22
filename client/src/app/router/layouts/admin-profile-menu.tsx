@@ -22,7 +22,7 @@ export function AdminProfileMenu() {
   const navigate = useNavigate();
   const { showToast } = useAppToast();
   const [profileOpen, setProfileOpen] = useState(false);
-  const [profileInitialTab, setProfileInitialTab] = useState<'profile' | 'alerts'>('profile');
+  const [profileInitialTab, setProfileInitialTab] = useState<'profile' | 'alertas'>('profile');
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
   const [logoutLoading, setLogoutLoading] = useState(false);
 
@@ -131,7 +131,7 @@ export function AdminProfileMenu() {
           <DropdownMenuItem
             className="cursor-pointer"
             onSelect={() => {
-              setProfileInitialTab('alerts');
+              setProfileInitialTab('alertas');
               setProfileOpen(true);
             }}
           >

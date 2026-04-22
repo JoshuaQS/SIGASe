@@ -63,6 +63,9 @@ public class Admin extends BaseAuditableEntity {
     @Column(name = "last_login_at")
     private Instant lastLoginAt;
 
+    @Column(name = "last_activity_at")
+    private Instant lastActivityAt;
+
     @Column(name = "token_version", nullable = false)
     private int tokenVersion = 0;
 
@@ -176,6 +179,14 @@ public class Admin extends BaseAuditableEntity {
 
     public void setLastLoginAt(Instant lastLoginAt) {
         this.lastLoginAt = lastLoginAt;
+    }
+
+    public Instant getLastActivityAt() {
+        return lastActivityAt;
+    }
+
+    public void setLastActivityAt(Instant lastActivityAt) {
+        this.lastActivityAt = lastActivityAt;
     }
 
     public int getTokenVersion() {

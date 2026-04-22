@@ -30,10 +30,14 @@ public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
 
         if (authException instanceof SessionExpiredAuthenticationException) {
             errorCode = ErrorCode.SESSION_EXPIRED;
-            message = "Sesión expirada. Inicia sesión nuevamente.";
+            message = authException.getMessage() != null && !authException.getMessage().isBlank()
+                    ? authException.getMessage()
+                    : "Sesión expirada. Inicia sesión nuevamente.";
         } else if (authException instanceof InvalidJwtAuthenticationException) {
             errorCode = ErrorCode.INVALID_TOKEN;
-            message = "Token inválido.";
+            message = authException.getMessage() != null && !authException.getMessage().isBlank()
+                    ? authException.getMessage()
+                    : "Token inválido.";
         } else {
             errorCode = ErrorCode.UNAUTHORIZED;
             message = "No autenticado.";

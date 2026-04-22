@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import mx.edu.utez.server.modules.careers.entity.Career;
+import mx.edu.utez.server.modules.dashboard.dto.DashboardAccessResultFilter;
 import mx.edu.utez.server.modules.dashboard.dto.DashboardCareerComparisonItemResponse;
 import mx.edu.utez.server.modules.dashboard.dto.DashboardCareerResultBreakdownItemResponse;
 import mx.edu.utez.server.modules.dashboard.dto.DashboardCareerRankingTableItemResponse;
@@ -123,7 +124,7 @@ public class DashboardAnalyticsRepositoryImpl implements DashboardAnalyticsRepos
         CriteriaQuery<Tuple> query = cb.createTupleQuery();
         Root<ElibroAccessLog> root = query.from(ElibroAccessLog.class);
         Join<ElibroAccessLog, Student> studentJoin = root.join("student", JoinType.INNER);
-        Join<Student, Career> careerJoin = studentJoin.join("career", JoinType.INNER);
+        Expression<String> fullNameExpr = buildStudentFullName(cb, studentJoin);
 
         Expression<Long> successfulExpr = cb.sum(cb.<Long>selectCase()
                 .when(cb.equal(root.get("result"), ElibroAccessResult.SUCCESS), 1L)
@@ -135,19 +136,23 @@ public class DashboardAnalyticsRepositoryImpl implements DashboardAnalyticsRepos
 
         query.multiselect(
                 studentJoin.get("id").alias("studentId"),
-                studentJoin.get("name").alias("name"),
+                fullNameExpr.alias("name"),
                 studentJoin.get("enrollmentId").alias("enrollmentId"),
-                careerJoin.get("code").alias("careerCode"),
-                careerJoin.get("name").alias("careerName"),
                 successfulExpr.alias("successfulAccesses"),
                 failedExpr.alias("failedAccesses"),
                 totalExpr.alias("totalAccesses")
         );
         query.where(accessPredicates(cb, root, studentJoin, filter).toArray(Predicate[]::new));
-        query.groupBy(studentJoin.get("id"), studentJoin.get("name"), studentJoin.get("enrollmentId"), careerJoin.get("code"), careerJoin.get("name"));
+        query.groupBy(
+                studentJoin.get("id"),
+                studentJoin.get("name"),
+                studentJoin.get("lastNamePaternal"),
+                studentJoin.get("lastNameMaternal"),
+                studentJoin.get("enrollmentId")
+        );
         query.orderBy(
                 sortDirection == DashboardSortDirection.ASC ? cb.asc(totalExpr) : cb.desc(totalExpr),
-                cb.asc(studentJoin.get("name"))
+                cb.asc(fullNameExpr)
         );
 
         TypedQuery<Tuple> typedQuery = entityManager.createQuery(query);
@@ -157,8 +162,6 @@ public class DashboardAnalyticsRepositoryImpl implements DashboardAnalyticsRepos
                         row.get("studentId", UUID.class),
                         row.get("name", String.class),
                         row.get("enrollmentId", String.class),
-                        row.get("careerCode", String.class),
-                        row.get("careerName", String.class),
                         row.get("successfulAccesses", Long.class),
                         row.get("failedAccesses", Long.class),
                         row.get("totalAccesses", Long.class)
@@ -215,7 +218,7 @@ public class DashboardAnalyticsRepositoryImpl implements DashboardAnalyticsRepos
         CriteriaQuery<Tuple> query = cb.createTupleQuery();
         Root<ElibroAccessLog> root = query.from(ElibroAccessLog.class);
         Join<ElibroAccessLog, Student> studentJoin = root.join("student", JoinType.INNER);
-        Join<Student, Career> careerJoin = studentJoin.join("career", JoinType.INNER);
+        Expression<String> fullNameExpr = buildStudentFullName(cb, studentJoin);
 
         Expression<Long> totalExpr = cb.count(root);
         Expression<Long> successfulExpr = cb.sum(cb.<Long>selectCase()
@@ -224,29 +227,23 @@ public class DashboardAnalyticsRepositoryImpl implements DashboardAnalyticsRepos
         Expression<Long> failedExpr = cb.sum(cb.<Long>selectCase()
                 .when(root.get("result").in(failedResults()), 1L)
                 .otherwise(0L));
-        Expression<Instant> lastAccessExpr = cb.greatest(root.get("occurredAt").as(Instant.class));
-        Expression<Instant> lastSuccessfulExpr = cb.greatest(cb.<Instant>selectCase()
-                .when(cb.equal(root.get("result"), ElibroAccessResult.SUCCESS), root.get("occurredAt").as(Instant.class))
-                .otherwise((Instant) null));
-        Expression<Instant> lastFailedExpr = cb.greatest(cb.<Instant>selectCase()
-                .when(root.get("result").in(failedResults()), root.get("occurredAt").as(Instant.class))
-                .otherwise((Instant) null));
 
         query.multiselect(
                 studentJoin.get("id").alias("studentId"),
-                studentJoin.get("name").alias("name"),
+                fullNameExpr.alias("name"),
                 studentJoin.get("enrollmentId").alias("enrollmentId"),
-                careerJoin.get("code").alias("careerCode"),
-                careerJoin.get("name").alias("careerName"),
                 totalExpr.alias("totalAccesses"),
                 successfulExpr.alias("successfulAccesses"),
-                failedExpr.alias("failedAccesses"),
-                lastAccessExpr.alias("lastAccessAt"),
-                lastSuccessfulExpr.alias("lastSuccessfulAccessAt"),
-                lastFailedExpr.alias("lastFailedAccessAt")
+                failedExpr.alias("failedAccesses")
         );
         query.where(accessPredicates(cb, root, studentJoin, filter).toArray(Predicate[]::new));
-        query.groupBy(studentJoin.get("id"), studentJoin.get("name"), studentJoin.get("enrollmentId"), careerJoin.get("code"), careerJoin.get("name"));
+        query.groupBy(
+                studentJoin.get("id"),
+                studentJoin.get("name"),
+                studentJoin.get("lastNamePaternal"),
+                studentJoin.get("lastNameMaternal"),
+                studentJoin.get("enrollmentId")
+        );
 
         Tuple row = entityManager.createQuery(query).getSingleResult();
         long total = row.get("totalAccesses", Long.class);
@@ -258,15 +255,45 @@ public class DashboardAnalyticsRepositoryImpl implements DashboardAnalyticsRepos
                 row.get("studentId", UUID.class),
                 row.get("name", String.class),
                 row.get("enrollmentId", String.class),
-                row.get("careerCode", String.class),
-                row.get("careerName", String.class),
                 total,
                 successful,
                 failed,
-                successRate,
-                row.get("lastAccessAt", Instant.class),
-                row.get("lastSuccessfulAccessAt", Instant.class),
-                row.get("lastFailedAccessAt", Instant.class)
+                successRate
+        );
+    }
+
+    @Override
+    public AccessRange fetchStudentAccessRange(UUID studentId, DashboardAccessResultFilter accessResult) {
+        if (studentId == null) {
+            return new AccessRange(null, null);
+        }
+        DashboardAccessResultFilter effectiveAccessResult = accessResult == null
+                ? DashboardAccessResultFilter.ALL
+                : accessResult;
+
+        CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+        CriteriaQuery<Tuple> query = cb.createTupleQuery();
+        Root<ElibroAccessLog> root = query.from(ElibroAccessLog.class);
+        Join<ElibroAccessLog, Student> studentJoin = root.join("student", JoinType.INNER);
+
+        List<Predicate> predicates = new ArrayList<>();
+        predicates.add(cb.equal(studentJoin.get("id"), studentId));
+        if (effectiveAccessResult == DashboardAccessResultFilter.SUCCESS) {
+            predicates.add(cb.equal(root.get("result"), ElibroAccessResult.SUCCESS));
+        } else if (effectiveAccessResult == DashboardAccessResultFilter.FAILED) {
+            predicates.add(root.get("result").in(failedResults()));
+        }
+
+        query.multiselect(
+                cb.least(root.get("occurredAt").as(Instant.class)).alias("firstAccessAt"),
+                cb.greatest(root.get("occurredAt").as(Instant.class)).alias("lastAccessAt")
+        );
+        query.where(predicates.toArray(Predicate[]::new));
+
+        Tuple row = entityManager.createQuery(query).getSingleResult();
+        return new AccessRange(
+                row.get("firstAccessAt", Instant.class),
+                row.get("lastAccessAt", Instant.class)
         );
     }
 
@@ -385,6 +412,7 @@ public class DashboardAnalyticsRepositoryImpl implements DashboardAnalyticsRepos
         CriteriaQuery<Tuple> query = cb.createTupleQuery();
         Root<ElibroAccessLog> root = query.from(ElibroAccessLog.class);
         Join<ElibroAccessLog, Student> studentJoin = root.join("student", JoinType.INNER);
+        Expression<String> fullNameExpr = buildStudentFullName(cb, studentJoin);
 
         Expression<Long> totalExpr = cb.count(root);
         Expression<Long> successfulExpr = cb.sum(cb.<Long>selectCase()
@@ -393,34 +421,23 @@ public class DashboardAnalyticsRepositoryImpl implements DashboardAnalyticsRepos
         Expression<Long> failedExpr = cb.sum(cb.<Long>selectCase()
                 .when(root.get("result").in(failedResults()), 1L)
                 .otherwise(0L));
-        Expression<Instant> lastAccessExpr = cb.greatest(root.get("occurredAt").as(Instant.class));
-        Expression<Instant> lastSuccessfulExpr = cb.greatest(cb.<Instant>selectCase()
-                .when(cb.equal(root.get("result"), ElibroAccessResult.SUCCESS), root.get("occurredAt").as(Instant.class))
-                .otherwise((Instant) null));
-        Expression<Instant> lastFailedExpr = cb.greatest(cb.<Instant>selectCase()
-                .when(root.get("result").in(failedResults()), root.get("occurredAt").as(Instant.class))
-                .otherwise((Instant) null));
-
         query.multiselect(
                 studentJoin.get("id").alias("studentId"),
-                studentJoin.get("name").alias("studentName"),
+                fullNameExpr.alias("studentName"),
                 studentJoin.get("enrollmentId").alias("enrollmentId"),
-                studentJoin.get("status").alias("studentStatus"),
                 successfulExpr.alias("successfulAccesses"),
                 failedExpr.alias("failedAccesses"),
-                totalExpr.alias("totalAccesses"),
-                lastAccessExpr.alias("lastAccessAt"),
-                lastSuccessfulExpr.alias("lastSuccessfulAccessAt"),
-                lastFailedExpr.alias("lastFailedAccessAt")
+                totalExpr.alias("totalAccesses")
         );
         query.where(accessPredicates(cb, root, studentJoin, filter).toArray(Predicate[]::new));
         query.groupBy(
                 studentJoin.get("id"),
                 studentJoin.get("name"),
-                studentJoin.get("enrollmentId"),
-                studentJoin.get("status")
+                studentJoin.get("lastNamePaternal"),
+                studentJoin.get("lastNameMaternal"),
+                studentJoin.get("enrollmentId")
         );
-        query.orderBy(resolveCareerStudentTableOrder(cb, studentJoin, sortBy, sortDirection, totalExpr, successfulExpr, failedExpr, lastAccessExpr));
+        query.orderBy(resolveCareerStudentTableOrder(cb, studentJoin, fullNameExpr, sortBy, sortDirection, totalExpr, successfulExpr, failedExpr));
 
         TypedQuery<Tuple> typedQuery = entityManager.createQuery(query);
         typedQuery.setFirstResult(page * size);
@@ -436,14 +453,10 @@ public class DashboardAnalyticsRepositoryImpl implements DashboardAnalyticsRepos
                             row.get("studentId", UUID.class),
                             row.get("studentName", String.class),
                             row.get("enrollmentId", String.class),
-                            row.get("studentStatus", StudentStatus.class).name(),
                             successful,
                             failed,
                             total,
-                            successRate,
-                            row.get("lastAccessAt", Instant.class),
-                            row.get("lastSuccessfulAccessAt", Instant.class),
-                            row.get("lastFailedAccessAt", Instant.class)
+                            successRate
                     );
                 })
                 .toList();
@@ -522,17 +535,12 @@ public class DashboardAnalyticsRepositoryImpl implements DashboardAnalyticsRepos
                 case FAILED -> failed;
                 case TOTAL -> total;
             };
-            double successRate = total == 0L ? 0.0 : (successful * 100.0) / total;
             items.add(new DashboardCareerRankingTableItemResponse(
                     position++,
                     row.get("careerId", UUID.class),
                     row.get("careerCode", String.class),
                     row.get("careerName", String.class),
-                    rankingValue,
-                    successful,
-                    failed,
-                    total,
-                    successRate
+                    rankingValue
             ));
         }
         return items;
@@ -643,8 +651,6 @@ public class DashboardAnalyticsRepositoryImpl implements DashboardAnalyticsRepos
                     row.studentId(),
                     row.name(),
                     row.enrollmentId(),
-                    row.careerCode(),
-                    row.careerName(),
                     row.successfulAccesses(),
                     row.failedAccesses(),
                     row.totalAccesses(),
@@ -854,27 +860,35 @@ public class DashboardAnalyticsRepositoryImpl implements DashboardAnalyticsRepos
     private List<jakarta.persistence.criteria.Order> resolveCareerStudentTableOrder(
             CriteriaBuilder cb,
             Join<ElibroAccessLog, Student> studentJoin,
+            Expression<String> fullNameExpr,
             String sortBy,
             DashboardSortDirection sortDirection,
             Expression<Long> totalExpr,
             Expression<Long> successfulExpr,
-            Expression<Long> failedExpr,
-            Expression<Instant> lastAccessExpr
+            Expression<Long> failedExpr
     ) {
         String effectiveSortBy = sortBy == null ? "totalAccesses" : sortBy;
         jakarta.persistence.criteria.Order primaryOrder = switch (effectiveSortBy) {
             case "successfulAccesses" -> sortDirection == DashboardSortDirection.ASC ? cb.asc(successfulExpr) : cb.desc(successfulExpr);
             case "failedAccesses" -> sortDirection == DashboardSortDirection.ASC ? cb.asc(failedExpr) : cb.desc(failedExpr);
             case "studentName" -> sortDirection == DashboardSortDirection.ASC
-                    ? cb.asc(studentJoin.get("name"))
-                    : cb.desc(studentJoin.get("name"));
+                    ? cb.asc(fullNameExpr)
+                    : cb.desc(fullNameExpr);
             case "enrollmentId" -> sortDirection == DashboardSortDirection.ASC
                     ? cb.asc(studentJoin.get("enrollmentId"))
                     : cb.desc(studentJoin.get("enrollmentId"));
-            case "lastAccessAt" -> sortDirection == DashboardSortDirection.ASC ? cb.asc(lastAccessExpr) : cb.desc(lastAccessExpr);
             default -> sortDirection == DashboardSortDirection.ASC ? cb.asc(totalExpr) : cb.desc(totalExpr);
         };
-        return List.of(primaryOrder, cb.asc(studentJoin.get("name")));
+        return List.of(primaryOrder, cb.asc(fullNameExpr));
+    }
+
+    private Expression<String> buildStudentFullName(CriteriaBuilder cb, Join<ElibroAccessLog, Student> studentJoin) {
+        Expression<String> base = cb.concat(studentJoin.get("name"), " ");
+        Expression<String> withPaternal = cb.concat(base, studentJoin.get("lastNamePaternal"));
+        Expression<String> maternalSuffix = cb.<String>selectCase()
+                .when(cb.isNull(studentJoin.get("lastNameMaternal")), "")
+                .otherwise(cb.concat(" ", studentJoin.get("lastNameMaternal")));
+        return cb.concat(withPaternal, maternalSuffix);
     }
 
     private List<jakarta.persistence.criteria.Order> resolveStudentActivityTableOrder(

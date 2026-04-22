@@ -11,6 +11,7 @@ export type DashboardLayoutType =
   | 'OVERVIEW'
   | 'STUDENT_DETAIL'
   | 'STUDENT_RANKING'
+  | 'STUDENT_RANKING_SPLIT'
   | 'CAREER_DETAIL'
   | 'CAREER_RANKING'
   | 'CAREER_RANKING_SPLIT'
@@ -180,6 +181,7 @@ export interface DashboardFilterSummary {
   scope: DashboardFilterScope
   mode: DashboardFilterMode
   accessResult: DashboardAccessResultFilter
+  dateFilterType: DashboardDateFilterType
   dateFrom: string | null
   dateTo: string | null
   rankingMode: DashboardRankingMode
@@ -255,8 +257,6 @@ export interface DashboardTopStudentItem {
   studentId: string
   name: string
   enrollmentId: string
-  careerCode: string
-  careerName: string
   successfulAccesses: number
   failedAccesses: number
   totalAccesses: number
@@ -290,15 +290,10 @@ export interface DashboardStudentAccessSummaryWidgetData {
   studentId: string
   studentName: string
   enrollmentId: string
-  careerCode: string
-  careerName: string
   totalAccesses: number
   successfulAccesses: number
   failedAccesses: number
   successRate: number
-  lastAccessAt: string | null
-  lastSuccessfulAccessAt: string | null
-  lastFailedAccessAt: string | null
 }
 
 export interface DashboardStudentActivityItem {
@@ -354,14 +349,10 @@ export interface DashboardCareerStudentTableItem {
   studentId: string
   studentName: string
   enrollmentId: string
-  studentStatus: string
   successfulAccesses: number
   failedAccesses: number
   totalAccesses: number
   successRate: number
-  lastAccessAt: string | null
-  lastSuccessfulAccessAt: string | null
-  lastFailedAccessAt: string | null
 }
 
 export interface DashboardCareerStudentTableWidgetData {
@@ -389,8 +380,6 @@ export interface DashboardStudentRankingTableItem {
   studentId: string
   studentName: string
   enrollmentId: string
-  careerCode: string
-  careerName: string
   successfulAccesses: number
   failedAccesses: number
   totalAccesses: number
@@ -428,10 +417,6 @@ export interface DashboardCareerRankingTableItem {
   careerCode: string
   careerName: string
   rankingValue: number
-  successfulAccesses: number
-  failedAccesses: number
-  totalAccesses: number
-  successRate: number
 }
 
 export interface DashboardCareerRankingTableWidgetData {

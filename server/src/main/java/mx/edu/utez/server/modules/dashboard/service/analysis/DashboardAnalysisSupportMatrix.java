@@ -30,7 +30,8 @@ public class DashboardAnalysisSupportMatrix {
     }
 
     public boolean rankingAllowed(DashboardFilterScope scope, DashboardFilterMode mode) {
-        return isStudentRanking(scope, mode, DashboardRankingMode.TOP)
+        return isStudentRanking(scope, mode, DashboardRankingMode.TOP, DashboardAccessResultFilter.SUCCESS)
+                || isStudentRankingSplit(scope, mode, DashboardRankingMode.TOP, DashboardAccessResultFilter.ALL)
                 || isCareerRankingFamily(scope, mode, DashboardRankingMode.TOP);
     }
 
@@ -115,6 +116,7 @@ public class DashboardAnalysisSupportMatrix {
                 DashboardLayoutType.STUDENT_DETAIL,
                 DashboardLayoutType.CAREER_DETAIL,
                 DashboardLayoutType.STUDENT_RANKING,
+                DashboardLayoutType.STUDENT_RANKING_SPLIT,
                 DashboardLayoutType.CAREER_RANKING,
                 DashboardLayoutType.CAREER_RANKING_SPLIT
         );
@@ -153,11 +155,31 @@ public class DashboardAnalysisSupportMatrix {
     public boolean isStudentRanking(
             DashboardFilterScope scope,
             DashboardFilterMode mode,
-            DashboardRankingMode rankingMode
+            DashboardRankingMode rankingMode,
+            DashboardAccessResultFilter accessResult
     ) {
+        DashboardAccessResultFilter effectiveAccessResult = accessResult == null
+                ? DashboardAccessResultFilter.ALL
+                : accessResult;
         return scope == DashboardFilterScope.STUDENTS
                 && mode == DashboardFilterMode.ALL
-                && rankingMode == DashboardRankingMode.TOP;
+                && rankingMode == DashboardRankingMode.TOP
+                && effectiveAccessResult != DashboardAccessResultFilter.ALL;
+    }
+
+    public boolean isStudentRankingSplit(
+            DashboardFilterScope scope,
+            DashboardFilterMode mode,
+            DashboardRankingMode rankingMode,
+            DashboardAccessResultFilter accessResult
+    ) {
+        DashboardAccessResultFilter effectiveAccessResult = accessResult == null
+                ? DashboardAccessResultFilter.ALL
+                : accessResult;
+        return scope == DashboardFilterScope.STUDENTS
+                && mode == DashboardFilterMode.ALL
+                && rankingMode == DashboardRankingMode.TOP
+                && effectiveAccessResult == DashboardAccessResultFilter.ALL;
     }
 
     public boolean isCareerRankingFamily(

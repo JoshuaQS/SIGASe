@@ -10,6 +10,7 @@ import {
   type DashboardExportFormat,
   type DashboardTableWidgetControlRequest,
 } from '@/features/dashboard/api/dashboard-api'
+import { ApiClientError } from '@/shared/lib/http/api-client'
 import { useAppToast } from '@/shared/components/ui/app-toast-provider'
 
 type LocalTableControlKey = 'studentActivityTable' | 'careerStudentTable'
@@ -101,7 +102,12 @@ export function useDashboardAnalysisSession() {
       }
       return true
     } catch (error) {
-      const description = error instanceof Error ? error.message : 'No se pudo resolver el analysis.'
+      const description =
+        error instanceof ApiClientError
+          ? `${error.message} (HTTP ${error.status} · ${error.method} ${error.endpoint})`
+          : error instanceof Error
+            ? error.message
+            : 'No se pudo resolver el analysis.'
       showToast({
         severity: 'error',
         title: 'Error cargando analysis',
@@ -124,7 +130,12 @@ export function useDashboardAnalysisSession() {
       setBaseRequest(initialRequest)
       await runAnalysis(initialRequest)
     } catch (error) {
-      const description = error instanceof Error ? error.message : 'No se pudo cargar metadata.'
+      const description =
+        error instanceof ApiClientError
+          ? `${error.message} (HTTP ${error.status} · ${error.method} ${error.endpoint})`
+          : error instanceof Error
+            ? error.message
+            : 'No se pudo cargar metadata.'
       setMetadataError(description)
       showToast({
         severity: 'error',
@@ -152,7 +163,12 @@ export function useDashboardAnalysisSession() {
       .catch((error) => {
         if (cancelled) return
 
-        const description = error instanceof Error ? error.message : 'No se pudo cargar metadata.'
+        const description =
+          error instanceof ApiClientError
+            ? `${error.message} (HTTP ${error.status} · ${error.method} ${error.endpoint})`
+            : error instanceof Error
+              ? error.message
+              : 'No se pudo cargar metadata.'
         setMetadataError(description)
         showToast({
           severity: 'error',

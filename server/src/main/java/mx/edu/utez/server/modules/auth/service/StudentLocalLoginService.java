@@ -1,6 +1,7 @@
 package mx.edu.utez.server.modules.auth.service;
 
 import jakarta.servlet.http.HttpServletRequest;
+import java.time.Instant;
 import java.util.UUID;
 import mx.edu.utez.server.modules.auth.dto.StudentAuthResponse;
 import mx.edu.utez.server.modules.auth.dto.StudentLoginRequest;
@@ -116,6 +117,9 @@ public class StudentLocalLoginService {
 
         student.setFailedLoginAttempts(0);
         student.setLockedUntil(null);
+        Instant now = Instant.now();
+        student.setLastLoginAt(now);
+        student.setLastActivityAt(now);
         studentRepository.save(student);
 
         studentAccessLoggingFacade.log(

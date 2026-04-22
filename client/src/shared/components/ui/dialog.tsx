@@ -6,7 +6,7 @@ import { cn } from "@/shared/lib/utils"
 
 type DialogContentProps = React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean
-  size?: "1" | "2" | "3" | "4"
+  size?: "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" | "10"
   animation?: "default" | "fade"
 }
 
@@ -49,6 +49,12 @@ const DialogContent = React.forwardRef<
         size === "2" && "max-w-lg",
         size === "3" && "max-w-2xl",
         size === "4" && "max-w-4xl",
+        size === "5" && "max-w-5xl",
+        size === "6" && "max-w-6xl",
+        size === "7" && "max-w-7xl",
+        size === "8" && "max-w-8xl",
+        size === "9" && "max-w-9xl",
+        size === "10" && "max-w-10xl",
         className
       )}
       {...props}

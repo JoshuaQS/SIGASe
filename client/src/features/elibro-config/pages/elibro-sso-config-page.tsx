@@ -12,8 +12,9 @@ import { ElibroServiceStatusPanel } from '@/features/elibro-config/components/el
 import {
   getElibroConfigs,
   getElibroActiveOverview,
-  validateElibroConfig,
+  validateElibroConfigDraft,
   validateElibroConfigControlled,
+  type ElibroDraftValidationRequest,
   type ElibroConfigOverviewResponse,
 } from '@/features/elibro-config/api/elibro-config-api'
 import { ApiClientError } from '@/shared/lib/http/api-client'
@@ -155,10 +156,10 @@ const ElibroSsoConfig = () => {
   }, [loadOverview])
 
   const handleValidateConnection = useCallback(
-    async (configId: string) => {
+    async (payload: ElibroDraftValidationRequest) => {
       setValidation({ status: 'loading', message: 'Probando conexión con eLibro…' })
       try {
-        const result = await validateElibroConfig(configId)
+        const result = await validateElibroConfigDraft(payload)
         const isError = result.validationStatus === 'INVALID'
         const message = result.validationMessage || (isError ? 'La validación falló.' : 'Validación completada correctamente.')
         setValidation({

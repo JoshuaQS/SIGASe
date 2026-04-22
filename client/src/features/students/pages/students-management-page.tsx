@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import {
   GraduationCap,
@@ -10,6 +10,7 @@ import {
   Activity,
   FileText,
   FileSpreadsheet,
+  RefreshCw,
 } from 'lucide-react'
 import {
   BarChart,
@@ -30,7 +31,7 @@ import StatCard from '@/shared/components/data-display/status-card'
 import { SectionHeader } from '@/shared/components/ui/section-header'
 import { useAppToast } from '@/shared/components/ui/app-toast-provider'
 import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/popover'
-import { CsvImportModal } from '@/features/students/components/import/csv-import-modal'
+import { SplitHeroImportModal } from '@/features/students/components/import/SplitHeroImportModal'
 import type { CsvImportParsed } from '@/features/students/components/import/csv-import'
 import { StudentsTable, type StudentManagementRow } from '@/features/students/components/StudentsTable'
 import { StudentCreateModal as CreateStudentModal } from '@/features/students/components/modals/create-student-modal'
@@ -44,6 +45,7 @@ import { listActiveCareers, type CareerDto } from '@/features/careers/api/career
 import { useTableFilterState } from '@/shared/hooks/use-table-filter-state'
 import {
   deactivateStudent,
+  downloadStudentsImportTemplate,
   deleteStudent,
   exportStudentsReport,
   getStudentMetrics,
@@ -64,6 +66,8 @@ const tooltipStyle = {
 }
 
 const PAGE_SIZE = 8
+const DEFAULT_SORT_BY: 'updatedAt' = 'updatedAt'
+const DEFAULT_SORT_DIR: 'desc' = 'desc'
 
 function buildFullName(student: StudentResponseDto) {
   return [
@@ -104,7 +108,10 @@ const StudentsManagement = () => {
   const [searchInput, setSearchInput] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [page, setPage] = useState(0)
+  const [pageJumpValue, setPageJumpValue] = useState('1')
   const [pageSize, setPageSize] = useState(PAGE_SIZE)
+  const [sortBy, setSortBy] = useState<'updatedAt' | 'name' | 'enrollmentId' | 'career' | 'quarter' | 'status' | 'lastLoginAt'>(DEFAULT_SORT_BY)
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>(DEFAULT_SORT_DIR)
   const {
     filtersOpen,
     setFiltersOpen,
@@ -130,6 +137,7 @@ const StudentsManagement = () => {
     failedAccesses: 0,
     successRate: 0,
     activityByDate: [],
+    careerDistribution: [],
   })
 
   const [importLoading, setImportLoading] = useState(false)
@@ -144,6 +152,7 @@ const StudentsManagement = () => {
   const [deleteTarget, setDeleteTarget] = useState<StudentResponseDto | null>(null)
   const [deleteLoading, setDeleteLoading] = useState(false)
   const [resendLoading, setResendLoading] = useState(false)
+  const pendingSortScrollTopRef = useRef<number | null>(null)
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -152,11 +161,45 @@ const StudentsManagement = () => {
     return () => window.clearTimeout(timeoutId)
   }, [searchInput])
 
-  const activeFilters = useMemo(() => ({
-    query: debouncedSearch.trim() || undefined,
-    careerCode: appliedFilters.careerCode === 'todas' ? undefined : appliedFilters.careerCode,
-    status: appliedFilters.status === 'todos' ? undefined : appliedFilters.status,
-  }), [appliedFilters.careerCode, appliedFilters.status, debouncedSearch])
+  const activeFilters = useMemo(() => {
+    const emailLocalPart = (appliedFilters.institutionalEmail ?? '').split('@')[0]?.trim() ?? ''
+    const quarterValue =
+      appliedFilters.quarter === 'todos'
+        ? undefined
+        : Number(String(appliedFilters.quarter))
+
+    return {
+      query: debouncedSearch.trim() || undefined,
+      institutionalEmail: emailLocalPart || undefined,
+      careerCode: appliedFilters.careerCode === 'todas' ? undefined : appliedFilters.careerCode,
+      sex: appliedFilters.sex === 'todos' ? undefined : appliedFilters.sex,
+      quarter: Number.isFinite(quarterValue) ? quarterValue : undefined,
+      status: appliedFilters.status === 'todos' ? undefined : appliedFilters.status,
+    }
+  }, [appliedFilters, debouncedSearch])
+
+  const hasActiveTableState = useMemo(() => {
+    const hasSearch = searchInput.trim().length > 0
+    const hasSort = sortBy !== DEFAULT_SORT_BY || sortDir !== DEFAULT_SORT_DIR
+
+    const d = DEFAULT_STUDENTS_TABLE_FILTERS
+    const hasFilters =
+      (appliedFilters.institutionalEmail ?? '') !== d.institutionalEmail
+      || appliedFilters.careerCode !== d.careerCode
+      || appliedFilters.sex !== d.sex
+      || appliedFilters.quarter !== d.quarter
+      || appliedFilters.status !== d.status
+
+    return hasSearch || hasSort || hasFilters
+  }, [appliedFilters, searchInput, sortBy, sortDir])
+
+  const handleResetTableState = useCallback(() => {
+    setSearchInput('')
+    clearFilters()
+    setSortBy(DEFAULT_SORT_BY)
+    setSortDir(DEFAULT_SORT_DIR)
+    setPage(0)
+  }, [clearFilters])
 
   const fetchCareers = useCallback(async () => {
     try {
@@ -191,12 +234,15 @@ const StudentsManagement = () => {
     try {
       const response = await listStudents({
         query: activeFilters.query,
+        institutionalEmail: activeFilters.institutionalEmail,
         careerCode: activeFilters.careerCode,
+        sex: activeFilters.sex,
+        quarter: activeFilters.quarter,
         status: activeFilters.status,
         page,
         size: pageSize,
-        sortBy: 'updatedAt',
-        sortDir: 'desc',
+        sortBy,
+        sortDir,
       })
 
       setStudents(response.content)
@@ -212,7 +258,7 @@ const StudentsManagement = () => {
     } finally {
       setLoadingStudents(false)
     }
-  }, [activeFilters.query, activeFilters.careerCode, activeFilters.status, page, pageSize, showToast])
+  }, [activeFilters, page, pageSize, showToast, sortBy, sortDir])
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -237,7 +283,30 @@ const StudentsManagement = () => {
 
   useEffect(() => {
     setPage(0)
-  }, [appliedFilters.careerCode, appliedFilters.status])
+  }, [appliedFilters, debouncedSearch])
+
+  useEffect(() => {
+    setPageJumpValue(String(page + 1))
+  }, [page])
+
+  useEffect(() => {
+    if (loadingStudents) return
+    if (pendingSortScrollTopRef.current === null) return
+
+    const mainScrollable = document.querySelector('main.overflow-y-auto') as HTMLElement | null
+    const fallback = document.scrollingElement as HTMLElement | null
+    const target = mainScrollable ?? fallback
+    if (!target) {
+      pendingSortScrollTopRef.current = null
+      return
+    }
+
+    const top = pendingSortScrollTopRef.current
+    window.requestAnimationFrame(() => {
+      target.scrollTop = top
+      pendingSortScrollTopRef.current = null
+    })
+  }, [loadingStudents])
 
   const rows = useMemo<StudentManagementRow[]>(() => (
     students.map((student) => ({
@@ -256,6 +325,40 @@ const StudentsManagement = () => {
   ), [students])
 
   const actividadData = useMemo(() => formatActivityData(metrics), [metrics])
+  const careerDistributionPieData = useMemo(() => {
+    const colors = ['#6366f1', '#8b5cf6', '#06b6d4', '#22c55e', '#f97316', '#ef4444', '#0ea5e9']
+
+    const totalsByCode = new Map(metrics.careerDistribution.map((item) => [item.careerCode, item.total]))
+    const all = careers.map((career, i) => ({
+      code: career.code,
+      fullName: career.name,
+      value: totalsByCode.get(career.code) ?? 0,
+      color: colors[i % colors.length],
+    }))
+
+    // Keep stable ordering by catalog code to avoid visual jumps.
+    return all.sort((a, b) => a.code.localeCompare(b.code))
+  }, [careers, metrics.careerDistribution])
+
+  const handlePageJumpSubmit = useCallback((submittedValue?: string) => {
+    const raw = (submittedValue ?? pageJumpValue).trim()
+    if (!raw) {
+      setPageJumpValue(String(page + 1))
+      return
+    }
+
+    const parsed = Number(raw)
+    if (!Number.isFinite(parsed)) {
+      setPageJumpValue(String(page + 1))
+      return
+    }
+
+    const boundedPage = Math.max(1, Math.min(Math.floor(parsed), Math.max(totalPages, 1)))
+    setPageJumpValue(String(boundedPage))
+    if (boundedPage - 1 !== page) {
+      setPage(boundedPage - 1)
+    }
+  }, [page, pageJumpValue, totalPages])
 
   const handleStudentCreated = useCallback(async () => {
     await fetchMetrics()
@@ -307,12 +410,40 @@ const StudentsManagement = () => {
     }
   }, [handleImportFile])
 
+  const handleDownloadTemplate = useCallback(async () => {
+    try {
+      const { blob, filename } = await downloadStudentsImportTemplate('xlsx')
+      const downloadUrl = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = downloadUrl
+      link.download = filename
+      link.click()
+      window.setTimeout(() => window.URL.revokeObjectURL(downloadUrl), 2000)
+
+      showToast({
+        severity: 'success',
+        title: 'Plantilla descargada',
+        description: `Se descargó ${filename}.`,
+      })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'No se pudo descargar la plantilla oficial.'
+      showToast({
+        severity: 'error',
+        title: 'Descarga fallida',
+        description: message,
+      })
+    }
+  }, [showToast])
+
   const handleExport = async (format: StudentExportFormat) => {
     setExportLoading(true)
     try {
       const { blob, filename } = await exportStudentsReport({
         query: activeFilters.query,
+        institutionalEmail: activeFilters.institutionalEmail,
         careerCode: activeFilters.careerCode,
+        sex: activeFilters.sex,
+        quarter: activeFilters.quarter,
         status: activeFilters.status,
         format,
       })
@@ -452,17 +583,20 @@ const StudentsManagement = () => {
             .finally(() => setDeleteLoading(false))
         }}
       />
-      <CsvImportModal
+      <SplitHeroImportModal
         open={importModalOpen}
         onOpenChange={setImportModalOpen}
         importing={importLoading}
         onImport={handleImportFromModal}
+        onDownloadTemplate={() => {
+          void handleDownloadTemplate()
+        }}
       />
 
       <SectionHeader
         icon={GraduationCap}
         title="Gestión de Estudiantes"
-        subtitle={`${metrics.totalStudents} estudiantes registrados · ${metrics.activeStudents} con acceso activo`}
+        subtitle="Administra el registro, el estado y el acceso de estudiantes en un solo lugar."
         actions={(
           <div className="flex flex-wrap items-center justify-end gap-2">
             <Button
@@ -535,7 +669,7 @@ const StudentsManagement = () => {
           delay={0}
         />
         <StatCard
-          title="Activos con eLibro"
+          title="Estudiantes habilitados"
           value={metrics.activeStudents}
           subtitle="Acceso habilitado"
           icon={GraduationCap}
@@ -543,19 +677,19 @@ const StudentsManagement = () => {
           delay={0.05}
         />
         <StatCard
-          title="Accesos eLibro"
+          title="Estudiantes deshabilitados"
+          value={metrics.disabledStudents}
+          subtitle="Sin acceso"
+          icon={UserX}
+          variant="destructive"
+          delay={0.1}
+        />
+        <StatCard
+          title="Accesos a eLibro"
           value={metrics.totalAccesses}
           subtitle="Periodo actual"
           icon={Activity}
           variant="primary"
-          delay={0.1}
-        />
-        <StatCard
-          title="Inactivos"
-          value={metrics.disabledStudents}
-          subtitle="Sin acceso"
-          icon={UserX}
-          variant="warning"
           delay={0.15}
         />
       </div>
@@ -583,38 +717,45 @@ const StudentsManagement = () => {
             <CardTitle className="text-sm font-semibold">Distribución por Carrera</CardTitle>
           </CardHeader>
           <CardContent>
-            {(() => {
-              const colors = ['#6366f1', '#8b5cf6', '#06b6d4', '#22c55e', '#f97316', '#ef4444', '#0ea5e9']
-
-              const counts = new Map<string, number>()
-              for (const student of rows) {
-                const code = student.career?.code ?? 'N/D'
-                counts.set(code, (counts.get(code) ?? 0) + 1)
-              }
-
-              const sorted = Array.from(counts.entries())
-                .sort((a, b) => b[1] - a[1])
-
-              const top = sorted.slice(0, 6)
-              const restTotal = sorted.slice(6).reduce((acc, [, value]) => acc + value, 0)
-
-              const pieData = [
-                ...top.map(([code, value], i) => ({ name: code, value, color: colors[i % colors.length] })),
-                ...(restTotal > 0 ? [{ name: 'Otros', value: restTotal, color: '#94a3b8' }] : []),
-              ].filter((item) => item.value > 0)
-
-              return (
-                <ResponsiveContainer width="100%" height={200}>
-                  <PieChart>
-                    <Pie data={pieData} cx="50%" cy="45%" innerRadius={48} outerRadius={72} paddingAngle={3} dataKey="value">
-                      {pieData.map((e, i) => <Cell key={i} fill={e.color} />)}
-                    </Pie>
-                    <Tooltip contentStyle={tooltipStyle} />
-                    <Legend iconType="circle" iconSize={7} wrapperStyle={{ fontSize: '11px' }} />
-                  </PieChart>
-                </ResponsiveContainer>
-              )
-            })()}
+            <ResponsiveContainer width="100%" height={200}>
+              <PieChart>
+                <Pie
+                  data={careerDistributionPieData}
+                  cx="50%"
+                  cy="45%"
+                  innerRadius={48}
+                  outerRadius={72}
+                  paddingAngle={3}
+                  dataKey="value"
+                  nameKey="code"
+                >
+                  {careerDistributionPieData.map((entry, index) => (
+                    <Cell key={`${entry.code}-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  contentStyle={tooltipStyle}
+                  formatter={(_value, _name, props) => {
+                    const payload = (props as { payload?: { fullName?: string } }).payload
+                    return [props.value, payload?.fullName ?? String(props.name ?? '')]
+                  }}
+                  labelFormatter={(_label, payload) => {
+                    const item = payload?.[0]?.payload as { fullName?: string; code?: string } | undefined
+                    return item?.fullName ?? item?.code ?? ''
+                  }}
+                />
+                <Legend
+                  iconType="circle"
+                  iconSize={7}
+                  wrapperStyle={{ fontSize: '11px' }}
+                  formatter={(value, _entry) => {
+                    const code = String(value)
+                    const item = careerDistributionPieData.find((it) => it.code === code)
+                    return item?.code ?? code
+                  }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
           </CardContent>
         </Card>
       </div>
@@ -623,9 +764,25 @@ const StudentsManagement = () => {
         rows={rows}
         loading={loadingStudents}
         searchInput={searchInput}
-        onSearchInputChange={(value) => {
-          setSearchInput(value)
-          setPage(0)
+        onSearchInputChange={setSearchInput}
+        sortBy={sortBy}
+        sortDir={sortDir}
+        onSortChange={(nextSortBy) => {
+          const mainScrollable = document.querySelector('main.overflow-y-auto') as HTMLElement | null
+          const fallback = document.scrollingElement as HTMLElement | null
+          const target = mainScrollable ?? fallback
+          if (target) {
+            pendingSortScrollTopRef.current = target.scrollTop
+          }
+
+          // Cycle: default -> desc -> asc (only one active column).
+          if (sortBy !== nextSortBy) {
+            setSortBy(nextSortBy)
+            setSortDir('desc')
+            return
+          }
+
+          setSortDir((current) => (current === 'desc' ? 'asc' : 'desc'))
         }}
         onView={(student) => {
           setViewStudent(student)
@@ -647,24 +804,45 @@ const StudentsManagement = () => {
           setPageSize(nextSize)
           setPage(0)
         }}
+        pageJumpValue={pageJumpValue}
+        onPageJumpChange={setPageJumpValue}
+        onPageJumpSubmit={handlePageJumpSubmit}
         toolbarRight={(
-          <StudentsFiltersPopover
-            careers={careers}
-            draftFilters={draftFilters}
-            appliedFilters={appliedFilters}
-            open={filtersOpen}
-            onOpenChange={setFiltersOpen}
-            onDraftChange={setDraftFilters}
-            onApply={() => {
-              applyFilters()
-              setPage(0)
-            }}
-            onReset={resetDraftFilters}
-            onClear={() => {
-              clearFilters()
-              setPage(0)
-            }}
-          />
+          <div className="flex items-center gap-2">
+            <StudentsFiltersPopover
+              careers={careers}
+              draftFilters={draftFilters}
+              appliedFilters={appliedFilters}
+              open={filtersOpen}
+              onOpenChange={setFiltersOpen}
+              onDraftChange={setDraftFilters}
+              onApply={() => {
+                applyFilters()
+                setPage(0)
+              }}
+              onReset={resetDraftFilters}
+              onClear={() => {
+                clearFilters()
+                setPage(0)
+              }}
+            />
+
+            {hasActiveTableState ? (
+              <Button
+                type="button"
+                variant="destructive"
+                size="sm"
+                title="Reestablecer"
+                onClick={handleResetTableState}
+                className="group overflow-hidden"
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+                <span className="max-w-0 overflow-hidden opacity-0 transition-all duration-250 delay-200 group-hover:max-w-32 group-hover:opacity-100 group-hover:delay-250">
+                  reestablecer
+                </span>
+              </Button>
+            ) : null}
+          </div>
         )}
       />
 

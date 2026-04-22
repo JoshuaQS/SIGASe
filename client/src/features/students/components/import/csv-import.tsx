@@ -1,5 +1,14 @@
 import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "react";
-import { CloudUpload, Download, FileSpreadsheet, FileText, X, AlertCircle, Upload } from "lucide-react";
+import {
+  AlertCircle,
+  CloudUpload,
+  Download,
+  FileSpreadsheet,
+  FileText,
+  Upload,
+  X,
+} from "lucide-react";
+
 import { cn } from "@/shared/lib/utils";
 
 type DropState = "idle" | "over" | "preview" | "error";
@@ -15,13 +24,8 @@ export type CsvImportParsed = {
 type CsvImportProps = {
   maxSizeBytes?: number;
   previewRowCount?: number;
-  /** Solo para demos del design system */
-  showSimulateError?: boolean;
-  /** Ancho completo del contenedor (p. ej. modal); si no, max-w-lg */
   fullWidth?: boolean;
-  /** Si true, no muestra los botones inferiores (control externo). */
   hideActions?: boolean;
-  /** Entrega el handler para abrir el picker desde afuera. */
   onOpenPickerReady?: (openPicker: () => void) => void;
   onParsed?: (data: CsvImportParsed) => void;
   onImport?: (data: CsvImportParsed) => void | Promise<void>;
@@ -112,7 +116,6 @@ export function CsvImport({
     if (inputRef.current) inputRef.current.click();
   }, []);
 
-  // Expose openPicker to parent layouts when needed.
   useEffect(() => {
     onOpenPickerReady?.(openPicker);
   }, [onOpenPickerReady, openPicker]);
@@ -180,7 +183,7 @@ export function CsvImport({
       };
       reader.readAsText(file, "UTF-8");
     },
-    [maxSizeBytes, onParsed]
+    [maxSizeBytes, onParsed],
   );
 
   const onInputChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -204,7 +207,6 @@ export function CsvImport({
 
   const handleImport = useCallback(async () => {
     if (!parsed || !onImport || isImporting) return;
-
     setIsImportingLocal(true);
     try {
       await onImport(parsed);
@@ -227,10 +229,10 @@ export function CsvImport({
         className={cn(
           shellW(fullWidth),
           "overflow-hidden rounded-2xl border border-border bg-card shadow-sm",
-          fullWidth ? "flex h-full min-h-0 flex-col" : ""
+          fullWidth ? "flex h-full min-h-0 flex-col" : "",
         )}
       >
-        <div className="flex items-center gap-4 p-5 border-b border-border">
+        <div className="flex items-center gap-4 border-b border-border p-5">
           <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-success/15">
             {isXlsx ? (
               <FileSpreadsheet className="h-5 w-5 text-success" />
@@ -238,16 +240,17 @@ export function CsvImport({
               <FileText className="h-5 w-5 text-success" />
             )}
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-foreground truncate">{parsed.fileName}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              {formatBytes(parsed.fileSize)} · {isXlsx ? "XLSX" : `${parsed.rows.length} filas de datos · UTF-8`}
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold text-foreground">{parsed.fileName}</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              {formatBytes(parsed.fileSize)} ·{" "}
+              {isXlsx ? "XLSX" : `${parsed.rows.length} filas de datos · UTF-8`}
             </p>
           </div>
           <button
             type="button"
             onClick={reset}
-            className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+            className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             aria-label="Quitar archivo"
           >
             <X className="h-4 w-4" />
@@ -255,8 +258,13 @@ export function CsvImport({
         </div>
         <div className={cn("p-5", fullWidth ? "flex min-h-0 flex-1 flex-col" : "")}>
           {isXlsx ? (
-            <div className={cn("rounded-lg border border-border bg-muted/20 p-4", fullWidth ? "flex min-h-0 flex-1 flex-col justify-center" : "")}>
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+            <div
+              className={cn(
+                "rounded-lg border border-border bg-muted/20 p-4",
+                fullWidth ? "flex min-h-0 flex-1 flex-col justify-center" : "",
+              )}
+            >
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Archivo listo para importación
               </p>
               <p className="mt-2 text-sm text-foreground">
@@ -268,15 +276,23 @@ export function CsvImport({
             </div>
           ) : (
             <>
-              <p className="text-xs font-semibold text-muted-foreground mb-3 uppercase tracking-wider">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Vista previa — primeras {Math.min(previewRowCount, parsed.rows.length)} filas
               </p>
-              <div className={cn("overflow-x-auto rounded-lg border border-border text-xs", fullWidth ? "min-h-0 flex-1" : "")}>
+              <div
+                className={cn(
+                  "overflow-x-auto rounded-lg border border-border text-xs",
+                  fullWidth ? "min-h-0 flex-1" : "",
+                )}
+              >
                 <table className="w-full min-w-72">
                   <thead className="bg-secondary">
                     <tr>
                       {displayCols.map((h, idx) => (
-                        <th key={idx} className="text-left px-3 py-2 font-semibold text-muted-foreground whitespace-nowrap">
+                        <th
+                          key={idx}
+                          className="whitespace-nowrap px-3 py-2 text-left font-semibold text-muted-foreground"
+                        >
                           {h || `Columna ${idx + 1}`}
                         </th>
                       ))}
@@ -286,7 +302,11 @@ export function CsvImport({
                     {preview.map((row, i) => (
                       <tr key={i} className="border-t border-border">
                         {row.map((cell, j) => (
-                          <td key={j} className="max-w-56 truncate px-3 py-2 text-foreground" title={cell}>
+                          <td
+                            key={j}
+                            className="max-w-56 truncate px-3 py-2 text-foreground"
+                            title={cell}
+                          >
                             {cell}
                           </td>
                         ))}
@@ -295,41 +315,45 @@ export function CsvImport({
                   </tbody>
                 </table>
               </div>
-              {rest > 0 && <p className="text-xs text-muted-foreground mt-2">+ {rest} registros adicionales</p>}
+              {rest > 0 ? (
+                <p className="mt-2 text-xs text-muted-foreground">+ {rest} registros adicionales</p>
+              ) : null}
             </>
           )}
         </div>
-        <div className="flex items-center justify-between px-5 py-4 bg-secondary/50 border-t border-border gap-3 flex-wrap">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border bg-secondary/50 px-5 py-4">
           <button
             type="button"
             onClick={reset}
-            className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors underline"
+            className="text-xs font-medium text-muted-foreground underline transition-colors hover:text-foreground"
           >
             Cambiar archivo
           </button>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={reset}
-              className="h-8 px-3 text-xs font-medium border border-border rounded-md hover:bg-muted bg-card text-foreground transition-colors"
-            >
-              Cancelar
-            </button>
-            <button
-              type="button"
-              disabled={isImporting}
-              onClick={() => {
-                void handleImport();
-              }}
-              className="h-8 px-4 text-xs font-medium bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
-            >
-              {isImporting
-                ? "Importando..."
-                : isXlsx
-                  ? "Importar archivo →"
-                  : `Importar ${parsed.rows.length} registros →`}
-            </button>
-          </div>
+          {!hideActions ? (
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={reset}
+                className="h-8 rounded-md border border-border bg-card px-3 text-xs font-medium text-foreground transition-colors hover:bg-muted"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={isImporting}
+                onClick={() => {
+                  void handleImport();
+                }}
+                className="h-8 rounded-md bg-primary px-4 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+              >
+                {isImporting
+                  ? "Importando..."
+                  : isXlsx
+                    ? "Importar archivo →"
+                    : `Importar ${parsed.rows.length} registros →`}
+              </button>
+            </div>
+          ) : null}
         </div>
       </div>
     );
@@ -341,20 +365,20 @@ export function CsvImport({
         className={cn(
           shellW(fullWidth),
           "rounded-2xl border border-destructive/40 bg-destructive/5 p-8 text-center",
-          fullWidth ? "flex h-full min-h-0 flex-col items-center justify-center" : ""
+          fullWidth ? "flex h-full min-h-0 flex-col items-center justify-center" : "",
         )}
       >
-        <div className="h-12 w-12 rounded-full bg-destructive/10 flex items-center justify-center mx-auto mb-4">
+        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
           <AlertCircle className="h-6 w-6 text-destructive" />
         </div>
-        <p className="text-sm font-semibold text-foreground mb-1">No se pudo importar el CSV</p>
-        <p className="text-xs text-muted-foreground mb-2">Se aceptan archivos .csv y .xlsx.</p>
-        <p className="text-xs text-muted-foreground mb-5">{errorMessage}</p>
+        <p className="mb-1 text-sm font-semibold text-foreground">No se pudo preparar el archivo</p>
+        <p className="mb-2 text-xs text-muted-foreground">Se aceptan archivos .csv y .xlsx.</p>
+        <p className="mb-5 text-xs text-muted-foreground">{errorMessage}</p>
         <div className="flex justify-center gap-2">
           <button
             type="button"
             onClick={reset}
-            className="h-8 px-4 text-xs font-medium border border-border rounded-md bg-card text-foreground hover:bg-muted transition-colors"
+            className="h-8 rounded-md border border-border bg-card px-4 text-xs font-medium text-foreground transition-colors hover:bg-muted"
           >
             Elegir otro archivo
           </button>
@@ -364,12 +388,7 @@ export function CsvImport({
   }
 
   return (
-    <div
-      className={cn(
-        shellW(fullWidth),
-        fullWidth ? "flex h-full min-h-0 flex-col gap-2" : "space-y-3"
-      )}
-    >
+    <div className={cn(shellW(fullWidth), fullWidth ? "flex h-full min-h-0 flex-col gap-2" : "space-y-3")}>
       <input
         ref={inputRef}
         type="file"
@@ -392,26 +411,24 @@ export function CsvImport({
         onClick={openPicker}
         className={cn(
           "relative cursor-pointer select-none rounded-2xl border-2 border-dashed text-center transition-all",
-          fullWidth
-            ? "flex min-h-0 flex-1 flex-col items-center justify-center px-6 py-10"
-            : "p-10",
+          fullWidth ? "flex min-h-0 flex-1 flex-col items-center justify-center px-6 py-10" : "p-10",
           state === "over"
             ? "border-primary bg-accent/50"
-            : "border-border bg-card/70 hover:border-primary/50 hover:bg-accent/20"
+            : "border-border bg-card/70 hover:border-primary/50 hover:bg-accent/20",
         )}
       >
         <div
           className={cn(
             "mx-auto flex items-center justify-center rounded-2xl transition-all",
             fullWidth ? "mb-2 h-11 w-11" : "mb-4 h-14 w-14",
-            state === "over" ? "bg-primary/15" : "bg-muted"
+            state === "over" ? "bg-primary/15" : "bg-muted",
           )}
         >
           <CloudUpload
             className={cn(
               "transition-colors",
               fullWidth ? "h-5 w-5" : "h-7 w-7",
-              state === "over" ? "text-primary" : "text-muted-foreground"
+              state === "over" ? "text-primary" : "text-muted-foreground",
             )}
           />
         </div>
@@ -422,14 +439,14 @@ export function CsvImport({
           o haz clic para explorar
         </p>
         {!fullWidth ? (
-          <div className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-xs font-medium text-primary-foreground transition-colors pointer-events-none hover:bg-primary/90">
+          <div className="pointer-events-none inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90">
             <Upload className="h-3.5 w-3.5" /> Seleccionar archivo
           </div>
         ) : null}
         <div
           className={cn(
             "flex flex-wrap items-center justify-center gap-x-2 gap-y-0.5 text-muted-foreground",
-            fullWidth ? "mt-4 text-xs" : "mt-5 gap-4 text-xs"
+            fullWidth ? "mt-4 text-xs" : "mt-5 gap-4 text-xs",
           )}
         >
           <span className="text-center">
@@ -463,8 +480,8 @@ export function CsvImport({
           <button
             type="button"
             onClick={(event) => {
-              event.stopPropagation()
-              onDownloadTemplate?.()
+              event.stopPropagation();
+              onDownloadTemplate?.();
             }}
             className="inline-flex h-8 flex-1 items-center justify-center gap-1.5 rounded-lg border border-primary/35 bg-card px-3 text-xs font-medium text-primary transition-colors hover:bg-accent min-[400px]:flex-none"
           >

@@ -19,6 +19,7 @@ import mx.edu.utez.server.modules.elibro.dto.ElibroConfigStatusChangeRequest;
 import mx.edu.utez.server.modules.elibro.dto.ElibroConfigValidationResponse;
 import mx.edu.utez.server.modules.elibro.dto.ElibroControlledValidationRequest;
 import mx.edu.utez.server.modules.elibro.dto.ElibroControlledValidationResponse;
+import mx.edu.utez.server.modules.elibro.dto.ElibroDraftValidationRequest;
 import mx.edu.utez.server.modules.elibro.dto.PatchElibroConfigRequest;
 import mx.edu.utez.server.modules.elibro.dto.UpsertElibroConfigRequest;
 import mx.edu.utez.server.modules.elibro.entity.ElibroConfig;
@@ -129,7 +130,7 @@ public class ElibroConfigService {
         config.setUpdatedByAdmin(actorAdmin);
 
         if (config.getStatus() == ElibroConfigStatus.ACTIVE) {
-            assertNoOtherActiveConfig(null);
+            deactivateOtherActiveConfigs(null, actorAdmin);
         }
 
         applyStructuralStatus(config);
@@ -220,7 +221,7 @@ public class ElibroConfigService {
         config.setUpdatedByAdmin(actorAdmin);
 
         if (config.getStatus() == ElibroConfigStatus.ACTIVE) {
-            assertNoOtherActiveConfig(config.getId());
+            deactivateOtherActiveConfigs(config.getId(), actorAdmin);
         }
 
         applyStructuralStatus(config);
@@ -257,12 +258,12 @@ public class ElibroConfigService {
             HttpServletRequest httpRequest
     ) {
         ElibroConfig config = findByIdOrThrow(configId);
+        deactivateOtherActiveConfigs(config.getId(), actorAdmin);
         if (config.getStatus() != ElibroConfigStatus.ACTIVE) {
-            assertNoOtherActiveConfig(config.getId());
             config.setStatus(ElibroConfigStatus.ACTIVE);
-            config.setUpdatedByAdmin(actorAdmin);
-            config = elibroConfigRepository.save(config);
         }
+        config.setUpdatedByAdmin(actorAdmin);
+        config = elibroConfigRepository.save(config);
         executeValidation(config, actorAdmin, httpRequest);
         auditTrailService.auditAdminAction(
                 actorAdmin,
@@ -329,6 +330,71 @@ public class ElibroConfigService {
                 result.requestId,
                 result.correlationId,
                 config.getLastValidatedAt()
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public ElibroConfigValidationResponse validateDraft(
+            ElibroDraftValidationRequest request,
+            Admin actorAdmin,
+            HttpServletRequest httpRequest
+    ) {
+        String requestId = requestAttribute(httpRequest, RequestContext.REQUEST_ID_ATTR, "system");
+        String correlationId = requestAttribute(httpRequest, RequestContext.CORRELATION_ID_ATTR, "system");
+        Instant checkedAt = Instant.now();
+
+        validateNextUrl(request.nextUrl());
+        String probeUser = resolveProbeUserForValidation();
+
+        StructuralValidationResult structural = new StructuralValidationResult(
+                true,
+                request.authToken().trim(),
+                request.channelId().trim(),
+                request.channelSecret().trim(),
+                null
+        );
+
+        ControlledProbeResult result = executeControlledProbe(
+                new ElibroConfig(),
+                structural,
+                probeUser,
+                normalizeNextUrl(request.nextUrl()),
+                requestId,
+                correlationId,
+                checkedAt,
+                false
+        );
+
+        ValidationExecutionResult executionResult = new ValidationExecutionResult(
+                result.outcome == AuditOutcome.SUCCESS ? ElibroValidationRunStatus.SUCCESS : ElibroValidationRunStatus.FAILURE,
+                result.message,
+                result.latencyMs,
+                result.errorCode,
+                result.requestId,
+                result.correlationId,
+                result.checkedAt,
+                result.outcome
+        );
+
+        auditTrailService.auditAdminAction(
+                actorAdmin,
+                "ELIBRO_CONFIG_VALIDATE_DRAFT",
+                "ELIBRO_CONFIG",
+                request.baseConfigId() == null ? "DRAFT" : request.baseConfigId().toString(),
+                executionResult.outcome,
+                buildValidationAuditMetadata(executionResult),
+                httpRequest
+        );
+
+        return new ElibroConfigValidationResponse(
+                request.baseConfigId(),
+                result.outcome == AuditOutcome.SUCCESS ? ElibroValidationStatus.VALID : ElibroValidationStatus.INVALID,
+                result.message,
+                result.latencyMs,
+                result.errorCode,
+                result.requestId,
+                result.correlationId,
+                result.checkedAt
         );
     }
 
@@ -483,10 +549,10 @@ public class ElibroConfigService {
             String correlationId,
             Instant checkedAt
     ) {
-        Optional<Student> probeStudent = studentRepository
-                .findFirstByStatusAndInstitutionalEmailNormalizedIsNotNullOrderByUpdatedAtDesc(StudentStatus.ACTIVE);
-
-        if (probeStudent.isEmpty()) {
+        String probeUser;
+        try {
+            probeUser = resolveProbeUserForValidation();
+        } catch (BusinessException ex) {
             String message = "Validación operativa falló: no hay estudiante activo disponible para la prueba.";
             config.setValidationStatus(ElibroValidationStatus.INVALID);
             config.setValidationMessage(message);
@@ -502,8 +568,6 @@ public class ElibroConfigService {
                     AuditOutcome.FAILURE
             );
         }
-
-        String probeUser = probeStudent.get().getInstitutionalEmailNormalized();
         ControlledProbeResult probeResult = executeControlledProbe(
                 config,
                 structural,
@@ -641,16 +705,32 @@ public class ElibroConfigService {
         }
     }
 
-    private void assertNoOtherActiveConfig(UUID currentId) {
-        Optional<ElibroConfig> activeConflict = currentId == null
-                ? elibroConfigRepository.findFirstByStatusOrderByUpdatedAtDesc(ElibroConfigStatus.ACTIVE)
-                : elibroConfigRepository.findFirstByStatusAndIdNotOrderByUpdatedAtDesc(ElibroConfigStatus.ACTIVE, currentId);
-        if (activeConflict.isPresent()) {
+    private String resolveProbeUserForValidation() {
+        Optional<Student> probeStudent = studentRepository
+                .findFirstByStatusAndInstitutionalEmailNormalizedIsNotNullOrderByUpdatedAtDesc(StudentStatus.ACTIVE);
+        if (probeStudent.isEmpty()) {
             throw new BusinessException(
                     ErrorCode.VALIDATION_ERROR,
-                    "Ya existe una configuración eLibro ACTIVE. Desactívala antes de activar otra."
+                    "No hay estudiante activo disponible para la validación de eLibro."
             );
         }
+        return probeStudent.get().getInstitutionalEmailNormalized();
+    }
+
+    private void deactivateOtherActiveConfigs(UUID keepConfigId, Admin actorAdmin) {
+        List<ElibroConfig> activeConfigs = keepConfigId == null
+                ? elibroConfigRepository.findAllByStatusOrderByUpdatedAtDesc(ElibroConfigStatus.ACTIVE)
+                : elibroConfigRepository.findAllByStatusAndIdNotOrderByUpdatedAtDesc(ElibroConfigStatus.ACTIVE, keepConfigId);
+
+        if (activeConfigs.isEmpty()) {
+            return;
+        }
+
+        for (ElibroConfig activeConfig : activeConfigs) {
+            activeConfig.setStatus(ElibroConfigStatus.INACTIVE);
+            activeConfig.setUpdatedByAdmin(actorAdmin);
+        }
+        elibroConfigRepository.saveAll(activeConfigs);
     }
 
     private void validateNextUrl(String nextUrl) {

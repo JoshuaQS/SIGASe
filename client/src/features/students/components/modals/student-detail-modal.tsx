@@ -10,7 +10,7 @@ import {
   User,
 } from 'lucide-react'
 import { Badge } from '@/shared/components/ui/badge'
-import { Dialog, DialogContent } from '@/shared/components/ui/dialog'
+import { Dialog, DialogContent, DialogTitle } from '@/shared/components/ui/dialog'
 import { Button } from '@/shared/components/ui/button'
 import {
   ModalFormFooter,
@@ -254,6 +254,9 @@ export function StudentDetailModal({ open, student, onOpenChange }: StudentDetai
         animation="fade"
         className="max-w-3xl border-0 bg-transparent p-0 shadow-none"
       >
+        <DialogTitle className="sr-only">
+          {`Detalle del estudiante: ${buildFullName(student)}`}
+        </DialogTitle>
         <div className={modalFormShellClass}>
           <ModalFormHeader
             avatar={<span className="text-sm font-semibold text-primary">{buildInitials(student)}</span>}

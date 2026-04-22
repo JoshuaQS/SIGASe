@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -15,40 +16,45 @@ import mx.edu.utez.server.modules.accesslogs.dto.AccessLogScope;
 import mx.edu.utez.server.modules.accesslogs.service.AccessLogQueryService;
 import mx.edu.utez.server.modules.admins.entity.Admin;
 import mx.edu.utez.server.shared.enums.AuditOutcome;
-import org.apache.poi.ss.usermodel.CellStyle;
 import org.apache.poi.ss.usermodel.Row;
-import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.util.CellRangeAddress;
+import org.apache.poi.xssf.streaming.SXSSFSheet;
+import org.apache.poi.xssf.streaming.SXSSFWorkbook;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 @Service
 public class UnifiedAccessLogExportService {
 
+    private static final int DETAIL_HEADER_ROW = 3;
+
     private static final String[] HEADERS = {
-            "occurredAt",
-            "actorType",
-            "scope",
-            "actorId",
-            "actorName",
-            "actorEmail",
-            "result",
-            "reason",
-            "requestId",
-            "correlationId",
-            "sessionId",
-            "ipAddressMasked",
-            "userAgentSanitized",
-            "latencyMs",
-            "nextUrl",
-            "redirectUrl",
-            "providerStatusCode",
-            "providerErrorCode",
-            "providerErrorMessage",
-            "channelName",
-            "metadata"
+            "Ocurrió en",
+            "Actor",
+            "Scope",
+            "Actor ID",
+            "Actor nombre",
+            "Actor email",
+            "Resultado",
+            "Motivo",
+            "Request ID",
+            "Correlation ID",
+            "Session ID",
+            "IP enmascarada",
+            "User Agent",
+            "Latencia (ms)",
+            "Next URL",
+            "Redirect URL",
+            "Provider status",
+            "Provider error code",
+            "Provider error message",
+            "Canal",
+            "Metadata"
+    };
+
+    private static final int[] COLUMN_WIDTHS = {
+            22, 12, 16, 38, 28, 30, 14, 36, 22, 24, 22, 16, 28, 14, 26, 26, 14, 18, 24, 18, 36
     };
 
     private static final List<Function<AccessLogResponse, String>> CSV_EXTRACTORS = List.of(
@@ -114,97 +120,175 @@ public class UnifiedAccessLogExportService {
     ) {
         List<AccessLogResponse> rows = accessLogQueryService.listForExport(filters);
         Map<String, Object> filterMeta = buildFilterMeta(filters);
-        try (XSSFWorkbook workbook = new XSSFWorkbook()) {
-            XSSFSheet summarySheet = workbook.createSheet("Resumen");
-            writeSummary(summarySheet, workbook, filters, rows.size());
 
-            XSSFSheet detailSheet = workbook.createSheet("Detalle");
-            writeDetail(detailSheet, workbook, rows);
+        long successful = rows.stream().filter(log -> "SUCCESS".equalsIgnoreCase(log.result())).count();
+        long failed = Math.max(0L, rows.size() - successful);
+        double successRate = rows.isEmpty() ? 0.0 : (successful * 100.0) / rows.size();
+
+        try (SXSSFWorkbook workbook = new SXSSFWorkbook(500)) {
+            XlsxExportService.ReportStyles styles = XlsxExportService.createReportStyles(workbook);
+
+            XSSFSheet summarySheet = workbook.getXSSFWorkbook().createSheet("Resumen");
+            buildSummarySheet(summarySheet, styles, filterMeta, rows.size(), successful, failed, successRate);
+
+            SXSSFSheet detailSheet = workbook.createSheet("Logs de acceso");
+            buildDetailSheet(detailSheet, styles, rows);
 
             workbook.write(out);
         } catch (Exception ex) {
             reportExportAuditService.auditExport(actor, "ACCESS_LOGS", filterMeta, rows.size(), "xlsx", AuditOutcome.FAILURE, request);
             throw new RuntimeException(ex);
         }
+
         reportExportAuditService.auditExport(actor, "ACCESS_LOGS", filterMeta, rows.size(), "xlsx", AuditOutcome.SUCCESS, request);
     }
 
-    private void writeSummary(XSSFSheet sheet, XSSFWorkbook workbook, AccessLogQueryFilters filters, int total) {
-        CellStyle titleStyle = XlsxExportService.createTitleStyle(workbook);
-        CellStyle subtitleStyle = XlsxExportService.createSubtitleStyle(workbook);
-        CellStyle labelStyle = XlsxExportService.createKpiLabelStyle(workbook);
+    private void buildSummarySheet(
+            XSSFSheet sheet,
+            XlsxExportService.ReportStyles styles,
+            Map<String, Object> filterMeta,
+            int total,
+            long successful,
+            long failed,
+            double successRate
+    ) {
+        XlsxExportService.applyColumnWidths(sheet, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16);
 
-        int rowIndex = 0;
-        createCell(sheet, rowIndex++, 0, "Reporte de Access Logs — SIGASe", titleStyle);
-        createCell(sheet, rowIndex++, 0, "Generado: " + XlsxExportService.formatInstantNow() + " UTC", subtitleStyle);
-        createCell(sheet, rowIndex++, 0, "Orden: " + (StringUtils.hasText(filters.sort()) ? filters.sort() : "occurredAt,desc"), subtitleStyle);
-        createCell(sheet, rowIndex++, 0, "Filtros: " + summarizeFilters(filters), subtitleStyle);
-        rowIndex++;
+        int row = 0;
+        XlsxExportService.writeMergedRow(sheet, row++, 11, "Logs de Acceso", styles.titleStyle());
+        XlsxExportService.writeMergedRow(sheet, row++, 11, "Reporte ejecutivo de actividad de accesos", styles.subtitleStyle());
+        row++;
 
-        writeKpi(sheet, rowIndex++, "Total de registros", total, labelStyle);
-        sheet.setColumnWidth(0, 48 * 256);
-        sheet.setColumnWidth(1, 18 * 256);
+        XlsxExportService.writeMergedRow(sheet, row++, 11, "Contexto del reporte", styles.sectionHeaderStyle());
+
+        String exportType = filterMeta.isEmpty() ? "General" : "Filtrada";
+        row = XlsxExportService.writeContextRow(
+                sheet,
+                row,
+                11,
+                "Tipo de exportación",
+                exportType,
+                styles.labelStyle(),
+                styles.valueStyle()
+        );
+        row = XlsxExportService.writeContextRow(
+                sheet,
+                row,
+                11,
+                "Fecha de generación",
+                XlsxExportService.formatInstantNow() + " UTC",
+                styles.labelStyle(),
+                styles.valueStyle()
+        );
+        row = XlsxExportService.writeContextRow(
+                sheet,
+                row,
+                11,
+                "Registros exportados",
+                String.valueOf(total),
+                styles.labelStyle(),
+                styles.valueStyle()
+        );
+
+        row++;
+        XlsxExportService.writeMergedRow(sheet, row++, 11, "Filtros aplicados", styles.sectionHeaderStyle());
+        for (String filter : summarizeFilters(filterMeta)) {
+            Row filterRow = sheet.createRow(row);
+            XlsxExportService.createTextCell(filterRow, 0, "• " + filter, styles.valueStyle());
+            sheet.addMergedRegion(new CellRangeAddress(row, row, 0, 11));
+            row++;
+        }
+
+        int kpiStart = Math.max(row + 1, 12);
+        XlsxExportService.writeMergedRow(sheet, kpiStart - 1, 11, "KPIs principales", styles.sectionHeaderStyle());
+
+        XlsxExportService.buildKpiCard(
+                sheet,
+                styles,
+                kpiStart,
+                0,
+                2,
+                "Registros totales",
+                total,
+                XlsxExportService.KpiVariant.PRIMARY
+        );
+        XlsxExportService.buildKpiCard(
+                sheet,
+                styles,
+                kpiStart,
+                3,
+                5,
+                "Exitosos",
+                successful,
+                XlsxExportService.KpiVariant.SUCCESS
+        );
+        XlsxExportService.buildKpiCard(
+                sheet,
+                styles,
+                kpiStart,
+                6,
+                8,
+                "Fallidos",
+                failed,
+                XlsxExportService.KpiVariant.DANGER
+        );
+        XlsxExportService.buildKpiCard(
+                sheet,
+                styles,
+                kpiStart,
+                9,
+                11,
+                "% Éxito",
+                successRate,
+                XlsxExportService.KpiVariant.INFO
+        );
     }
 
-    private void writeDetail(XSSFSheet sheet, XSSFWorkbook workbook, List<AccessLogResponse> rows) {
-        CellStyle headerStyle = XlsxExportService.createHeaderStyle(workbook);
-        Row headerRow = sheet.createRow(0);
+    private void buildDetailSheet(
+            SXSSFSheet sheet,
+            XlsxExportService.ReportStyles styles,
+            List<AccessLogResponse> rows
+    ) {
+        XlsxExportService.applyColumnWidths(sheet, COLUMN_WIDTHS);
+
+        XlsxExportService.writeMergedRow(sheet, 0, HEADERS.length - 1, "Logs de acceso", styles.titleStyle());
+        XlsxExportService.writeMergedRow(sheet, 1, HEADERS.length - 1, "Detalle completo del conjunto exportado", styles.subtitleStyle());
+
+        Row headerRow = sheet.createRow(DETAIL_HEADER_ROW);
         for (int i = 0; i < HEADERS.length; i++) {
-            headerRow.createCell(i).setCellValue(HEADERS[i]);
-            headerRow.getCell(i).setCellStyle(headerStyle);
+            XlsxExportService.createTextCell(headerRow, i, HEADERS[i], styles.tableHeaderStyle());
         }
 
-        int rowIndex = 1;
-        for (AccessLogResponse row : rows) {
-            Row excelRow = sheet.createRow(rowIndex++);
-            excelRow.createCell(0).setCellValue(CsvExportService.formatInstant(row.occurredAt()));
-            excelRow.createCell(1).setCellValue(XlsxExportService.sanitize(stringValue(row.actorType())));
-            excelRow.createCell(2).setCellValue(XlsxExportService.sanitize(stringValue(row.scope())));
-            excelRow.createCell(3).setCellValue(XlsxExportService.sanitize(stringValue(row.actorId())));
-            excelRow.createCell(4).setCellValue(XlsxExportService.sanitize(stringValue(row.actorName())));
-            excelRow.createCell(5).setCellValue(XlsxExportService.sanitize(stringValue(row.actorEmail())));
-            excelRow.createCell(6).setCellValue(XlsxExportService.sanitize(stringValue(row.result())));
-            excelRow.createCell(7).setCellValue(XlsxExportService.sanitize(safeReason(row.reason())));
-            excelRow.createCell(8).setCellValue(XlsxExportService.sanitize(stringValue(row.requestId())));
-            excelRow.createCell(9).setCellValue(XlsxExportService.sanitize(stringValue(row.correlationId())));
-            excelRow.createCell(10).setCellValue(XlsxExportService.sanitize(stringValue(row.sessionId())));
-            excelRow.createCell(11).setCellValue(XlsxExportService.sanitize(stringValue(row.ipAddressMasked())));
-            excelRow.createCell(12).setCellValue(XlsxExportService.sanitize(stringValue(row.userAgentSanitized())));
-            excelRow.createCell(13).setCellValue(numberValue(row.latencyMs()));
-            excelRow.createCell(14).setCellValue(XlsxExportService.sanitize(stringValue(row.nextUrl())));
-            excelRow.createCell(15).setCellValue(XlsxExportService.sanitize(stringValue(row.redirectUrl())));
-            excelRow.createCell(16).setCellValue(numberValue(row.providerStatusCode()));
-            excelRow.createCell(17).setCellValue(XlsxExportService.sanitize(stringValue(row.providerErrorCode())));
-            excelRow.createCell(18).setCellValue(XlsxExportService.sanitize(stringValue(row.providerErrorMessage())));
-            excelRow.createCell(19).setCellValue(XlsxExportService.sanitize(stringValue(row.channelName())));
-            excelRow.createCell(20).setCellValue(XlsxExportService.sanitize(metadataValue(row.metadata())));
+        int rowIndex = DETAIL_HEADER_ROW + 1;
+        for (AccessLogResponse log : rows) {
+            Row row = sheet.createRow(rowIndex++);
+            XlsxExportService.createTextCell(row, 0, CsvExportService.formatInstant(log.occurredAt()), styles.dateTimeStyle());
+            XlsxExportService.createTextCell(row, 1, log.actorType(), styles.valueStyle());
+            XlsxExportService.createTextCell(row, 2, log.scope(), styles.valueStyle());
+            XlsxExportService.createTextCell(row, 3, log.actorId(), styles.valueStyle());
+            XlsxExportService.createTextCell(row, 4, log.actorName(), styles.valueStyle());
+            XlsxExportService.createTextCell(row, 5, log.actorEmail(), styles.valueStyle());
+            XlsxExportService.createTextCell(row, 6, log.result(), styles.valueStyle());
+            XlsxExportService.createTextCell(row, 7, safeReason(log.reason()), styles.valueStyle());
+            XlsxExportService.createTextCell(row, 8, log.requestId(), styles.valueStyle());
+            XlsxExportService.createTextCell(row, 9, log.correlationId(), styles.valueStyle());
+            XlsxExportService.createTextCell(row, 10, log.sessionId(), styles.valueStyle());
+            XlsxExportService.createTextCell(row, 11, log.ipAddressMasked(), styles.valueStyle());
+            XlsxExportService.createTextCell(row, 12, log.userAgentSanitized(), styles.valueStyle());
+            XlsxExportService.createNumericCell(row, 13, log.latencyMs(), styles.numberStyle());
+            XlsxExportService.createTextCell(row, 14, log.nextUrl(), styles.valueStyle());
+            XlsxExportService.createTextCell(row, 15, log.redirectUrl(), styles.valueStyle());
+            XlsxExportService.createNumericCell(row, 16, log.providerStatusCode(), styles.numberStyle());
+            XlsxExportService.createTextCell(row, 17, log.providerErrorCode(), styles.valueStyle());
+            XlsxExportService.createTextCell(row, 18, log.providerErrorMessage(), styles.valueStyle());
+            XlsxExportService.createTextCell(row, 19, log.channelName(), styles.valueStyle());
+            XlsxExportService.createTextCell(row, 20, metadataValue(log.metadata()), styles.valueStyle());
         }
 
-        sheet.createFreezePane(0, 1);
+        sheet.createFreezePane(0, DETAIL_HEADER_ROW + 1);
         if (!rows.isEmpty()) {
-            sheet.setAutoFilter(new CellRangeAddress(0, rows.size(), 0, HEADERS.length - 1));
+            sheet.setAutoFilter(new CellRangeAddress(DETAIL_HEADER_ROW, rows.size() + DETAIL_HEADER_ROW, 0, HEADERS.length - 1));
         }
-
-        int[] widths = {20, 12, 18, 22, 26, 28, 18, 32, 18, 20, 18, 16, 24, 12, 26, 26, 14, 18, 24, 20, 32};
-        for (int i = 0; i < widths.length; i++) {
-            sheet.setColumnWidth(i, widths[i] * 256);
-        }
-    }
-
-    private void createCell(Sheet sheet, int rowIndex, int columnIndex, String value, CellStyle style) {
-        Row row = sheet.getRow(rowIndex);
-        if (row == null) {
-            row = sheet.createRow(rowIndex);
-        }
-        row.createCell(columnIndex).setCellValue(value);
-        row.getCell(columnIndex).setCellStyle(style);
-    }
-
-    private void writeKpi(Sheet sheet, int rowIndex, String label, long value, CellStyle labelStyle) {
-        Row row = sheet.createRow(rowIndex);
-        row.createCell(0).setCellValue(label);
-        row.getCell(0).setCellStyle(labelStyle);
-        row.createCell(1).setCellValue(value);
     }
 
     private Map<String, Object> buildFilterMeta(AccessLogQueryFilters filters) {
@@ -215,40 +299,43 @@ public class UnifiedAccessLogExportService {
         if (filters.scope() != null && filters.scope() != AccessLogScope.ALL) {
             meta.put("scope", filters.scope().name());
         }
-        if (StringUtils.hasText(filters.result())) {
+        if (StringUtils.hasText(filters.result()) && !"ALL".equalsIgnoreCase(filters.result().trim())) {
             meta.put("result", filters.result().trim());
         }
         if (filters.dateFrom() != null) {
-            meta.put("dateFrom", filters.dateFrom().toString());
+            meta.put("dateFrom", filters.dateFrom());
         }
         if (filters.dateTo() != null) {
-            meta.put("dateTo", filters.dateTo().toString());
+            meta.put("dateTo", filters.dateTo());
         }
         if (filters.studentId() != null) {
-            meta.put("studentId", filters.studentId().toString());
+            meta.put("studentId", filters.studentId());
         }
         if (filters.adminId() != null) {
-            meta.put("adminId", filters.adminId().toString());
+            meta.put("adminId", filters.adminId());
         }
         if (filters.careerId() != null) {
-            meta.put("careerId", filters.careerId().toString());
+            meta.put("careerId", filters.careerId());
         }
         if (StringUtils.hasText(filters.search())) {
             meta.put("search", filters.search().trim());
         }
-        meta.put("sort", StringUtils.hasText(filters.sort()) ? filters.sort() : "occurredAt,desc");
+        if (StringUtils.hasText(filters.sort())) {
+            meta.put("sort", filters.sort().trim());
+        }
         return meta;
     }
 
-    private String summarizeFilters(AccessLogQueryFilters filters) {
-        Map<String, Object> meta = buildFilterMeta(filters);
-        if (meta.isEmpty()) {
-            return "Sin filtros";
+    private List<String> summarizeFilters(Map<String, Object> filterMeta) {
+        if (filterMeta.isEmpty()) {
+            return List.of("Sin filtros adicionales");
         }
-        return meta.entrySet().stream()
-                .map(entry -> entry.getKey() + "=" + entry.getValue())
-                .reduce((left, right) -> left + ", " + right)
-                .orElse("Sin filtros");
+
+        List<String> filters = new ArrayList<>();
+        for (Map.Entry<String, Object> entry : filterMeta.entrySet()) {
+            filters.add(entry.getKey() + ": " + entry.getValue());
+        }
+        return filters;
     }
 
     private static String stringValue(String value) {

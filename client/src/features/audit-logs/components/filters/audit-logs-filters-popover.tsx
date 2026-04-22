@@ -1,6 +1,7 @@
 import { DataTableFiltersPopover } from '@/shared/components/table-filters'
 import {
   AUDIT_LOGS_FILTER_FIELDS,
+  DEFAULT_AUDIT_LOGS_FILTERS,
   type AuditLogsFilters,
 } from './audit-logs-filter-fields'
 
@@ -31,6 +32,7 @@ export function AuditLogsFiltersPopover({
       fields={AUDIT_LOGS_FILTER_FIELDS}
       value={draftFilters}
       activeCountValue={appliedFilters}
+      defaultValue={DEFAULT_AUDIT_LOGS_FILTERS}
       onChange={onDraftChange}
       onApply={onApply}
       onReset={onReset}

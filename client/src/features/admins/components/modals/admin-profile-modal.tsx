@@ -26,7 +26,7 @@ import {
 } from '@/features/notifications/api/notifications-api'
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar'
 import { Button } from '@/shared/components/ui/button'
-import { Dialog, DialogContent } from '@/shared/components/ui/dialog'
+import { Dialog, DialogContent, DialogTitle } from '@/shared/components/ui/dialog'
 import { PasswordField } from '@/shared/components/ui/forms/password-field'
 import { Switch } from '@/shared/components/ui/switch'
 import { useAppToast } from '@/shared/components/ui/app-toast-provider'
@@ -40,7 +40,7 @@ type AdminProfileModalProps = {
   initialTab?: Tab
 }
 
-type Tab = 'profile' | 'alerts'
+type Tab = 'profile' | 'alertas'
 
 type PreferenceKey = keyof NotificationPreferenceResponseDto
 
@@ -163,7 +163,7 @@ export function AdminProfileModal({ open, onClose, initialTab = 'profile' }: Adm
 
   const navItems = useMemo(() => [
     { key: 'profile' as const, icon: User, label: 'Perfil' },
-    { key: 'alerts' as const, icon: Bell, label: 'Alerts' },
+    { key: 'alertas' as const, icon: Bell, label: 'Alertas' },
   ], [])
 
   useEffect(() => {
@@ -179,7 +179,7 @@ export function AdminProfileModal({ open, onClose, initialTab = 'profile' }: Adm
   }, [open, initialTab, resetPasswordForm])
 
   useEffect(() => {
-    if (!open || activeTab !== 'alerts') return
+    if (!open || activeTab !== 'alertas') return
     let active = true
     setPrefsLoading(true)
     setPrefsError(null)
@@ -239,8 +239,11 @@ export function AdminProfileModal({ open, onClose, initialTab = 'profile' }: Adm
       showToast({
         severity: 'success',
         title: 'Contraseña actualizada',
-        description: 'Por seguridad, tu sesión actual puede requerir volver a iniciar sesión.',
+        description: 'Se cerrará la sesión para iniciar con tu nueva contraseña.',
       })
+      await authSession.logout()
+      onClose()
+      navigate('/login?mode=admin', { replace: true, state: { mode: 'admin' } })
     } catch (error) {
       const message = error instanceof Error ? error.message : 'No se pudo cambiar la contraseña.'
       setPasswordError(message)
@@ -299,6 +302,7 @@ export function AdminProfileModal({ open, onClose, initialTab = 'profile' }: Adm
           animation="fade"
           className="max-w-3xl border border-border bg-card p-0 shadow-lg"
         >
+        <DialogTitle className="sr-only">Perfil del administrador</DialogTitle>
         <div className="flex min-h-[420px] rounded-lg">
           <div className="w-52 border-r border-border bg-muted/30 p-5">
             <div className="flex flex-col items-center">
@@ -434,7 +438,7 @@ export function AdminProfileModal({ open, onClose, initialTab = 'profile' }: Adm
                     </div>
 
                     <div className="mt-3 flex justify-end sm:col-span-2">
-                      <Button size="sm" type="button" isLoading={passwordSaving} disabled={!canChangePassword}>
+                      <Button size="sm" type="submit" isLoading={passwordSaving} disabled={!canChangePassword}>
                         Guardar contraseña
                       </Button>
                     </div>
@@ -449,7 +453,7 @@ export function AdminProfileModal({ open, onClose, initialTab = 'profile' }: Adm
             ) : (
               <div className="flex h-full min-h-[340px] flex-col">
                 <div className="mb-3">
-                  <h3 className="text-sm font-semibold text-foreground">Alerts</h3>
+                  <h3 className="text-sm font-semibold text-foreground">Alertas</h3>
                   <p className="mt-1 text-xs text-muted-foreground">
                     Configura qué notificaciones quieres recibir.
                   </p>

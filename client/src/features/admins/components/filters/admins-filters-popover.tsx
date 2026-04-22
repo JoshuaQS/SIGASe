@@ -1,5 +1,9 @@
 import { DataTableFiltersPopover } from '@/shared/components/table-filters'
-import { ADMINS_FILTER_FIELDS, type AdminsTableFilters } from './admins-filter-fields'
+import {
+  ADMINS_FILTER_FIELDS,
+  DEFAULT_ADMINS_TABLE_FILTERS,
+  type AdminsTableFilters,
+} from './admins-filter-fields'
 
 type AdminsFiltersPopoverProps = {
   draftFilters: AdminsTableFilters
@@ -28,6 +32,7 @@ export function AdminsFiltersPopover({
       fields={ADMINS_FILTER_FIELDS}
       value={draftFilters}
       activeCountValue={appliedFilters}
+      defaultValue={DEFAULT_ADMINS_TABLE_FILTERS}
       onChange={onDraftChange}
       onApply={onApply}
       onReset={onReset}

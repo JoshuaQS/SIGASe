@@ -57,7 +57,7 @@ const MonitoringAndReportsPage = () => {
       <SectionHeader
         icon={BarChart2}
         title="Monitoreo y Reportes"
-        subtitle="Dashboard adaptativo conectado al backend nuevo de analysis"
+        subtitle="Consulta el comportamiento del sistema y genera reportes para su seguimiento."
         className="mt-3"
         actions={
           <div className="flex items-center gap-2">

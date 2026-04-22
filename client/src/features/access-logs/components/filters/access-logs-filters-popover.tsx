@@ -1,6 +1,7 @@
 import { DataTableFiltersPopover } from '@/shared/components/table-filters'
 import {
   ACCESS_LOGS_FILTER_FIELDS,
+  DEFAULT_ACCESS_LOGS_FILTERS,
   type AccessLogsFilters,
 } from './access-logs-filter-fields'
 
@@ -31,6 +32,7 @@ export function AccessLogsFiltersPopover({
       fields={ACCESS_LOGS_FILTER_FIELDS}
       value={draftFilters}
       activeCountValue={appliedFilters}
+      defaultValue={DEFAULT_ACCESS_LOGS_FILTERS}
       onChange={onDraftChange}
       onApply={onApply}
       onReset={onReset}

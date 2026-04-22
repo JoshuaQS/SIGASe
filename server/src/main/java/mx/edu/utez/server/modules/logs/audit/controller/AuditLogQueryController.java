@@ -3,7 +3,9 @@ package mx.edu.utez.server.modules.logs.audit.controller;
 import mx.edu.utez.server.modules.admins.service.AdminContextService;
 import mx.edu.utez.server.modules.logs.audit.dto.AuditLogFilterRequest;
 import mx.edu.utez.server.modules.logs.audit.dto.AuditLogResponse;
+import mx.edu.utez.server.modules.logs.audit.dto.AuditLogSummaryResponse;
 import mx.edu.utez.server.modules.logs.audit.service.AuditLogQueryService;
+import mx.edu.utez.server.modules.logs.audit.service.AuditLogSummaryService;
 import mx.edu.utez.server.modules.reports.service.AuditLogReportService;
 import mx.edu.utez.server.modules.reports.service.ReportService;
 import mx.edu.utez.server.modules.reports.service.ReportXlsxExportService;
@@ -31,17 +33,20 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuditLogQueryController {
 
     private final AuditLogQueryService auditLogQueryService;
+    private final AuditLogSummaryService auditLogSummaryService;
     private final AuditLogReportService auditLogReportService;
     private final ReportXlsxExportService reportXlsxExportService;
     private final AdminContextService adminContextService;
 
     public AuditLogQueryController(
             AuditLogQueryService auditLogQueryService,
+            AuditLogSummaryService auditLogSummaryService,
             AuditLogReportService auditLogReportService,
             ReportXlsxExportService reportXlsxExportService,
             AdminContextService adminContextService
     ) {
         this.auditLogQueryService = auditLogQueryService;
+        this.auditLogSummaryService = auditLogSummaryService;
         this.auditLogReportService = auditLogReportService;
         this.reportXlsxExportService = reportXlsxExportService;
         this.adminContextService = adminContextService;
@@ -102,5 +107,13 @@ public class AuditLogQueryController {
         adminContextService.requireCurrentAdmin(authentication);
         AuditLogResponse response = auditLogQueryService.getById(auditLogId);
         return new ApiResponse<>(true, "Audit log obtenido.", response, HttpStatus.OK.value());
+    }
+
+    @GetMapping("/summary")
+    @Operation(summary = "Resumen agregado global de audit logs (sin filtros de tabla)")
+    public ApiResponse<AuditLogSummaryResponse> summary(Authentication authentication) {
+        adminContextService.requireCurrentAdmin(authentication);
+        AuditLogSummaryResponse response = auditLogSummaryService.getGlobalSummary();
+        return new ApiResponse<>(true, "Resumen de audit logs.", response, HttpStatus.OK.value());
     }
 }

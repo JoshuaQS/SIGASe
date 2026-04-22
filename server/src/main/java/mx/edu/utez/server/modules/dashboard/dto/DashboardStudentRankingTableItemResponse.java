@@ -7,8 +7,6 @@ public record DashboardStudentRankingTableItemResponse(
         UUID studentId,
         String studentName,
         String enrollmentId,
-        String careerCode,
-        String careerName,
         long successfulAccesses,
         long failedAccesses,
         long totalAccesses,

@@ -4,6 +4,7 @@ import { Badge } from '@/shared/components/ui/badge'
 import { Button } from '@/shared/components/ui/button'
 import { DataTable } from '@/shared/components/ui/data-table'
 import type { ReactNode } from 'react'
+import { cn } from '@/shared/lib/utils'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -24,6 +25,9 @@ type AdminsTableProps = {
   rows: AdminManagementRow[]
   searchInput: string
   onSearchInputChange: (value: string) => void
+  sortBy: 'updatedAt' | 'email' | 'name' | 'role' | 'status' | 'lastLoginAt'
+  sortDir: 'asc' | 'desc'
+  onSortChange: (sortBy: AdminsTableProps['sortBy']) => void
   filteredCount: number
   loading?: boolean
   page: number
@@ -56,6 +60,9 @@ export function AdminsTable({
   rows,
   searchInput,
   onSearchInputChange,
+  sortBy,
+  sortDir,
+  onSortChange,
   filteredCount,
   loading = false,
   page,
@@ -71,6 +78,41 @@ export function AdminsTable({
   toolbarRight,
 }: AdminsTableProps) {
   const pageCount = Math.max(totalPages, 1)
+
+  const sortIcon = useMemo(() => {
+    return sortDir === 'asc' ? '↑' : '↓'
+  }, [sortDir])
+
+  const HeaderButton = ({
+    label,
+    field,
+  }: {
+    label: string
+    field: AdminsTableProps['sortBy'] | null
+  }) => {
+    const isSortable = Boolean(field)
+    const isActive = Boolean(field) && sortBy === field
+
+    if (!isSortable || !field) {
+      return <span className="inline-flex items-center gap-1">{label}</span>
+    }
+
+    return (
+      <button
+        type="button"
+        className={cn(
+          'inline-flex items-center gap-1 text-left hover:text-foreground',
+          isActive && 'text-foreground',
+        )}
+        onClick={() => onSortChange(field)}
+        aria-label={`Ordenar por ${label}`}
+      >
+        {label}
+        <ArrowUpDown className="h-3 w-3" />
+        {isActive ? <span className="text-[10px] text-muted-foreground">{sortIcon}</span> : null}
+      </button>
+    )
+  }
 
   const pageItems = useMemo(() => {
     if (pageCount <= 7) return Array.from({ length: pageCount }, (_, i) => i + 1)
@@ -107,19 +149,25 @@ export function AdminsTable({
           <table className="w-full text-sm">
             <thead>
               <tr className="border-y border-border bg-muted/40">
-                {['Nombre', 'Correo', 'Rol', 'Estado', 'Acciones', 'Última acción', ''].map((col) => (
-                  <th
-                    key={col || '_menu'}
-                    className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground whitespace-nowrap"
-                  >
-                    {col ? (
-                      <span className="inline-flex items-center gap-1">
-                        {col}
-                        <ArrowUpDown className="h-3 w-3" />
-                      </span>
-                    ) : null}
-                  </th>
-                ))}
+                <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground whitespace-nowrap">
+                  <HeaderButton label="Nombre" field="name" />
+                </th>
+                <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground whitespace-nowrap">
+                  <HeaderButton label="Correo" field="email" />
+                </th>
+                <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground whitespace-nowrap">
+                  <HeaderButton label="Rol" field="role" />
+                </th>
+                <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground whitespace-nowrap">
+                  <HeaderButton label="Estado" field="status" />
+                </th>
+                <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground whitespace-nowrap">
+                  <span className="inline-flex items-center gap-1">Acciones</span>
+                </th>
+                <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground whitespace-nowrap">
+                  <HeaderButton label="Última acción" field="lastLoginAt" />
+                </th>
+                <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground whitespace-nowrap" />
               </tr>
             </thead>
             <tbody>

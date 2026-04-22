@@ -134,6 +134,18 @@ export type ElibroControlledValidationRequest = {
   nextUrl?: string;
 };
 
+export type ElibroDraftValidationRequest = {
+  baseConfigId?: string;
+  authToken: string;
+  channelId: string;
+  channelSecret: string;
+  nextUrl?: string;
+};
+
+export type ElibroConfigStatusChangeRequest = {
+  reason: string;
+};
+
 export type ElibroControlledValidationResponse = {
   id: string;
   testUser: string;
@@ -178,8 +190,23 @@ export async function validateElibroConfig(configId: string) {
   return response.data;
 }
 
+export async function validateElibroConfigDraft(payload: ElibroDraftValidationRequest) {
+  const response = await api.post<ApiEnvelope<ElibroConfigValidationResponse>>('/elibro/config/validate-draft', payload);
+  return response.data;
+}
+
 export async function validateElibroConfigControlled(configId: string, payload: ElibroControlledValidationRequest) {
   const response = await api.post<ApiEnvelope<ElibroControlledValidationResponse>>(`/elibro/config/${configId}/validate-controlled`, payload);
+  return response.data;
+}
+
+export async function activateElibroConfig(configId: string, payload: ElibroConfigStatusChangeRequest) {
+  const response = await api.patch<ApiEnvelope<ElibroConfigResponse>>(`/elibro/config/${configId}/activate`, payload);
+  return response.data;
+}
+
+export async function deactivateElibroConfig(configId: string, payload: ElibroConfigStatusChangeRequest) {
+  const response = await api.patch<ApiEnvelope<ElibroConfigResponse>>(`/elibro/config/${configId}/deactivate`, payload);
   return response.data;
 }
 

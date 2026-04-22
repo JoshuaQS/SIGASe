@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { ArrowUpDown, Eye, Mail, Pencil, PlayCircle, Power, Trash2 } from 'lucide-react'
+import { ArrowDownUp, ArrowUp, ArrowUpDown, Eye, Mail, Pencil, PlayCircle, Power, Trash2 } from 'lucide-react'
 import { Badge } from '@/shared/components/ui/badge'
 import { Button } from '@/shared/components/ui/button'
 import { DataTable } from '@/shared/components/ui/data-table'
@@ -21,6 +21,9 @@ type StudentsTableProps = {
   loading: boolean
   searchInput: string
   onSearchInputChange: (value: string) => void
+  sortBy: 'updatedAt' | 'name' | 'enrollmentId' | 'career' | 'quarter' | 'status' | 'lastLoginAt'
+  sortDir: 'asc' | 'desc'
+  onSortChange: (sortBy: StudentsTableProps['sortBy']) => void
   onDeactivate: (student: StudentManagementRow) => void
   onReactivate: (student: StudentManagementRow) => void
   onDelete: (student: StudentManagementRow) => void
@@ -34,6 +37,9 @@ type StudentsTableProps = {
   pageSize: number
   onPageChange: (page: number) => void
   onPageSizeChange: (pageSize: number) => void
+  pageJumpValue: string
+  onPageJumpChange: (value: string) => void
+  onPageJumpSubmit: (value?: string) => void
   toolbarRight?: ReactNode
 }
 
@@ -47,7 +53,7 @@ const statusStyles: Record<StudentManagementRow['uiStatus'], string> = {
 
 const statusLabels: Record<StudentManagementRow['uiStatus'], string> = {
   activo: 'Activo',
-  inactivo: 'Inactivo',
+  inactivo: 'Deshabilitado',
   pendiente: 'Pendiente',
 }
 
@@ -81,6 +87,9 @@ export function StudentsTable({
   loading,
   searchInput,
   onSearchInputChange,
+  sortBy,
+  sortDir,
+  onSortChange,
   onDeactivate,
   onReactivate,
   onDelete,
@@ -94,9 +103,65 @@ export function StudentsTable({
   pageSize,
   onPageChange,
   onPageSizeChange,
+  pageJumpValue,
+  onPageJumpChange,
+  onPageJumpSubmit,
   toolbarRight,
 }: StudentsTableProps) {
   const pageCount = Math.max(totalPages, 1)
+  const showLoadingOverlay = loading && rows.length > 0
+  const showSkeletonBody = loading && rows.length === 0
+
+  const HeaderButton = ({
+    label,
+    field,
+    className,
+    disabled,
+  }: {
+    label: string
+    field: StudentsTableProps['sortBy'] | null
+    className?: string
+    disabled?: boolean
+  }) => {
+    const isSortable = Boolean(field)
+    const isActive = Boolean(field) && sortBy === field
+
+    if (!isSortable || !field || disabled) {
+      return (
+        <span className={cn('inline-flex items-center gap-1', className)}>
+          {label}
+        </span>
+      )
+    }
+
+    const Icon = !isActive ? ArrowUpDown : sortDir === 'asc' ? ArrowDownUp : ArrowUpDown
+
+    return (
+      <button
+        type="button"
+        className={cn(
+          'inline-flex items-center gap-1.5 text-left text-muted-foreground hover:text-foreground',
+          isActive && 'text-success hover:text-success',
+          className,
+        )}
+        onClick={() => onSortChange(field)}
+        aria-label={`Ordenar por ${label}`}
+      >
+        {label}
+        <Icon
+          className={cn(
+            'h-3 w-3 shrink-0 transition-colors',
+            isActive ? 'text-success' : 'text-muted-foreground',
+          )}
+        />
+      </button>
+    )
+  }
+
+  const statusSortable = useMemo(() => {
+    const statuses = new Set(rows.map((row) => row.uiStatus))
+    return statuses.size > 1
+  }, [rows])
 
   const pageItems = useMemo(() => {
     if (pageCount <= 7) return Array.from({ length: pageCount }, (_, i) => i + 1)
@@ -125,40 +190,50 @@ export function StudentsTable({
       cardsLabel="Cards"
       toolbarRight={toolbarRight}
       renderTable={() => (
-        <div className="overflow-x-auto">
+        <div className="relative overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-y border-border bg-muted/40">
-                {[
-                  'Nombre completo',
-                  'Correo institucional',
-                  'Carrera',
-                  'Sexo',
-                  'Cuatrimestre',
-                  'Estado',
-                  'Último acceso',
-                  'Cantidad de accesos',
-                  'Acciones',
-                ].map((col) => (
-                  <th
-                    key={col}
-                    className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground whitespace-nowrap"
-                  >
-                    <span className="inline-flex items-center gap-1">
-                      {col}
-                      <ArrowUpDown className="h-3 w-3" />
-                    </span>
-                  </th>
-                ))}
+                <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground whitespace-nowrap">
+                  <HeaderButton label="Nombre completo" field="name" />
+                </th>
+                <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground whitespace-nowrap">
+                  <span className="inline-flex items-center gap-1">Correo institucional</span>
+                </th>
+                <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground whitespace-nowrap">
+                  <HeaderButton label="Carrera" field="career" />
+                </th>
+                <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground whitespace-nowrap">
+                  <span className="inline-flex items-center gap-1">Sexo</span>
+                </th>
+                <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground whitespace-nowrap">
+                  <HeaderButton label="Cuatrimestre" field="quarter" />
+                </th>
+                <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground whitespace-nowrap">
+                  <HeaderButton label="Estado" field="status" disabled={!statusSortable} />
+                </th>
+                <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground whitespace-nowrap">
+                  <HeaderButton label="Último acceso eLibro" field="lastLoginAt" />
+                </th>
+                <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground whitespace-nowrap">
+                  <span className="inline-flex items-center gap-1">Cantidad de accesos</span>
+                </th>
+                <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground whitespace-nowrap">
+                  <span className="inline-flex items-center gap-1">Acciones</span>
+                </th>
               </tr>
             </thead>
             <tbody>
-              {loading ? (
-                <tr>
-                  <td colSpan={9} className="px-4 py-8 text-center text-sm text-muted-foreground">
-                    Cargando estudiantes...
-                  </td>
-                </tr>
+              {showSkeletonBody ? (
+                Array.from({ length: Math.max(pageSize, 6) }, (_, i) => (
+                  <tr key={`skeleton-${i}`} className="border-b border-border">
+                    {Array.from({ length: 9 }, (_, j) => (
+                      <td key={`skeleton-${i}-${j}`} className="px-4 py-2.5">
+                        <div className="h-4 w-full max-w-[220px] animate-pulse rounded-md bg-muted" />
+                      </td>
+                    ))}
+                  </tr>
+                ))
               ) : rows.length === 0 ? (
                 <tr>
                   <td colSpan={9} className="px-4 py-8 text-center text-sm text-muted-foreground">
@@ -294,6 +369,24 @@ export function StudentsTable({
               ))}
             </tbody>
           </table>
+
+          {showLoadingOverlay ? (
+            <div
+              className="pointer-events-none absolute inset-0 z-[5] overflow-hidden bg-background/55 backdrop-blur-[1px]"
+              aria-hidden
+            >
+              <div className="p-4">
+                <div className="space-y-2">
+                  {Array.from({ length: Math.max(Math.min(rows.length, pageSize), 6) }, (_, i) => (
+                    <div
+                      key={`overlay-skeleton-${i}`}
+                      className="h-9 animate-pulse rounded-md bg-muted"
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : null}
         </div>
       )}
       renderCards={() => (
@@ -393,6 +486,12 @@ export function StudentsTable({
         summary: `${totalElements} alumnos · ${rows.length} mostrados`,
         pageSize,
         onPageSizeChange,
+        pageJump: {
+          value: pageJumpValue,
+          onChange: onPageJumpChange,
+          onSubmit: onPageJumpSubmit,
+          label: 'Ir a página:',
+        },
         items: pageItems,
         active: page + 1,
         onItemClick: (item) => {

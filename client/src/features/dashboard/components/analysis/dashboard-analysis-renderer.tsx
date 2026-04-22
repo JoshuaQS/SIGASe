@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   Area,
   Bar,
@@ -53,6 +53,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/sha
 import { DataTable } from '@/shared/components/ui/data-table'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select'
 import { cn } from '@/shared/lib/utils'
+import { ComposerAnalysisContextCard } from '@/features/dashboard/components/analysis/composer-analysis-context-card'
 import { CardsButtonGroup } from '@/features/dashboard/components/cards-button-group'
 
 type LocalTableControlKey = 'studentActivityTable' | 'careerStudentTable'
@@ -77,10 +78,8 @@ type AccessChartPoint = { label: string; total: number; permitidos: number; dene
 type TopCarreraPoint = { codigo: string; carrera: string; accesos: number; successful: number; failed: number }
 type TopUsuarioPoint = {
   studentId: string
-  codigo: string
   nombre: string
   accesos: number
-  carrera: string
   pct: number
   successful: number
   failed: number
@@ -94,7 +93,7 @@ const TREND_SUCCESS_COLOR = '#0891b2'
 const TREND_FAILED_COLOR = '#38bdf8'
 const TOP_STUDENTS_PAGE_SIZE = 5
 const TOP_CAREERS_PAGE_SIZES = [7, 6] as const
-const DEFAULT_TREND_GRANULARITY: TrendGranularityId = '3m'
+const DEFAULT_TREND_GRANULARITY: TrendGranularityId = '7d'
 const TREND_GRANULARITY_OPTIONS: Array<{ id: TrendGranularityId; label: string }> = [
   { id: 'today', label: 'Hoy' },
   { id: '7d', label: '7 días' },
@@ -132,33 +131,77 @@ const tooltipStyle = {
   fontSize: '12px',
 } as const
 
-function renderSummary(summary: DashboardFilterSummary) {
-  const items = [
-    `Scope: ${summary.scope}`,
-    `Mode: ${summary.mode}`,
-    `Resultado: ${summary.accessResult}`,
-    summary.rankingMode === 'TOP' && summary.topN ? `Top ${summary.topN}` : null,
-    summary.dateFrom && summary.dateTo
-      ? `Rango: ${formatDateTime(summary.dateFrom)} - ${formatDateTime(summary.dateTo)}`
-      : 'Rango: default backend',
-  ].filter(Boolean)
+function accessResultLabel(accessResult: DashboardFilterSummary['accessResult']) {
+  if (accessResult === 'SUCCESS') return 'Éxitos'
+  if (accessResult === 'FAILED') return 'Fallos'
+  return 'Ambos'
+}
+
+function mapAccessType(accessResult: DashboardFilterSummary['accessResult']) {
+  if (accessResult === 'SUCCESS') return 'success'
+  if (accessResult === 'FAILED') return 'failed'
+  return 'both'
+}
+
+function formatRangeDate(dateIso: string) {
+  const date = new Date(dateIso)
+  if (Number.isNaN(date.getTime())) return dateIso
+  return date.toLocaleDateString('es-MX', { year: 'numeric', month: 'short', day: '2-digit' }).replace('.', '')
+}
+
+function renderSummary(analysis: DashboardAnalysisResponse) {
+  const summary = analysis.summary
+  const studentSummaryWidget = analysis.widgets.find((widget) => widget.type === 'STUDENT_ACCESS_SUMMARY')
+  const studentSummary = (studentSummaryWidget?.data ?? null) as DashboardStudentAccessSummaryWidgetData | null
+  const careerKpiWidget = analysis.widgets.find((widget) => widget.type === 'KPI_GROUP')
+  const careerKpis = (careerKpiWidget?.data ?? null) as Partial<DashboardCareerKpiWidgetData> | null
+
+  const scope = (() => {
+    if (summary.scope === 'STUDENTS') {
+      if (summary.mode === 'INDIVIDUAL') return 'student-individual'
+      return summary.rankingMode === 'TOP' ? 'students-top' : 'students-all'
+    }
+    if (summary.mode === 'INDIVIDUAL') return 'career-individual'
+    if (summary.mode === 'MULTI') return summary.rankingMode === 'TOP' ? 'careers-multiple-top' : 'careers-multiple'
+    return summary.rankingMode === 'TOP' ? 'careers-all-top' : 'careers-all'
+  })()
+
+  const title = (() => {
+    if (scope === 'student-individual') return studentSummary?.studentName ?? 'Estudiante'
+    if (scope === 'career-individual') return (careerKpis?.careerName as string | undefined) ?? 'Carrera'
+    if (scope === 'students-all' || scope === 'students-top') return 'Todos los estudiantes'
+    if (scope === 'careers-all' || scope === 'careers-all-top') return 'Todas las carreras'
+    return 'Carreras seleccionadas'
+  })()
+
+  const identifier = (() => {
+    if (scope === 'student-individual' && studentSummary?.enrollmentId) {
+      return { label: 'Matrícula', value: studentSummary.enrollmentId }
+    }
+    if (scope === 'career-individual' && typeof careerKpis?.careerCode === 'string' && careerKpis.careerCode) {
+      return { label: 'Código', value: careerKpis.careerCode }
+    }
+    return undefined
+  })()
+
+  const dateRange =
+    summary.dateFilterType === 'CUSTOM_RANGE' && summary.dateFrom && summary.dateTo
+      ? { from: formatRangeDate(summary.dateFrom), to: formatRangeDate(summary.dateTo) }
+      : null
+
+  const sortOrder =
+    summary.rankingMode === 'TOP' ? (summary.sortDirection === 'ASC' ? 'asc' : 'desc') : null
 
   return (
-    <Card>
-      <CardHeader className="border-b pb-4">
-        <CardTitle className="text-base">Contexto aplicado</CardTitle>
-        <CardDescription>
-          Este bloque solo aparece cuando ya existe un filtro real aplicado distinto del estado base.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="flex flex-wrap gap-2 pt-4">
-        {items.map((item) => (
-          <Badge key={item} variant="secondary">
-            {item}
-          </Badge>
-        ))}
-      </CardContent>
-    </Card>
+    <ComposerAnalysisContextCard
+      scope={scope}
+      accessType={mapAccessType(summary.accessResult)}
+      title={title}
+      identifier={identifier}
+      dateRange={dateRange}
+      sortOrder={sortOrder}
+      topN={summary.rankingMode === 'TOP' ? summary.topN : null}
+    />
   )
 }
 
@@ -540,7 +583,7 @@ function OverviewTrendCard({ widget }: { widget: DashboardWidgetResponse }) {
     <Card>
       <CardHeader className="flex flex-col gap-3 border-b border-border/60 pb-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 flex-1">
-          <CardTitle className="text-base font-semibold">Accesos por Tiempo</CardTitle>
+          <CardTitle className="text-base font-semibold">{widget.title || 'Accesos por Tiempo'}</CardTitle>
           <p className="mt-1 text-xs text-muted-foreground">
             Volumen de actividad en el periodo seleccionado
           </p>
@@ -672,10 +715,8 @@ function OverviewTopSection({
   const studentData = useMemo<TopUsuarioPoint[]>(() => {
     return topStudents.students.map((student) => ({
       studentId: student.studentId,
-      codigo: student.careerCode,
       nombre: student.name,
       accesos: student.totalAccesses,
-      carrera: student.careerName,
       successful: student.successfulAccesses,
       failed: student.failedAccesses,
       pct: 0,
@@ -732,12 +773,14 @@ function OverviewTopSection({
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.35fr_0.75fr]">
       <Card className="flex min-h-[520px] flex-col">
         <CardHeader className="flex flex-col gap-3 border-b border-border/60 pb-4 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+          <div className="flex items-start gap-2">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md">
               <Trophy className="h-4 w-4 text-warning" />
-              Top Carreras
-            </CardTitle>
-            <p className="mt-1 text-xs text-muted-foreground">Carreras con más accesos históricos</p>
+            </span>
+            <div>
+              <CardTitle className="text-sm font-semibold leading-5">Top Carreras</CardTitle>
+              <p className="mt-1 text-xs leading-4 text-muted-foreground">Carreras con más accesos históricos</p>
+            </div>
           </div>
           <CardsButtonGroup
             value={topCareersStatus}
@@ -749,7 +792,7 @@ function OverviewTopSection({
         </CardHeader>
         <CardContent className="flex min-w-0 flex-1 flex-col">
           <div className="min-h-0 flex-1">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minHeight={320} minWidth={0}>
               <BarChart data={topCareerPageItems} margin={{ top: 12, right: 12, left: -12, bottom: 0 }}>
                 <CartesianGrid vertical={false} stroke="rgba(128,128,128,0.14)" />
                 <XAxis dataKey="codigo" tickLine={false} axisLine={false} />
@@ -799,12 +842,14 @@ function OverviewTopSection({
 
       <Card className="flex min-h-[520px] flex-col">
         <CardHeader className="flex flex-col gap-3 border-b border-border/60 pb-4 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+          <div className="flex items-start gap-2">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md">
               <Trophy className="h-4 w-4 text-warning" />
-              Top Usuarios
-            </CardTitle>
-            <p className="mt-1 text-xs text-muted-foreground">Estudiantes con mayor actividad histórica</p>
+            </span>
+            <div>
+              <CardTitle className="text-sm font-semibold leading-5">Top Usuarios</CardTitle>
+              <p className="mt-1 text-xs leading-4 text-muted-foreground">Estudiantes con mayor actividad histórica</p>
+            </div>
           </div>
           <CardsButtonGroup
             value={topStudentsStatus}
@@ -861,12 +906,6 @@ function OverviewTopSection({
                             <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" />
                             {badgeValue}
                           </Badge>
-                          <Badge
-                            variant="outlined"
-                            className="h-5 rounded-full border-border/70 bg-secondary/30 px-2.5 py-0 text-[9px] font-semibold uppercase tracking-wide text-foreground dark:border-border/80 dark:bg-secondary/50 dark:text-foreground"
-                          >
-                            {student.codigo}
-                          </Badge>
                         </div>
                       </div>
 
@@ -878,7 +917,6 @@ function OverviewTopSection({
                           />
                         </div>
                         <div className="flex items-center justify-between gap-3 text-[10px] text-muted-foreground">
-                          <span className="truncate">{student.carrera}</span>
                           <span className="shrink-0 tabular-nums">
                             {topStudentsStatus === 'ALL'
                               ? `Totales: ${student.accesos}`
@@ -943,11 +981,11 @@ function OverviewDashboardRenderer({ analysis }: { analysis: DashboardAnalysisRe
           widget={trendWidget}
         />
       ) : null}
-      {topStudentsWidget && topCareersWidget ? (
+      {topStudentsWidget || topCareersWidget ? (
         <OverviewTopSection
-          key={`${topStudentsWidget.widgetId}-${topCareersWidget.widgetId}-${(topStudentsWidget.data as DashboardTopStudentsWidgetData).dateFrom}-${(topCareersWidget.data as DashboardTopCareersWidgetData).dateFrom}`}
-          topStudentsWidget={topStudentsWidget}
-          topCareersWidget={topCareersWidget}
+          key={`${topStudentsWidget?.widgetId ?? 'no-students'}-${topCareersWidget?.widgetId ?? 'no-careers'}-${(topStudentsWidget?.data as DashboardTopStudentsWidgetData | undefined)?.dateFrom ?? 'no-date'}-${(topCareersWidget?.data as DashboardTopCareersWidgetData | undefined)?.dateFrom ?? 'no-date'}`}
+          topStudentsWidget={topStudentsWidget ?? null}
+          topCareersWidget={topCareersWidget ?? null}
         />
       ) : null}
     </div>
@@ -993,65 +1031,135 @@ function renderGenericKpiGroup(widget: DashboardWidgetResponse) {
 }
 
 function renderGenericTrend(widget: DashboardWidgetResponse) {
-  const data = widget.data as DashboardAccessTrendWidgetData
-  const chartData = data.points.map((point) => ({
-    label: new Date(point.day).toLocaleDateString('es-MX', { day: '2-digit', month: 'short' }).replace('.', ''),
-    successful: point.successful,
-    failed: point.failed,
-  }))
-
-  return (
-    <Card>
-      <CardHeader className="border-b pb-4">
-        <CardTitle className="text-base">{widget.title}</CardTitle>
-        <CardDescription>
-          Tendencia histórica del universo filtrado entre {data.dateFrom} y {data.dateTo}.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="pt-4">
-        <ResponsiveContainer width="100%" height={320}>
-          <BarChart data={chartData} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
-            <CartesianGrid vertical={false} stroke="rgba(148,163,184,0.18)" />
-            <XAxis dataKey="label" tickLine={false} axisLine={false} />
-            <YAxis tickLine={false} axisLine={false} allowDecimals={false} />
-            <Tooltip />
-            <Bar dataKey="successful" name="Exitosos" fill="hsl(var(--success))" radius={[8, 8, 0, 0]} />
-            <Bar dataKey="failed" name="Fallidos" fill="hsl(var(--destructive))" radius={[8, 8, 0, 0]} />
-          </BarChart>
-        </ResponsiveContainer>
-      </CardContent>
-    </Card>
-  )
+  return <OverviewTrendCard widget={widget} />
 }
 
-function renderStudentAccessSummary(widget: DashboardWidgetResponse) {
+function renderStudentAccessSummary(widget: DashboardWidgetResponse, summary: DashboardFilterSummary) {
   const data = widget.data as DashboardStudentAccessSummaryWidgetData
-  const items = [
-    ['Alumno', data.studentName],
-    ['Matrícula', data.enrollmentId],
-    ['Carrera', `${data.careerCode} · ${data.careerName}`],
-    ['Accesos totales', formatNumber(data.totalAccesses)],
-    ['Accesos exitosos', formatNumber(data.successfulAccesses)],
-    ['Accesos fallidos', formatNumber(data.failedAccesses)],
-    ['Tasa de éxito', formatPercent(data.successRate)],
-    ['Último acceso', formatDateTime(data.lastAccessAt)],
-  ]
+  const accessResult = summary.accessResult
+  const total = data.totalAccesses
+  const success = data.successfulAccesses
+  const failed = data.failedAccesses
+  const successRate = data.successRate
+  const failedRate = total > 0 ? (failed * 100) / total : 0
+
+  const successfulPct = total > 0 ? (success / total) * 100 : 0
+  const failedPct = total > 0 ? (failed / total) * 100 : 0
+
+  const cards =
+    accessResult === 'ALL'
+      ? ([
+          {
+            title: 'Nombre completo alumno',
+            value: data.studentName,
+            icon: Users,
+            variant: 'primary',
+          },
+          {
+            title: 'Accesos a eLibro totales',
+            value: formatNumber(total),
+            icon: TrendingUp,
+            variant: 'info',
+            trend: successfulPct,
+            trendLabel: 'exitosos',
+          },
+          {
+            title: 'Accesos a eLibro: Exitosos',
+            value: formatNumber(success),
+            icon: ShieldCheck,
+            variant: 'success',
+            trend: successfulPct,
+            trendLabel: 'del total',
+          },
+          {
+            title: 'Accesos a eLibro: Fallidos',
+            value: formatNumber(failed),
+            icon: ShieldAlert,
+            variant: 'destructive',
+            trend: failedPct,
+            trendLabel: 'del total',
+          },
+        ] as const)
+      : accessResult === 'SUCCESS'
+        ? ([
+            {
+              title: 'Nombre completo alumno',
+              value: data.studentName,
+              icon: Users,
+              variant: 'primary',
+            },
+            {
+              title: 'Accesos a eLibro totales',
+              value: formatNumber(total),
+              icon: TrendingUp,
+              variant: 'info',
+              trend: successfulPct,
+              trendLabel: 'exitosos',
+            },
+            {
+              title: 'Accesos a eLibro: Exitosos',
+              value: formatNumber(success),
+              icon: ShieldCheck,
+              variant: 'success',
+              trend: successfulPct,
+              trendLabel: 'del total',
+            },
+            {
+              title: 'Tasa accesos exitosos',
+              value: formatPercent(successRate),
+              icon: ShieldCheck,
+              variant: 'success',
+              trend: successfulPct,
+              trendLabel: 'del total',
+            },
+          ] as const)
+        : ([
+            {
+              title: 'Nombre completo alumno',
+              value: data.studentName,
+              icon: Users,
+              variant: 'primary',
+            },
+            {
+              title: 'Accesos a eLibro totales',
+              value: formatNumber(total),
+              icon: TrendingUp,
+              variant: 'info',
+              trend: failedPct,
+              trendLabel: 'fallidos',
+            },
+            {
+              title: 'Accesos a eLibro: Fallidos',
+              value: formatNumber(failed),
+              icon: ShieldAlert,
+              variant: 'destructive',
+              trend: failedPct,
+              trendLabel: 'del total',
+            },
+            {
+              title: 'Tasa accesos fallidos',
+              value: formatPercent(failedRate),
+              icon: ShieldAlert,
+              variant: 'destructive',
+              trend: failedPct,
+              trendLabel: 'del total',
+            },
+          ] as const)
 
   return (
-    <Card>
-      <CardHeader className="border-b pb-4">
-        <CardTitle className="text-base">{widget.title}</CardTitle>
-        <CardDescription>Resumen analítico del alumno seleccionado.</CardDescription>
-      </CardHeader>
-      <CardContent className="grid gap-3 pt-4 sm:grid-cols-2">
-        {items.map(([label, value]) => (
-          <div key={label} className="rounded-lg border bg-muted/20 px-3 py-2">
-            <p className="text-xs text-muted-foreground">{label}</p>
-            <p className="mt-1 text-sm font-medium">{value}</p>
-          </div>
-        ))}
-      </CardContent>
-    </Card>
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+      {cards.map((card) => (
+        <StatCard
+          key={card.title}
+          title={card.title}
+          value={card.value}
+          icon={card.icon}
+          variant={card.variant}
+          trend={'trend' in card ? card.trend : undefined}
+          trendLabel={'trendLabel' in card ? card.trendLabel : undefined}
+        />
+      ))}
+    </div>
   )
 }
 
@@ -1157,7 +1265,6 @@ function renderCareerStudentTable(widget: DashboardWidgetResponse, onTableContro
                 <th className="pb-3">Matrícula</th>
                 <th className="pb-3 text-right">Totales</th>
                 <th className="pb-3 text-right">Éxito</th>
-                <th className="pb-3">Último acceso</th>
               </tr>
             </thead>
             <tbody>
@@ -1167,7 +1274,6 @@ function renderCareerStudentTable(widget: DashboardWidgetResponse, onTableContro
                   <td className="py-3">{item.enrollmentId}</td>
                   <td className="py-3 text-right">{formatNumber(item.totalAccesses)}</td>
                   <td className="py-3 text-right">{formatPercent(item.successRate)}</td>
-                  <td className="py-3">{formatDateTime(item.lastAccessAt)}</td>
                 </tr>
               ))}
             </tbody>
@@ -1225,38 +1331,101 @@ function renderStudentRankingTable(widget: DashboardWidgetResponse) {
   )
 }
 
-function renderCareerRankingTable(widget: DashboardWidgetResponse) {
+function CareerRankingBarChart({ widget }: { widget: DashboardWidgetResponse }) {
   const data = widget.data as DashboardCareerRankingTableWidgetData
+  const [page, setPage] = useState(1)
+
+  useEffect(() => {
+    setPage(1)
+  }, [widget.widgetId, data.items])
+
+  const chartRows = useMemo(
+    () =>
+      data.items.map((item, idx) => ({
+        codigo: item.careerCode,
+        carrera: item.careerName,
+        careerId: item.careerId,
+        value: item.rankingValue,
+        fill: TOP_CAREERS_PALETTE[idx % TOP_CAREERS_PALETTE.length],
+      })),
+    [data.items],
+  )
+
+  const pagination = useMemo(() => getPagedSlice(chartRows, page, TOP_CAREERS_PAGE_SIZES), [chartRows, page])
+  const pageItems = pagination.items
+
+  const valueLabel = (() => {
+    const m = (data.rankingMetric ?? '').toUpperCase()
+    if (m === 'SUCCESS') return 'Exitosos'
+    if (m === 'FAILED') return 'Fallidos'
+    if (m === 'TOTAL' || m === 'ALL' || m === 'ACCESSES') return 'Accesos'
+    return data.rankingMetric ? data.rankingMetric : 'Valor'
+  })()
+
   return (
-    <Card>
-      <CardHeader className="border-b pb-4">
-        <CardTitle className="text-base">{widget.title}</CardTitle>
-        <CardDescription>rankingMetric={data.rankingMetric} · Top {data.topN}</CardDescription>
+    <Card className="flex min-h-[420px] flex-col">
+      <CardHeader className="flex flex-col gap-2 border-b border-border/60 pb-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+            <Trophy className="h-4 w-4 text-warning" />
+            {widget.title}
+          </CardTitle>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Top {data.topN} · {valueLabel}
+          </p>
+        </div>
       </CardHeader>
-      <CardContent className="pt-4">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="text-xs text-muted-foreground">
-              <tr>
-                <th className="pb-3">#</th>
-                <th className="pb-3">Clave</th>
-                <th className="pb-3">Carrera</th>
-                <th className="pb-3 text-right">Ranking</th>
-                <th className="pb-3 text-right">Éxito</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.items.map((item) => (
-                <tr key={item.careerId} className="border-t">
-                  <td className="py-3">{item.position}</td>
-                  <td className="py-3">{item.careerCode}</td>
-                  <td className="py-3">{item.careerName}</td>
-                  <td className="py-3 text-right">{formatNumber(item.rankingValue)}</td>
-                  <td className="py-3 text-right">{formatPercent(item.successRate)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      <CardContent className="flex min-w-0 flex-1 flex-col pt-4">
+        <div className="min-h-0 flex-1">
+          <ResponsiveContainer width="100%" height={320} minWidth={1} minHeight={320}>
+            <BarChart data={pageItems} margin={{ top: 12, right: 12, left: -12, bottom: 0 }}>
+              <CartesianGrid vertical={false} stroke="rgba(128,128,128,0.14)" />
+              <XAxis
+                dataKey="careerId"
+                tickLine={false}
+                axisLine={false}
+                tickFormatter={(_, index) => pageItems[index]?.codigo ?? ''}
+              />
+              <YAxis tick={{ fill: '#64748b', fontSize: 11 }} tickLine={false} axisLine={false} allowDecimals={false} domain={[0, 'auto']} />
+              <Tooltip
+                cursor={{ fill: 'hsl(var(--muted) / 0.35)' }}
+                contentStyle={tooltipStyle}
+                formatter={(value: number) => [formatNumber(value), valueLabel]}
+                labelFormatter={(label) => {
+                  const item = pageItems.find((career) => career.careerId === label)
+                  return item ? `${item.codigo} · ${item.carrera}` : label
+                }}
+              />
+              <Bar dataKey="value" radius={[12, 12, 0, 0]} isAnimationActive={false}>
+                {pageItems.map((entry) => (
+                  <Cell key={`${entry.careerId}-fill`} fill={entry.fill} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+        <div className="mt-auto flex items-center justify-end gap-2 pt-3">
+          <Button
+            variant="outline"
+            size="sm"
+            className="border-border/40 hover:border-border/60"
+            disabled={pagination.safePage <= 1}
+            onClick={() => setPage((current) => Math.max(1, current - 1))}
+          >
+            Anterior
+          </Button>
+          <span className="text-xs text-muted-foreground">
+            Página {pagination.safePage} de {pagination.totalPages}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            className="border-border/40 hover:border-border/60"
+            disabled={pagination.safePage >= pagination.totalPages}
+            onClick={() => setPage((current) => Math.min(pagination.totalPages, current + 1))}
+          >
+            Siguiente
+          </Button>
         </div>
       </CardContent>
     </Card>
@@ -1299,14 +1468,22 @@ function renderCareerComparisonTable(widget: DashboardWidgetResponse) {
   )
 }
 
-function renderWidget(widget: DashboardWidgetResponse, onTableControlChange?: DashboardAnalysisRendererProps['onTableControlChange']) {
+function renderWidget(
+  widget: DashboardWidgetResponse,
+  analysis: DashboardAnalysisResponse,
+  onTableControlChange?: DashboardAnalysisRendererProps['onTableControlChange'],
+) {
   switch (widget.type) {
     case 'KPI_GROUP':
+      if (analysis.layoutType === 'STUDENT_DETAIL') {
+        // Student detail KPIs are expressed via STUDENT_ACCESS_SUMMARY per contract.
+        return null
+      }
       return renderGenericKpiGroup(widget)
     case 'AREA_TREND':
       return renderGenericTrend(widget)
     case 'STUDENT_ACCESS_SUMMARY':
-      return renderStudentAccessSummary(widget)
+      return renderStudentAccessSummary(widget, analysis.summary)
     case 'STUDENT_ACTIVITY_TABLE':
       return renderStudentActivityTable(widget, onTableControlChange)
     case 'CAREER_STUDENT_TABLE':
@@ -1319,7 +1496,7 @@ function renderWidget(widget: DashboardWidgetResponse, onTableControlChange?: Da
     case 'CAREER_RANKING_TABLE':
     case 'CAREER_RANKING_SUCCESS_TABLE':
     case 'CAREER_RANKING_FAILED_TABLE':
-      return renderCareerRankingTable(widget)
+      return <CareerRankingBarChart widget={widget} />
     case 'CAREER_COMPARISON_TABLE':
       return renderCareerComparisonTable(widget)
     default:
@@ -1344,14 +1521,31 @@ function GenericDashboardRenderer({
   onTableControlChange?: DashboardAnalysisRendererProps['onTableControlChange']
 }) {
   const sortedWidgets = [...analysis.widgets].sort((left, right) => left.order - right.order)
+  const kpiWidget = sortedWidgets.find((widget) => widget.type === 'KPI_GROUP') ?? null
+  const studentSummaryWidget =
+    analysis.layoutType === 'STUDENT_DETAIL'
+      ? (sortedWidgets.find((widget) => widget.type === 'STUDENT_ACCESS_SUMMARY') ?? null)
+      : null
+  const remainingWidgets = sortedWidgets.filter((widget) => {
+    if (kpiWidget && widget.widgetId === kpiWidget.widgetId) return false
+    if (studentSummaryWidget && widget.widgetId === studentSummaryWidget.widgetId) return false
+    return true
+  })
 
   return (
     <div className="space-y-6">
-      {showAppliedContext ? renderSummary(analysis.summary) : null}
+      {showAppliedContext ? renderSummary(analysis) : null}
+      {showAppliedContext && kpiWidget ? <div>{renderGenericKpiGroup(kpiWidget)}</div> : null}
+      {showAppliedContext && studentSummaryWidget ? (
+        <div>{renderStudentAccessSummary(studentSummaryWidget, analysis.summary)}</div>
+      ) : null}
       <div className="space-y-6">
-        {sortedWidgets.map((widget) => (
-          <div key={widget.widgetId}>{renderWidget(widget, onTableControlChange)}</div>
-        ))}
+        {remainingWidgets
+          .map((widget) => ({ widget, node: renderWidget(widget, analysis, onTableControlChange) }))
+          .filter(({ node }) => node !== null)
+          .map(({ widget, node }) => (
+            <div key={widget.widgetId}>{node}</div>
+          ))}
       </div>
     </div>
   )
@@ -1394,7 +1588,7 @@ export function DashboardAnalysisRenderer({
   if (analysis.layoutType === 'OVERVIEW') {
     return (
       <div className="space-y-6">
-        {showAppliedContext ? renderSummary(analysis.summary) : null}
+        {showAppliedContext ? renderSummary(analysis) : null}
         <OverviewDashboardRenderer analysis={analysis} />
       </div>
     )

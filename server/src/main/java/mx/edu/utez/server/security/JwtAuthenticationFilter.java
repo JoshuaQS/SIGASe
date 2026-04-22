@@ -42,15 +42,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider jwtTokenProvider;
     private final SessionTokenValidationService sessionTokenValidationService;
+    private final SessionIdleTimeoutService sessionIdleTimeoutService;
     private final AuthenticationEntryPoint authenticationEntryPoint;
 
     public JwtAuthenticationFilter(
             JwtTokenProvider jwtTokenProvider,
             SessionTokenValidationService sessionTokenValidationService,
+            SessionIdleTimeoutService sessionIdleTimeoutService,
             JwtAuthenticationEntryPoint authenticationEntryPoint
     ) {
         this.jwtTokenProvider = jwtTokenProvider;
         this.sessionTokenValidationService = sessionTokenValidationService;
+        this.sessionIdleTimeoutService = sessionIdleTimeoutService;
         this.authenticationEntryPoint = authenticationEntryPoint;
     }
 
@@ -107,6 +110,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         parsedToken.role());
                 throw new InvalidJwtAuthenticationException("Token revocado o desactualizado.");
             }
+
+            sessionIdleTimeoutService.assertNotIdleAndTouch(parsedToken);
 
             if (RoleConstants.STUDENT.equals(parsedToken.role()) && parsedToken.mustChangePassword()) {
                 boolean allowed = false;

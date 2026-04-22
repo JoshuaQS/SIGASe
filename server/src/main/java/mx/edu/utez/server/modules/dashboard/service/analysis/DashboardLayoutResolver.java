@@ -24,7 +24,10 @@ public class DashboardLayoutResolver {
         if (supportMatrix.isCareerDetail(context.scope(), context.mode(), context.rankingMode())) {
             return DashboardLayoutType.CAREER_DETAIL;
         }
-        if (supportMatrix.isStudentRanking(context.scope(), context.mode(), context.rankingMode())) {
+        if (supportMatrix.isStudentRankingSplit(context.scope(), context.mode(), context.rankingMode(), context.accessResult())) {
+            return DashboardLayoutType.STUDENT_RANKING_SPLIT;
+        }
+        if (supportMatrix.isStudentRanking(context.scope(), context.mode(), context.rankingMode(), context.accessResult())) {
             return DashboardLayoutType.STUDENT_RANKING;
         }
         if (supportMatrix.isCareerRanking(

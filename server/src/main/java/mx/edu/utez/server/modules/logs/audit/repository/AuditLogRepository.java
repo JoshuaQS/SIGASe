@@ -62,6 +62,58 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, UUID>, JpaSp
             @Param("actorType") AuditActorType actorType,
             Pageable pageable);
 
+    // ── Audit log global summary (no table pagination) ─────────────────────
+
+    @Query("""
+            SELECT al.action AS action, COUNT(al.id) AS total
+            FROM AuditLog al
+            GROUP BY al.action
+            ORDER BY COUNT(al.id) DESC
+            """)
+    List<ActionCountProjection> findTopActions(Pageable pageable);
+
+    @Query("""
+            SELECT al.severity AS severity, COUNT(al.id) AS total
+            FROM AuditLog al
+            GROUP BY al.severity
+            ORDER BY COUNT(al.id) DESC
+            """)
+    List<SeverityCountProjection> countBySeverity();
+
+    @Query("""
+            SELECT al.outcome AS outcome, COUNT(al.id) AS total
+            FROM AuditLog al
+            GROUP BY al.outcome
+            ORDER BY COUNT(al.id) DESC
+            """)
+    List<OutcomeCountProjection> countByOutcome();
+
+    @Query("""
+            SELECT COUNT(al.id)
+            FROM AuditLog al
+            """)
+    long countAll();
+
+    @Query(value = """
+            SELECT COUNT(DISTINCT CONCAT(COALESCE(CAST(actor_admin_id AS CHAR), ''), ':', COALESCE(actor_reference, 'SYSTEM')))
+            FROM audit_logs
+            """, nativeQuery = true)
+    long countDistinctActorsNative();
+
+    @Query("""
+            SELECT COUNT(al.id)
+            FROM AuditLog al
+            WHERE al.severity IN ('SECURITY','CRITICAL')
+            """)
+    long countCriticalLike();
+
+    @Query("""
+            SELECT COUNT(al.id)
+            FROM AuditLog al
+            WHERE al.outcome IN ('FAILURE','ERROR')
+            """)
+    long countFailureLike();
+
     // ── Projection interfaces ─────────────────────────────────────────────
 
     interface RoleModuleActivityProjection {
@@ -74,5 +126,20 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, UUID>, JpaSp
         UUID getAdminId();
         String getAdminName();
         long getTotalActions();
+    }
+
+    interface ActionCountProjection {
+        String getAction();
+        long getTotal();
+    }
+
+    interface SeverityCountProjection {
+        mx.edu.utez.server.shared.enums.AuditSeverity getSeverity();
+        long getTotal();
+    }
+
+    interface OutcomeCountProjection {
+        mx.edu.utez.server.shared.enums.AuditOutcome getOutcome();
+        long getTotal();
     }
 }

@@ -6,8 +6,6 @@ public record DashboardTopStudentItemResponse(
         UUID studentId,
         String name,
         String enrollmentId,
-        String careerCode,
-        String careerName,
         long successfulAccesses,
         long failedAccesses,
         long totalAccesses

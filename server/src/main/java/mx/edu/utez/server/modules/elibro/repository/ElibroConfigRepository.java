@@ -17,5 +17,9 @@ public interface ElibroConfigRepository extends JpaRepository<ElibroConfig, UUID
     @Query("select c from ElibroConfig c where c.status = :status and c.id <> :id order by c.updatedAt desc limit 1")
     Optional<ElibroConfig> findFirstByStatusAndIdNotOrderByUpdatedAtDesc(@Param("status") ElibroConfigStatus status, @Param("id") UUID id);
 
+    List<ElibroConfig> findAllByStatusOrderByUpdatedAtDesc(ElibroConfigStatus status);
+
+    List<ElibroConfig> findAllByStatusAndIdNotOrderByUpdatedAtDesc(ElibroConfigStatus status, UUID id);
+
     List<ElibroConfig> findAllByOrderByUpdatedAtDesc();
 }

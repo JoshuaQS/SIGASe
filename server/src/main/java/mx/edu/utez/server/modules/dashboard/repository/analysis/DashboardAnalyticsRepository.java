@@ -2,10 +2,12 @@ package mx.edu.utez.server.modules.dashboard.repository.analysis;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.UUID;
 import mx.edu.utez.server.modules.dashboard.dto.DashboardCareerComparisonItemResponse;
 import mx.edu.utez.server.modules.dashboard.dto.DashboardCareerResultBreakdownItemResponse;
 import mx.edu.utez.server.modules.dashboard.dto.DashboardCareerRankingTableItemResponse;
 import mx.edu.utez.server.modules.dashboard.dto.DashboardCareerStudentTableResponse;
+import mx.edu.utez.server.modules.dashboard.dto.DashboardAccessResultFilter;
 import mx.edu.utez.server.modules.dashboard.dto.DashboardStudentActivityTableResponse;
 import mx.edu.utez.server.modules.dashboard.dto.DashboardStudentAccessSummaryResponse;
 import mx.edu.utez.server.modules.dashboard.dto.DashboardStudentRankingTableItemResponse;
@@ -27,6 +29,8 @@ public interface DashboardAnalyticsRepository {
     List<DashboardTopCareerItemResponse> fetchTopCareers(BaseAccessQueryFilter filter, int limit, DashboardSortDirection sortDirection);
 
     DashboardStudentAccessSummaryResponse fetchStudentAccessSummary(BaseAccessQueryFilter filter);
+
+    AccessRange fetchStudentAccessRange(UUID studentId, DashboardAccessResultFilter accessResult);
 
     DashboardStudentActivityTableResponse fetchStudentActivity(
             BaseAccessQueryFilter filter,
@@ -79,6 +83,12 @@ public interface DashboardAnalyticsRepository {
             java.time.Instant lastAccessAt,
             java.time.Instant lastSuccessfulAccessAt,
             java.time.Instant lastFailedAccessAt
+    ) {
+    }
+
+    record AccessRange(
+            Instant firstAccessAt,
+            Instant lastAccessAt
     ) {
     }
 

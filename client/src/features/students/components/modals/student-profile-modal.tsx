@@ -5,7 +5,7 @@ import { z } from 'zod'
 import { Lock, User } from 'lucide-react'
 import { Badge } from '@/shared/components/ui/badge'
 import { Button } from '@/shared/components/ui/button'
-import { Dialog, DialogContent } from '@/shared/components/ui/dialog'
+import { Dialog, DialogContent, DialogTitle } from '@/shared/components/ui/dialog'
 import { useAppToast } from '@/shared/components/ui/app-toast-provider'
 import { PasswordField } from '@/shared/components/ui/forms/password-field'
 import { cn } from '@/shared/lib/utils'
@@ -154,6 +154,7 @@ export function StudentProfileModal({ open, onClose }: StudentProfileModalProps)
         animation="fade"
         className="max-w-4xl border border-border bg-card p-0 shadow-lg"
       >
+        <DialogTitle className="sr-only">Perfil del estudiante</DialogTitle>
         <div className="flex min-h-[520px]">
           <div className="w-64 border-r border-border bg-muted/30 p-5">
             <div className="flex flex-col items-center">

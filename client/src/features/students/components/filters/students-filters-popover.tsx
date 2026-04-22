@@ -1,5 +1,9 @@
 import { DataTableFiltersPopover } from '@/shared/components/table-filters'
-import { buildStudentsFilterFields, type StudentsTableFilters } from './students-filter-fields'
+import {
+  buildStudentsFilterFields,
+  DEFAULT_STUDENTS_TABLE_FILTERS,
+  type StudentsTableFilters,
+} from './students-filter-fields'
 import type { CareerDto } from '@/features/careers/api/careers-api'
 
 type StudentsFiltersPopoverProps = {
@@ -33,6 +37,7 @@ export function StudentsFiltersPopover({
       fields={fields}
       value={draftFilters}
       activeCountValue={appliedFilters}
+      defaultValue={DEFAULT_STUDENTS_TABLE_FILTERS}
       onChange={onDraftChange}
       onApply={onApply}
       onReset={onReset}

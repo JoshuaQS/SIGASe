@@ -92,9 +92,35 @@ public class AppProperties {
 
     public static class Auth {
         private final Lockout lockout = new Lockout();
+        /**
+         * Tiempo máximo permitido sin actividad (requests autenticados) antes de invalidar la sesión.
+         * Nota: esto es distinto a la expiración fija del JWT (claim exp).
+         */
+        private long idleTimeoutSeconds = 1800;
+        /**
+         * Para evitar escrituras en DB en cada request, sólo se “toca” actividad
+         * si han pasado al menos N segundos desde el último touch.
+         */
+        private long idleTouchIntervalSeconds = 60;
 
         public Lockout getLockout() {
             return lockout;
+        }
+
+        public long getIdleTimeoutSeconds() {
+            return idleTimeoutSeconds;
+        }
+
+        public void setIdleTimeoutSeconds(long idleTimeoutSeconds) {
+            this.idleTimeoutSeconds = idleTimeoutSeconds;
+        }
+
+        public long getIdleTouchIntervalSeconds() {
+            return idleTouchIntervalSeconds;
+        }
+
+        public void setIdleTouchIntervalSeconds(long idleTouchIntervalSeconds) {
+            this.idleTouchIntervalSeconds = idleTouchIntervalSeconds;
         }
     }
 

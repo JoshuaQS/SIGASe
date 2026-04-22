@@ -1,4 +1,4 @@
-import { useMemo, useState, type ChangeEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ChangeEvent, type ReactNode } from "react";
 import { ChevronLeft, ChevronRight, LayoutGrid, LayoutList, Search } from "lucide-react";
 
 type View = "table" | "cards";
@@ -32,7 +32,7 @@ type PaginationConfig = {
   pageJump?: {
     value: string;
     onChange: (value: string) => void;
-    onSubmit: () => void;
+    onSubmit: (value?: string) => void;
     label?: string;
   };
 };
@@ -74,6 +74,7 @@ export function DataTable({
   const canToggleView = viewToggle && canShowCards;
 
   const [view, setView] = useState<View>(canToggleView ? initialView : "table");
+  const [pageJumpDraft, setPageJumpDraft] = useState<string>(pagination?.pageJump?.value ?? "");
 
   const isCards = canToggleView ? view === "cards" : false;
   const isTable = !isCards;
@@ -84,6 +85,17 @@ export function DataTable({
     return (e: ChangeEvent<HTMLInputElement>) => search.onChange?.(e.target.value);
   }, [search]);
   const isSearchControlled = Boolean(search?.onChange);
+
+  useEffect(() => {
+    setPageJumpDraft(pagination?.pageJump?.value ?? "");
+  }, [pagination?.pageJump?.value]);
+
+  const commitPageJump = () => {
+    if (!pagination?.pageJump) return;
+    const nextValue = pageJumpDraft.trim();
+    pagination.pageJump.onChange(nextValue);
+    pagination.pageJump.onSubmit(nextValue);
+  };
 
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
@@ -217,14 +229,26 @@ export function DataTable({
               <div className="ml-2 flex items-center gap-2">
                 <span className="text-xs text-muted-foreground">{pagination.pageJump.label ?? "Ir a:"}</span>
                 <input
-                  value={pagination.pageJump.value}
-                  onChange={(e) => pagination.pageJump?.onChange(e.target.value)}
+                  value={pageJumpDraft}
+                  onChange={(e) => setPageJumpDraft(e.target.value)}
+                  onFocus={(e) => {
+                    // Select all so typing replaces without manual delete.
+                    const el = e.currentTarget;
+                    window.requestAnimationFrame(() => el.select());
+                  }}
+                  onBlur={commitPageJump}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      commitPageJump();
+                    }
+                  }}
                   className="h-7 w-16 rounded-md border border-border bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                   inputMode="numeric"
                 />
                 <button
                   type="button"
-                  onClick={() => pagination.pageJump?.onSubmit()}
+                  onClick={commitPageJump}
                   className="h-7 rounded-md border border-border px-2 text-xs font-medium text-foreground transition-colors hover:bg-accent"
                 >
                   Ir

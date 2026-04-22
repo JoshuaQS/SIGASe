@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { AlertTriangle, Trash2, UserX } from 'lucide-react'
 import { Button } from '@/shared/components/ui/button'
-import { Dialog, DialogContent } from '@/shared/components/ui/dialog'
+import { Dialog, DialogContent, DialogTitle } from '@/shared/components/ui/dialog'
 import { Input } from '@/shared/components/ui/input'
 import {
   ModalFormBody,
@@ -46,6 +46,7 @@ export function DeleteUserModal({
         animation="fade"
         className="max-w-md border-0 bg-transparent p-0 shadow-none"
       >
+        <DialogTitle className="sr-only">{`Eliminar ${entityLabel}`}</DialogTitle>
         <div className={modalFormShellClass}>
           <ModalFormHeader
             avatar={<UserX className="h-5 w-5" />}

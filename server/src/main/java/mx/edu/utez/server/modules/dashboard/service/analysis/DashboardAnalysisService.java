@@ -8,21 +8,16 @@ import java.util.Map;
 import mx.edu.utez.server.modules.careers.entity.Career;
 import mx.edu.utez.server.modules.careers.repository.CareerRepository;
 import mx.edu.utez.server.modules.dashboard.dto.DashboardAccessTrendsResponse;
+import mx.edu.utez.server.modules.dashboard.dto.DashboardAccessResultFilter;
 import mx.edu.utez.server.modules.dashboard.dto.DashboardAnalysisRequest;
 import mx.edu.utez.server.modules.dashboard.dto.DashboardAnalysisResponse;
-import mx.edu.utez.server.modules.dashboard.dto.DashboardCareerComparisonItemResponse;
-import mx.edu.utez.server.modules.dashboard.dto.DashboardCareerComparisonTableResponse;
 import mx.edu.utez.server.modules.dashboard.dto.DashboardCareerKpiResponse;
 import mx.edu.utez.server.modules.dashboard.dto.DashboardCareerRankingKpiResponse;
 import mx.edu.utez.server.modules.dashboard.dto.DashboardCareerRankingTableItemResponse;
 import mx.edu.utez.server.modules.dashboard.dto.DashboardCareerRankingTableResponse;
-import mx.edu.utez.server.modules.dashboard.dto.DashboardCareerResultBreakdownItemResponse;
-import mx.edu.utez.server.modules.dashboard.dto.DashboardCareerResultBreakdownResponse;
 import mx.edu.utez.server.modules.dashboard.dto.DashboardLayoutType;
 import mx.edu.utez.server.modules.dashboard.dto.DashboardStudentRankingKpiResponse;
 import mx.edu.utez.server.modules.dashboard.dto.DashboardStudentRankingTableResponse;
-import mx.edu.utez.server.modules.dashboard.dto.DashboardStudentResultBreakdownItemResponse;
-import mx.edu.utez.server.modules.dashboard.dto.DashboardStudentResultBreakdownResponse;
 import mx.edu.utez.server.modules.dashboard.dto.DashboardSummaryResponse;
 import mx.edu.utez.server.modules.dashboard.dto.DashboardTopCareersResponse;
 import mx.edu.utez.server.modules.dashboard.dto.DashboardTopStudentsResponse;
@@ -104,20 +99,6 @@ public class DashboardAnalysisService {
                 widgetData.put("overview-kpis", buildSummaryResponse(aggregate));
                 widgetData.put("overview-trend", buildTrendResponse(context, queryFilter));
                 widgetData.put(
-                        "overview-top-students",
-                        new DashboardTopStudentsResponse(
-                                context.effectiveDateFrom().toString(),
-                                context.effectiveDateTo().toString(),
-                                DashboardWidgetComposer.OVERVIEW_TOP_LIMIT,
-                                context.effectiveSortDirection().name().toLowerCase(),
-                                analyticsRepository.fetchTopStudents(
-                                        queryFilter,
-                                        DashboardWidgetComposer.OVERVIEW_TOP_LIMIT,
-                                        context.effectiveSortDirection()
-                                )
-                        )
-                );
-                widgetData.put(
                         "overview-top-careers",
                         new DashboardTopCareersResponse(
                                 context.effectiveDateFrom().toString(),
@@ -131,35 +112,29 @@ public class DashboardAnalysisService {
                                 )
                         )
                 );
-            }
-            case STUDENT_DETAIL -> {
-                DashboardAnalyticsRepository.OverviewKpiAggregate aggregate = analyticsRepository.fetchOverviewKpis(queryFilter);
-                widgetData.put("student-detail-kpis", buildSummaryResponse(aggregate));
-                widgetData.put("student-detail-trend", buildTrendResponse(context, queryFilter));
-                widgetData.put("student-access-summary", analyticsRepository.fetchStudentAccessSummary(queryFilter));
                 widgetData.put(
-                        "student-activity-table",
-                        analyticsRepository.fetchStudentActivity(
-                                queryFilter,
-                                context.widgetControls().studentActivityTable().page(),
-                                context.widgetControls().studentActivityTable().size(),
-                                context.widgetControls().studentActivityTable().sortBy(),
-                                context.widgetControls().studentActivityTable().sortDirection()
+                        "overview-top-students",
+                        new DashboardTopStudentsResponse(
+                                context.effectiveDateFrom().toString(),
+                                context.effectiveDateTo().toString(),
+                                DashboardWidgetComposer.OVERVIEW_TOP_LIMIT,
+                                context.effectiveSortDirection().name().toLowerCase(),
+                                analyticsRepository.fetchTopStudents(
+                                        queryFilter,
+                                        DashboardWidgetComposer.OVERVIEW_TOP_LIMIT,
+                                        context.effectiveSortDirection()
+                                )
                         )
                 );
+            }
+            case STUDENT_DETAIL -> {
+                widgetData.put("student-detail-trend", buildTrendResponse(context, queryFilter));
+                widgetData.put("student-access-summary", analyticsRepository.fetchStudentAccessSummary(queryFilter));
             }
             case CAREER_DETAIL -> {
                 DashboardAnalyticsRepository.AccessKpiAggregate aggregate = analyticsRepository.fetchCareerKpis(queryFilter);
                 widgetData.put("career-detail-kpis", buildCareerKpiResponse(resolvedCareer, aggregate));
                 widgetData.put("career-detail-trend", buildTrendResponse(context, queryFilter));
-                widgetData.put(
-                        "career-result-breakdown",
-                        buildCareerResultBreakdownResponse(
-                                resolvedCareer,
-                                aggregate,
-                                analyticsRepository.fetchCareerResultBreakdown(queryFilter)
-                        )
-                );
                 widgetData.put(
                         "career-student-table",
                         analyticsRepository.fetchCareerStudents(
@@ -174,8 +149,23 @@ public class DashboardAnalysisService {
             case STUDENT_RANKING -> {
                 DashboardAnalyticsRepository.AccessKpiAggregate aggregate = analyticsRepository.fetchStudentRankingKpis(queryFilter);
                 widgetData.put("student-ranking-kpis", buildStudentRankingKpiResponse(aggregate));
+                widgetData.put("student-ranking-trend", buildTrendResponse(context, queryFilter));
                 widgetData.put(
                         "student-ranking-table",
+                        new DashboardTopStudentsResponse(
+                                context.effectiveDateFrom().toString(),
+                                context.effectiveDateTo().toString(),
+                                DashboardWidgetComposer.OVERVIEW_TOP_LIMIT,
+                                context.effectiveSortDirection().name().toLowerCase(),
+                                analyticsRepository.fetchTopStudents(
+                                        queryFilter,
+                                        DashboardWidgetComposer.OVERVIEW_TOP_LIMIT,
+                                        context.effectiveSortDirection()
+                                )
+                        )
+                );
+                widgetData.put(
+                        "student-ranking-top",
                         buildStudentRankingTableResponse(
                                 context,
                                 aggregate.uniqueStudentsImpacted(),
@@ -186,25 +176,77 @@ public class DashboardAnalysisService {
                                 )
                         )
                 );
+            }
+            case STUDENT_RANKING_SPLIT -> {
+                DashboardAnalyticsRepository.AccessKpiAggregate aggregate = analyticsRepository.fetchStudentRankingKpis(queryFilter);
+                widgetData.put("student-ranking-kpis", buildStudentRankingKpiResponse(aggregate));
+                widgetData.put("student-ranking-trend", buildTrendResponse(context, queryFilter));
+
                 widgetData.put(
-                        "student-result-breakdown",
-                        buildStudentResultBreakdownResponse(
-                                aggregate,
-                                analyticsRepository.fetchStudentResultBreakdown(queryFilter)
+                        "student-ranking-table",
+                        new DashboardTopStudentsResponse(
+                                context.effectiveDateFrom().toString(),
+                                context.effectiveDateTo().toString(),
+                                DashboardWidgetComposer.OVERVIEW_TOP_LIMIT,
+                                context.effectiveSortDirection().name().toLowerCase(),
+                                analyticsRepository.fetchTopStudents(
+                                        queryFilter,
+                                        DashboardWidgetComposer.OVERVIEW_TOP_LIMIT,
+                                        context.effectiveSortDirection()
+                                )
+                        )
+                );
+
+                BaseAccessQueryFilter successFilter = new BaseAccessQueryFilter(
+                        context.studentId(),
+                        context.careerIds(),
+                        accessResultMapper.map(DashboardAccessResultFilter.SUCCESS),
+                        context.effectiveDateFrom(),
+                        context.effectiveDateTo()
+                );
+                BaseAccessQueryFilter failedFilter = new BaseAccessQueryFilter(
+                        context.studentId(),
+                        context.careerIds(),
+                        accessResultMapper.map(DashboardAccessResultFilter.FAILED),
+                        context.effectiveDateFrom(),
+                        context.effectiveDateTo()
+                );
+
+                widgetData.put(
+                        "student-ranking-success-top",
+                        buildStudentRankingTableResponse(
+                                context,
+                                aggregate.uniqueStudentsImpacted(),
+                                analyticsRepository.fetchStudentRanking(
+                                        successFilter,
+                                        context.effectiveTopN(),
+                                        context.effectiveSortDirection()
+                                )
+                        )
+                );
+                widgetData.put(
+                        "student-ranking-failed-top",
+                        buildStudentRankingTableResponse(
+                                context,
+                                aggregate.uniqueStudentsImpacted(),
+                                analyticsRepository.fetchStudentRanking(
+                                        failedFilter,
+                                        context.effectiveTopN(),
+                                        context.effectiveSortDirection()
+                                )
                         )
                 );
             }
             case CAREER_RANKING -> {
                 DashboardAnalyticsRepository.CareerRankingKpiAggregate aggregate = analyticsRepository.fetchCareerRankingKpis(queryFilter);
                 DashboardAnalyticsRepository.RankingMetric rankingMetric = resolveCareerRankingMetric(context);
-                List<DashboardCareerComparisonItemResponse> comparisonItems = analyticsRepository.fetchCareerComparison(queryFilter);
                 widgetData.put("career-ranking-kpis", buildCareerRankingKpiResponse(aggregate));
                 widgetData.put(
                         "career-ranking-table",
                         buildCareerRankingTableResponse(
                                 context,
                                 rankingMetric,
-                                comparisonItems.size(),
+                                aggregate.uniqueCareersImpacted(),
                                 analyticsRepository.fetchCareerRanking(
                                         queryFilter,
                                         context.effectiveTopN(),
@@ -213,21 +255,16 @@ public class DashboardAnalysisService {
                                 )
                         )
                 );
-                widgetData.put(
-                        "career-comparison-table",
-                        buildCareerComparisonTableResponse(comparisonItems)
-                );
             }
             case CAREER_RANKING_SPLIT -> {
                 DashboardAnalyticsRepository.CareerRankingKpiAggregate aggregate = analyticsRepository.fetchCareerRankingKpis(queryFilter);
-                List<DashboardCareerComparisonItemResponse> comparisonItems = analyticsRepository.fetchCareerComparison(queryFilter);
                 widgetData.put("career-ranking-split-kpis", buildCareerRankingKpiResponse(aggregate));
                 widgetData.put(
                         "career-ranking-success-table",
                         buildCareerRankingTableResponse(
                                 context,
                                 DashboardAnalyticsRepository.RankingMetric.SUCCESS,
-                                comparisonItems.size(),
+                                aggregate.uniqueCareersImpacted(),
                                 analyticsRepository.fetchCareerRanking(
                                         queryFilter,
                                         context.effectiveTopN(),
@@ -241,7 +278,7 @@ public class DashboardAnalysisService {
                         buildCareerRankingTableResponse(
                                 context,
                                 DashboardAnalyticsRepository.RankingMetric.FAILED,
-                                comparisonItems.size(),
+                                aggregate.uniqueCareersImpacted(),
                                 analyticsRepository.fetchCareerRanking(
                                         queryFilter,
                                         context.effectiveTopN(),
@@ -303,22 +340,6 @@ public class DashboardAnalysisService {
         );
     }
 
-    private DashboardCareerResultBreakdownResponse buildCareerResultBreakdownResponse(
-            Career career,
-            DashboardAnalyticsRepository.AccessKpiAggregate aggregate,
-            List<DashboardCareerResultBreakdownItemResponse> items
-    ) {
-        return new DashboardCareerResultBreakdownResponse(
-                career.getId(),
-                career.getCode(),
-                career.getName(),
-                aggregate.totalAccesses(),
-                aggregate.successfulAccesses(),
-                aggregate.failedAccesses(),
-                items
-        );
-    }
-
     private DashboardStudentRankingKpiResponse buildStudentRankingKpiResponse(
             DashboardAnalyticsRepository.AccessKpiAggregate aggregate
     ) {
@@ -343,18 +364,6 @@ public class DashboardAnalysisService {
                 context.effectiveTopN() == null ? DashboardWidgetComposer.STUDENT_RANKING_DEFAULT_TOP_N : context.effectiveTopN(),
                 context.effectiveSortDirection().name().toLowerCase(),
                 totalCandidates,
-                items
-        );
-    }
-
-    private DashboardStudentResultBreakdownResponse buildStudentResultBreakdownResponse(
-            DashboardAnalyticsRepository.AccessKpiAggregate aggregate,
-            List<DashboardStudentResultBreakdownItemResponse> items
-    ) {
-        return new DashboardStudentResultBreakdownResponse(
-                aggregate.totalAccesses(),
-                aggregate.successfulAccesses(),
-                aggregate.failedAccesses(),
                 items
         );
     }
@@ -385,17 +394,6 @@ public class DashboardAnalysisService {
                 context.effectiveSortDirection().name().toLowerCase(),
                 rankingMetric.name(),
                 totalCandidates,
-                items
-        );
-    }
-
-    private DashboardCareerComparisonTableResponse buildCareerComparisonTableResponse(
-            List<DashboardCareerComparisonItemResponse> items
-    ) {
-        return new DashboardCareerComparisonTableResponse(
-                DashboardWidgetComposer.CAREER_COMPARISON_DEFAULT_SORT_BY,
-                DashboardWidgetComposer.CAREER_COMPARISON_DEFAULT_SORT_DIRECTION.name().toLowerCase(),
-                items.size(),
                 items
         );
     }

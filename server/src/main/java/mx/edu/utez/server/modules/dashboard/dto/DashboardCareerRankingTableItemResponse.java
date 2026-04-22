@@ -7,10 +7,6 @@ public record DashboardCareerRankingTableItemResponse(
         UUID careerId,
         String careerCode,
         String careerName,
-        long rankingValue,
-        long successfulAccesses,
-        long failedAccesses,
-        long totalAccesses,
-        double successRate
+        long rankingValue
 ) {
 }

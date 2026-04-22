@@ -27,6 +27,16 @@ export type AuditLogDto = AuditLog;
 
 export type AuditLogPage = PageEnvelope<AuditLogDto>;
 
+export type AuditLogSummaryDto = {
+  total: number;
+  uniqueActors: number;
+  critical: number;
+  failures: number;
+  topActions: Array<{ action: string; total: number }>;
+  severityBreakdown: Array<{ severity: AuditSeverity; total: number }>;
+  outcomeBreakdown: Array<{ outcome: AuditOutcome; total: number }>;
+};
+
 export type AuditLogParams = {
   dateFrom?: string;
   dateTo?: string;
@@ -82,7 +92,7 @@ function buildQuery(params: AuditLogParams) {
   if (clean(params.actorEmail)) qs.set('actorEmail', clean(params.actorEmail)!);
   if (params.action) qs.set('action', params.action);
   if (params.entityType) qs.set('entityType', params.entityType);
-  if (resolveAuditResult(params)) qs.set('result', resolveAuditResult(params)!);
+  if (resolveAuditResult(params)) qs.set('outcome', resolveAuditResult(params)!);
   if (clean(params.requestId)) qs.set('requestId', clean(params.requestId)!);
   if (clean(params.correlationId)) qs.set('correlationId', clean(params.correlationId)!);
   if (params.severity) qs.set('severity', params.severity);
@@ -97,6 +107,11 @@ function buildQuery(params: AuditLogParams) {
 export async function getAuditLogs(params: AuditLogParams = {}) {
   const query = buildQuery(params);
   const response = await api.get<ApiEnvelope<AuditLogPage>>(`/audit-logs${query}`);
+  return response.data;
+}
+
+export async function getAuditLogSummary() {
+  const response = await api.get<ApiEnvelope<AuditLogSummaryDto>>('/audit-logs/summary');
   return response.data;
 }
 
@@ -124,7 +139,7 @@ export async function exportAuditLogsReport(
     actorEmail: clean(params.actorEmail),
     action: clean(params.action),
     entityType: clean(params.entityType),
-    result: resolveAuditResult(params),
+    outcome: resolveAuditResult(params),
     requestId: clean(params.requestId),
     correlationId: clean(params.correlationId),
     severity: params.severity,

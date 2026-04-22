@@ -164,7 +164,9 @@ public class StudentGoogleLoginService {
             throw new BusinessException(ErrorCode.FORBIDDEN, "No autorizado.");
         }
 
-        student.setLastLoginAt(Instant.now());
+        Instant now = Instant.now();
+        student.setLastLoginAt(now);
+        student.setLastActivityAt(now);
         if (student.getPasswordHash() == null || student.getPasswordHash().isBlank() || student.getStatus() == StudentStatus.PENDING) {
             student.setMustChangePassword(true);
         }

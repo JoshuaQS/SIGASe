@@ -14,6 +14,7 @@ export type TextFilterFieldConfig = {
   type: "text";
   label: string;
   placeholder?: string;
+  defaultValue?: FilterValue;
 };
 
 export type SearchFilterFieldConfig = {
@@ -21,6 +22,7 @@ export type SearchFilterFieldConfig = {
   type: "search";
   label?: string;
   placeholder?: string;
+  defaultValue?: FilterValue;
 };
 
 export type MultiSelectFilterFieldConfig = {
@@ -28,6 +30,7 @@ export type MultiSelectFilterFieldConfig = {
   type: "multi-select";
   label: string;
   options: FilterOption[];
+  defaultValue?: FilterValue;
 };
 
 export type SelectFilterFieldConfig = {
@@ -36,6 +39,7 @@ export type SelectFilterFieldConfig = {
   label: string;
   options: FilterOption[];
   placeholder?: string;
+  defaultValue?: FilterValue;
 };
 
 export type DateTimeLocalFilterFieldConfig = {
@@ -45,6 +49,7 @@ export type DateTimeLocalFilterFieldConfig = {
   min?: string;
   max?: string;
   step?: number;
+  defaultValue?: FilterValue;
 };
 
 export type FilterFieldConfig =
@@ -58,6 +63,7 @@ export type TableFilterPanelProps<TState extends FilterState = FilterState> = {
   title?: string;
   fields: FilterFieldConfig[];
   value: TState;
+  defaultValue?: TState;
   onChange: (next: TState) => void;
   onApply?: () => void;
   onClear?: () => void;

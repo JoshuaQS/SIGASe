@@ -22,6 +22,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/
 import {
   Dialog,
   DialogContent,
+  DialogTitle,
 } from '@/shared/components/ui/dialog'
 import { SectionHeader } from '@/shared/components/ui/section-header'
 import { useAppToast } from '@/shared/components/ui/app-toast-provider'
@@ -38,12 +39,14 @@ import { useAuthUser } from '@/features/auth/hooks/use-auth-user'
 import {
   exportAuditLogsReport,
   getAuditLogs,
+  getAuditLogSummary,
   type AuditActorType,
   type AuditLogDto,
   type AuditLogExportFormat,
   type AuditLogParams,
   type AuditOutcome,
   type AuditSeverity,
+  type AuditLogSummaryDto,
 } from '@/features/audit-logs/api/audit-logs-api'
 
 const PAGE_SIZE = 8
@@ -156,6 +159,8 @@ const AuditLogs = () => {
   const [selectedLog, setSelectedLog] = useState<AuditLogDto | null>(null)
   const [detailTab, setDetailTab] = useState<'overview' | 'raw'>('overview')
   const [isHeaderExportOpen, setIsHeaderExportOpen] = useState(false)
+  const [summary, setSummary] = useState<AuditLogSummaryDto | null>(null)
+  const [summaryLoading, setSummaryLoading] = useState(true)
   const [searchInput, setSearchInput] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const {
@@ -225,6 +230,14 @@ const AuditLogs = () => {
   }, [loadAuditLogs, queryParams])
 
   useEffect(() => {
+    setSummaryLoading(true)
+    void getAuditLogSummary()
+      .then((r) => setSummary(r))
+      .catch(() => setSummary(null))
+      .finally(() => setSummaryLoading(false))
+  }, [])
+
+  useEffect(() => {
     setPage(0)
   }, [appliedFilters])
 
@@ -235,6 +248,13 @@ const AuditLogs = () => {
   }, [selectedLog?.id])
 
   const actionDistribution = useMemo(() => {
+    const fromSummary = summary?.topActions?.slice(0, 6).map((row) => ({
+      action: row.action || 'SIN_ACCION',
+      total: row.total,
+    }))
+    if (fromSummary && fromSummary.length > 0) return fromSummary
+
+    // Fallback (should be rare): page-only distribution.
     const counts = new Map<string, number>()
     for (const log of logs) {
       const label = log.action || 'SIN_ACCION'
@@ -244,26 +264,31 @@ const AuditLogs = () => {
       .sort((a, b) => b[1] - a[1])
       .slice(0, 6)
       .map(([action, total]) => ({ action, total }))
-  }, [logs])
+  }, [logs, summary])
 
   const severityBreakdown = useMemo(() => {
-    return logs.reduce<Record<AuditSeverity, number>>((acc, log) => {
-      if (log.severity) {
-        acc[log.severity] += 1
-      }
-      return acc
-    }, {
+    const acc: Record<AuditSeverity, number> = {
       INFO: 0,
       NOTICE: 0,
       WARNING: 0,
       SECURITY: 0,
       CRITICAL: 0,
-    })
-  }, [logs])
+    }
+    if (summary?.severityBreakdown?.length) {
+      for (const row of summary.severityBreakdown) {
+        acc[row.severity] = row.total
+      }
+      return acc
+    }
+    return logs.reduce<Record<AuditSeverity, number>>((next, log) => {
+      if (log.severity) next[log.severity] += 1
+      return next
+    }, acc)
+  }, [logs, summary])
 
-  const currentPageFailures = logs.filter((log) => log.outcome === 'FAILURE' || log.outcome === 'ERROR').length
-  const currentPageCriticals = severityBreakdown.CRITICAL + severityBreakdown.SECURITY
-  const currentActors = new Set(logs.map((log) => formatActor(log))).size
+  const failuresTotal = summary?.failures ?? logs.filter((log) => log.outcome === 'FAILURE' || log.outcome === 'ERROR').length
+  const criticalsTotal = summary?.critical ?? (severityBreakdown.CRITICAL + severityBreakdown.SECURITY)
+  const actorsTotal = summary?.uniqueActors ?? new Set(logs.map((log) => formatActor(log))).size
   const visibleFrom = totalElements === 0 ? 0 : page * pageSize + 1
   const visibleTo = totalElements === 0 ? 0 : Math.min((page + 1) * pageSize, totalElements)
 
@@ -315,7 +340,7 @@ const AuditLogs = () => {
       <SectionHeader
         icon={Shield}
         title="Logs de Auditoría"
-        subtitle="Registros reales del endpoint `/api/v1/audit-logs`, alineados al modelo nuevo de auditoría"
+        subtitle="Consulta los movimientos administrativos para mantener trazabilidad y control."
         actions={
           <>
             <Button
@@ -373,32 +398,32 @@ const AuditLogs = () => {
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatusCard
-          title="Total filtrado"
-          value={totalElements.toLocaleString()}
-          subtitle="Coincide con la consulta actual"
+          title="Total (global)"
+          value={(summary?.total ?? 0).toLocaleString()}
+          subtitle="No depende de filtros de tabla"
           icon={Activity}
           variant="info"
           delay={0}
         />
         <StatusCard
-          title="Actores visibles"
-          value={currentActors}
-          subtitle="En la página actual"
+          title="Actores (global)"
+          value={actorsTotal}
+          subtitle="No depende de filtros de tabla"
           icon={UserCircle2}
           variant="primary"
           delay={0.05}
         />
         <StatusCard
           title="Eventos críticos"
-          value={currentPageCriticals}
-          subtitle="Security + Critical"
+          value={criticalsTotal}
+          subtitle="SECURITY + CRITICAL"
           icon={AlertCircle}
           variant="destructive"
           delay={0.1}
         />
         <StatusCard
-          title="Fallos visibles"
-          value={currentPageFailures}
+          title="Fallos (global)"
+          value={failuresTotal}
           subtitle="FAILURE + ERROR"
           icon={Clock3}
           variant="warning"
@@ -409,14 +434,18 @@ const AuditLogs = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card className="flex flex-col">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold">Acciones en resultados cargados</CardTitle>
-            <p className="text-xs text-muted-foreground">Distribución de acciones en la página actual</p>
+            <CardTitle className="text-sm font-semibold">Acciones (global)</CardTitle>
+            <p className="text-xs text-muted-foreground">Top de acciones sin depender de filtros de tabla</p>
           </CardHeader>
           <CardContent className="flex min-h-[260px] flex-1 gap-4">
-            {actionDistribution.length > 0 ? (
+            {summaryLoading ? (
+              <div className="min-h-[260px] grid w-full place-items-center text-sm text-muted-foreground">
+                Cargando métricas globales...
+              </div>
+            ) : actionDistribution.length > 0 ? (
               <>
-                <div className="min-w-0 flex-1">
-                  <ResponsiveContainer width="100%" height="100%">
+                <div className="h-[240px] w-full min-w-0 flex-1">
+                  <ResponsiveContainer width="100%" height="100%" minHeight={240} minWidth={0}>
                     <BarChart data={actionDistribution} margin={{ top: 0, right: 8, left: 10, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.15)" vertical={false} />
                   <XAxis
@@ -466,7 +495,7 @@ const AuditLogs = () => {
               </>
             ) : (
               <div className="min-h-[260px] grid w-full place-items-center text-sm text-muted-foreground">
-                Sin datos para graficar con los filtros actuales.
+                Sin datos para graficar.
               </div>
             )}
           </CardContent>
@@ -569,6 +598,7 @@ const AuditLogs = () => {
           animation="fade"
           className="max-w-4xl border border-border bg-card p-0 shadow-lg"
         >
+          <DialogTitle className="sr-only">Detalle del registro de auditoría</DialogTitle>
           {selectedLog ? (() => {
             const severity = selectedLog.severity ?? 'INFO'
             const style = severityStyles[severity]

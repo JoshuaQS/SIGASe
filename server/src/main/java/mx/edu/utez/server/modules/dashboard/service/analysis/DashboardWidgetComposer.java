@@ -2,8 +2,6 @@ package mx.edu.utez.server.modules.dashboard.service.analysis;
 
 import java.util.List;
 import java.util.Set;
-import mx.edu.utez.server.modules.dashboard.dto.DashboardBreakdownWidgetConfig;
-import mx.edu.utez.server.modules.dashboard.dto.DashboardComparisonWidgetConfig;
 import mx.edu.utez.server.modules.dashboard.dto.DashboardEmptyWidgetConfig;
 import mx.edu.utez.server.modules.dashboard.dto.DashboardLayoutType;
 import mx.edu.utez.server.modules.dashboard.dto.DashboardRankingWidgetConfig;
@@ -47,8 +45,7 @@ public class DashboardWidgetComposer {
             "successfulAccesses",
             "failedAccesses",
             "studentName",
-            "enrollmentId",
-            "lastAccessAt"
+            "enrollmentId"
     );
     public static final String RESULT_BREAKDOWN_DEFAULT_SORT_BY = "total";
     public static final DashboardSortDirection RESULT_BREAKDOWN_DEFAULT_SORT_DIRECTION = DashboardSortDirection.DESC;
@@ -62,56 +59,32 @@ public class DashboardWidgetComposer {
                     new DashboardWidgetDefinition("overview-kpis", DashboardWidgetType.KPI_GROUP, "Resumen general", 1, new DashboardEmptyWidgetConfig()),
                     new DashboardWidgetDefinition("overview-trend", DashboardWidgetType.AREA_TREND, "Tendencia de accesos", 2, new DashboardEmptyWidgetConfig()),
                     new DashboardWidgetDefinition(
-                            "overview-top-students",
-                            DashboardWidgetType.TOP_STUDENTS_TABLE,
-                            "Top estudiantes",
+                            "overview-top-careers",
+                            DashboardWidgetType.TOP_CAREERS_TABLE,
+                            "Carreras con accesos a eLibro",
                             3,
                             new DashboardTopListWidgetConfig(OVERVIEW_TOP_LIMIT, context.effectiveSortDirection())
                     ),
                     new DashboardWidgetDefinition(
-                            "overview-top-careers",
-                            DashboardWidgetType.TOP_CAREERS_TABLE,
-                            "Top carreras",
+                            "overview-top-students",
+                            DashboardWidgetType.TOP_STUDENTS_TABLE,
+                            "Estudiantes con accesos a eLibro",
                             4,
                             new DashboardTopListWidgetConfig(OVERVIEW_TOP_LIMIT, context.effectiveSortDirection())
                     )
             );
             case STUDENT_DETAIL -> List.of(
-                    new DashboardWidgetDefinition("student-detail-kpis", DashboardWidgetType.KPI_GROUP, "Resumen del alumno", 1, new DashboardEmptyWidgetConfig()),
-                    new DashboardWidgetDefinition("student-detail-trend", DashboardWidgetType.AREA_TREND, "Tendencia del alumno", 2, new DashboardEmptyWidgetConfig()),
-                    new DashboardWidgetDefinition("student-access-summary", DashboardWidgetType.STUDENT_ACCESS_SUMMARY, "Resumen de accesos", 3, new DashboardEmptyWidgetConfig()),
-                    new DashboardWidgetDefinition(
-                            "student-activity-table",
-                            DashboardWidgetType.STUDENT_ACTIVITY_TABLE,
-                            "Actividad del alumno",
-                            4,
-                            new DashboardTableWidgetConfig(
-                                    context.widgetControls().studentActivityTable().page(),
-                                    context.widgetControls().studentActivityTable().size(),
-                                    context.widgetControls().studentActivityTable().sortBy(),
-                                    context.widgetControls().studentActivityTable().sortDirection()
-                            )
-                    )
+                    new DashboardWidgetDefinition("student-detail-trend", DashboardWidgetType.AREA_TREND, "Accesos a eLibro por tiempo", 1, new DashboardEmptyWidgetConfig()),
+                    new DashboardWidgetDefinition("student-access-summary", DashboardWidgetType.STUDENT_ACCESS_SUMMARY, "Resumen de accesos a eLibro", 2, new DashboardEmptyWidgetConfig())
             );
             case CAREER_DETAIL -> List.of(
-                    new DashboardWidgetDefinition("career-detail-kpis", DashboardWidgetType.KPI_GROUP, "Resumen de la carrera", 1, new DashboardEmptyWidgetConfig()),
-                    new DashboardWidgetDefinition("career-detail-trend", DashboardWidgetType.AREA_TREND, "Tendencia de la carrera", 2, new DashboardEmptyWidgetConfig()),
-                    new DashboardWidgetDefinition(
-                            "career-result-breakdown",
-                            DashboardWidgetType.CAREER_RESULT_BREAKDOWN,
-                            "Distribución de resultados",
-                            3,
-                            new DashboardBreakdownWidgetConfig(
-                                    RESULT_BREAKDOWN_DEFAULT_SORT_BY,
-                                    RESULT_BREAKDOWN_DEFAULT_SORT_DIRECTION,
-                                    RESULT_BREAKDOWN_DEFAULT_TIE_BREAKER
-                            )
-                    ),
+                    new DashboardWidgetDefinition("career-detail-kpis", DashboardWidgetType.KPI_GROUP, "KPIs de la carrera", 1, new DashboardEmptyWidgetConfig()),
+                    new DashboardWidgetDefinition("career-detail-trend", DashboardWidgetType.AREA_TREND, "Accesos a eLibro por tiempo", 2, new DashboardEmptyWidgetConfig()),
                     new DashboardWidgetDefinition(
                             "career-student-table",
                             DashboardWidgetType.CAREER_STUDENT_TABLE,
-                            "Alumnos de la carrera",
-                            4,
+                            "Estudiantes con accesos a eLibro",
+                            3,
                             new DashboardTableWidgetConfig(
                                     context.widgetControls().careerStudentTable().page(),
                                     context.widgetControls().careerStudentTable().size(),
@@ -121,64 +94,76 @@ public class DashboardWidgetComposer {
                     )
             );
             case STUDENT_RANKING -> List.of(
-                    new DashboardWidgetDefinition("student-ranking-kpis", DashboardWidgetType.KPI_GROUP, "Resumen del universo analítico", 1, new DashboardEmptyWidgetConfig()),
+                    new DashboardWidgetDefinition("student-ranking-kpis", DashboardWidgetType.KPI_GROUP, "KPIs del universo de estudiantes", 1, new DashboardEmptyWidgetConfig()),
+                    new DashboardWidgetDefinition("student-ranking-trend", DashboardWidgetType.AREA_TREND, "Accesos a eLibro por tiempo", 2, new DashboardEmptyWidgetConfig()),
                     new DashboardWidgetDefinition(
                             "student-ranking-table",
+                            DashboardWidgetType.TOP_STUDENTS_TABLE,
+                            "Tabla de estudiantes con accesos a eLibro",
+                            3,
+                            new DashboardTopListWidgetConfig(OVERVIEW_TOP_LIMIT, context.effectiveSortDirection())
+                    ),
+                    new DashboardWidgetDefinition(
+                            "student-ranking-top",
                             DashboardWidgetType.STUDENT_RANKING_TABLE,
-                            "Ranking de alumnos",
-                            2,
+                            "Top estudiantes",
+                            4,
+                            new DashboardRankingWidgetConfig(context.effectiveTopN(), context.effectiveSortDirection())
+                    )
+            );
+            case STUDENT_RANKING_SPLIT -> List.of(
+                    new DashboardWidgetDefinition("student-ranking-kpis", DashboardWidgetType.KPI_GROUP, "KPIs del universo de estudiantes", 1, new DashboardEmptyWidgetConfig()),
+                    new DashboardWidgetDefinition("student-ranking-trend", DashboardWidgetType.AREA_TREND, "Accesos a eLibro por tiempo", 2, new DashboardEmptyWidgetConfig()),
+                    new DashboardWidgetDefinition(
+                            "student-ranking-table",
+                            DashboardWidgetType.TOP_STUDENTS_TABLE,
+                            "Tabla general de estudiantes",
+                            3,
+                            new DashboardTopListWidgetConfig(OVERVIEW_TOP_LIMIT, context.effectiveSortDirection())
+                    ),
+                    new DashboardWidgetDefinition(
+                            "student-ranking-success-top",
+                            DashboardWidgetType.STUDENT_RANKING_TABLE,
+                            "Top estudiantes (exitosos)",
+                            4,
                             new DashboardRankingWidgetConfig(context.effectiveTopN(), context.effectiveSortDirection())
                     ),
                     new DashboardWidgetDefinition(
-                            "student-result-breakdown",
-                            DashboardWidgetType.STUDENT_RESULT_BREAKDOWN,
-                            "Distribución de resultados",
-                            3,
-                            new DashboardBreakdownWidgetConfig(
-                                    RESULT_BREAKDOWN_DEFAULT_SORT_BY,
-                                    RESULT_BREAKDOWN_DEFAULT_SORT_DIRECTION,
-                                    RESULT_BREAKDOWN_DEFAULT_TIE_BREAKER
-                            )
+                            "student-ranking-failed-top",
+                            DashboardWidgetType.STUDENT_RANKING_TABLE,
+                            "Top estudiantes (fallidos)",
+                            5,
+                            new DashboardRankingWidgetConfig(context.effectiveTopN(), context.effectiveSortDirection())
                     )
             );
             case CAREER_RANKING -> List.of(
-                    new DashboardWidgetDefinition("career-ranking-kpis", DashboardWidgetType.KPI_GROUP, "Resumen del universo analítico", 1, new DashboardEmptyWidgetConfig()),
+                    new DashboardWidgetDefinition("career-ranking-kpis", DashboardWidgetType.KPI_GROUP, "KPIs del universo de carreras", 1, new DashboardEmptyWidgetConfig()),
                     new DashboardWidgetDefinition(
                             "career-ranking-table",
                             DashboardWidgetType.CAREER_RANKING_TABLE,
-                            "Ranking de carreras",
+                            "Top carreras",
                             2,
                             new DashboardRankingWidgetConfig(context.effectiveTopN(), context.effectiveSortDirection())
-                    ),
-                    new DashboardWidgetDefinition(
-                            "career-comparison-table",
-                            DashboardWidgetType.CAREER_COMPARISON_TABLE,
-                            "Comparativo de carreras",
-                            3,
-                            new DashboardComparisonWidgetConfig(
-                                    CAREER_COMPARISON_DEFAULT_SORT_BY,
-                                    CAREER_COMPARISON_DEFAULT_SORT_DIRECTION
-                            )
                     )
             );
             case CAREER_RANKING_SPLIT -> List.of(
-                    new DashboardWidgetDefinition("career-ranking-split-kpis", DashboardWidgetType.KPI_GROUP, "Resumen del universo analítico", 1, new DashboardEmptyWidgetConfig()),
+                    new DashboardWidgetDefinition("career-ranking-split-kpis", DashboardWidgetType.KPI_GROUP, "KPIs del universo de carreras", 1, new DashboardEmptyWidgetConfig()),
                     new DashboardWidgetDefinition(
                             "career-ranking-success-table",
                             DashboardWidgetType.CAREER_RANKING_SUCCESS_TABLE,
-                            "Carreras con más éxitos",
+                            "Top carreras (exitosos)",
                             2,
                             new DashboardRankingWidgetConfig(context.effectiveTopN(), context.effectiveSortDirection())
                     ),
                     new DashboardWidgetDefinition(
                             "career-ranking-failed-table",
                             DashboardWidgetType.CAREER_RANKING_FAILED_TABLE,
-                            "Carreras con más fallos",
+                            "Top carreras (fallidos)",
                             3,
                             new DashboardRankingWidgetConfig(context.effectiveTopN(), context.effectiveSortDirection())
                     )
             );
-            default -> throw new IllegalArgumentException("El layout todavía no está soportado por el composer.");
+            default -> throw new IllegalArgumentException("El layout todavía no está soportado por el widget composer.");
         };
     }
 

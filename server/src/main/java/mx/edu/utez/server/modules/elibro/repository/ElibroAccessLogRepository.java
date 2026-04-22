@@ -27,6 +27,11 @@ public interface ElibroAccessLogRepository extends JpaRepository<ElibroAccessLog
         long getAccessCount();
     }
 
+    interface StudentLastAccessProjection {
+        UUID getStudentId();
+        Instant getLastOccurredAt();
+    }
+
     long countByStudent_IdAndOccurredAtGreaterThanEqualAndResult(UUID studentId, Instant occurredAt, ElibroAccessResult result);
 
     long countByStudent_IdAndOccurredAtGreaterThanEqualAndResultNot(UUID studentId, Instant occurredAt, ElibroAccessResult result);
@@ -73,6 +78,18 @@ public interface ElibroAccessLogRepository extends JpaRepository<ElibroAccessLog
             GROUP BY l.student.id, l.result
             """)
     List<StudentAccessMetricsProjection> summarizeStudentAccessMetrics(
+            @Param("studentIds") Collection<UUID> studentIds
+    );
+
+    @Query("""
+            SELECT
+                l.student.id AS studentId,
+                MAX(l.occurredAt) AS lastOccurredAt
+            FROM ElibroAccessLog l
+            WHERE l.student.id IN :studentIds
+            GROUP BY l.student.id
+            """)
+    List<StudentLastAccessProjection> summarizeStudentLastAccess(
             @Param("studentIds") Collection<UUID> studentIds
     );
 

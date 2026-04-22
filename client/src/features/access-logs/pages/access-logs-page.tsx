@@ -36,8 +36,10 @@ import {
   exportAccessLogsReport,
   getAccessLogs,
   getAccessLogMetrics,
+  getAccessLogSummary,
   type AccessLogExportFormat,
   type AccessLogMetricsDto,
+  type AccessLogSummaryDto,
   type AccessLogQueryParams,
 } from '@/features/access-logs/api/access-logs-api'
 import type {
@@ -136,6 +138,8 @@ const AccessLogs = () => {
   const [selectedLog, setSelectedLog] = useState<UnifiedAccessLogRecord | null>(null)
   const [metrics, setMetrics] = useState<AccessLogMetricsDto | null>(null)
   const [metricsLoading, setMetricsLoading] = useState(false)
+  const [summary, setSummary] = useState<AccessLogSummaryDto | null>(null)
+  const [summaryLoading, setSummaryLoading] = useState(false)
   /** Serie horaria de hoy desde API sin filtros de tabla (mismo endpoint, universo completo). */
   const [volumeTodayBuckets, setVolumeTodayBuckets] = useState<AccessLogMetricsDto['hourlyVolumeToday'] | undefined>(undefined)
   const [volumeTodayLoading, setVolumeTodayLoading] = useState(true)
@@ -203,10 +207,11 @@ const AccessLogs = () => {
     }
   }, [showToast])
 
-  const loadMetrics = useCallback(async (params: AccessLogQueryParams) => {
+  const loadMetrics = useCallback(async () => {
     setMetricsLoading(true)
     try {
-      const response = await getAccessLogMetrics(params, 7)
+      // Global metrics: ignore table filters/search.
+      const response = await getAccessLogMetrics({}, 7)
       setMetrics(response)
     } catch (error) {
       const message = error instanceof Error ? error.message : 'No se pudieron cargar las métricas de access logs.'
@@ -220,6 +225,19 @@ const AccessLogs = () => {
       setMetricsLoading(false)
     }
   }, [showToast])
+
+  const loadSummary = useCallback(async () => {
+    setSummaryLoading(true)
+    try {
+      // Global summary: ignore table filters/search.
+      const response = await getAccessLogSummary({}, 7)
+      setSummary(response)
+    } catch {
+      setSummary(null)
+    } finally {
+      setSummaryLoading(false)
+    }
+  }, [])
 
   const loadVolumeToday = useCallback(async () => {
     setVolumeTodayLoading(true)
@@ -238,8 +256,12 @@ const AccessLogs = () => {
   }, [loadAccessLogs, queryParams])
 
   useEffect(() => {
-    void loadMetrics(queryParams)
-  }, [loadMetrics, queryParams])
+    void loadMetrics()
+  }, [loadMetrics])
+
+  useEffect(() => {
+    void loadSummary()
+  }, [loadSummary])
 
   useEffect(() => {
     void loadVolumeToday()
@@ -249,21 +271,26 @@ const AccessLogs = () => {
     setPage(0)
   }, [appliedFilters])
 
-  const successesOnPage = logs.filter((log) => log.result === 'SUCCESS').length
-  const failuresOnPage = logs.length - successesOnPage
-  const actorsOnPage = new Set(logs.map((log) => `${log.actorType}:${log.actorId ?? log.actorEmail ?? log.id}`)).size
+  const successesTotal = summary?.successful ?? 0
+  const failuresTotal = summary?.failed ?? 0
+  const actorsTotal = summary?.uniqueActors ?? 0
   const visibleFrom = totalElements === 0 ? 0 : page * pageSize + 1
   const visibleTo = totalElements === 0 ? 0 : Math.min((page + 1) * pageSize, totalElements)
 
   const volumeData = useMemo(() => {
     const buckets = volumeTodayBuckets ?? metrics?.hourlyVolumeToday ?? []
     return buckets.map((p) => ({
-      t: p.t,
+      hour: p.t,
       total: Number(p.total) || 0,
       exitosos: Number(p.successful) || 0,
       fallidos: Number(p.failed) || 0,
     }))
   }, [volumeTodayBuckets, metrics])
+
+  const hasVolumeValues = useMemo(
+    () => volumeData.some((bucket) => bucket.total > 0 || bucket.exitosos > 0 || bucket.fallidos > 0),
+    [volumeData],
+  )
 
   const pieData = useMemo(() => {
     const rows = metrics?.careerDistribution ?? []
@@ -280,7 +307,8 @@ const AccessLogs = () => {
 
   const handleRefresh = () => {
     void loadVolumeToday()
-    void loadMetrics(queryParams)
+    void loadMetrics()
+    void loadSummary()
     void loadAccessLogs(queryParams)
       .then(() => {
         showToast({
@@ -319,7 +347,7 @@ const AccessLogs = () => {
       <SectionHeader
         icon={FileText}
         title="Access Logs"
-        subtitle="Consulta unificada de accesos a SIGASe y eLibro desde `/api/v1/access-logs`."
+        subtitle="Revisa los intentos de acceso para dar seguimiento a la actividad en SIGASe y eLibro."
         actions={
           <>
             <Button variant="outline" size="md" onClick={handleRefresh} disabled={loading} className="gap-2">
@@ -371,33 +399,33 @@ const AccessLogs = () => {
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatusCard
-          title="Total filtrado"
-          value={totalElements.toLocaleString()}
-          subtitle="Coincide con la consulta actual"
+          title="Total (7 días)"
+          value={summaryLoading ? '…' : (summary?.total ?? 0).toLocaleString()}
+          subtitle="Resumen global (no depende de filtros)"
           icon={Activity}
           variant="info"
           delay={0}
         />
         <StatusCard
-          title="Exitosos visibles"
-          value={successesOnPage}
-          subtitle="En la página actual"
+          title="Exitosos (7 días)"
+          value={summaryLoading ? '…' : successesTotal}
+          subtitle="Resumen global (no depende de filtros)"
           icon={CheckCircle2}
           variant="success"
           delay={0.05}
         />
         <StatusCard
-          title="Fallos visibles"
-          value={failuresOnPage}
-          subtitle="Resultados no exitosos"
+          title="Fallos (7 días)"
+          value={summaryLoading ? '…' : failuresTotal}
+          subtitle="Resumen global (no depende de filtros)"
           icon={ServerCrash}
           variant="destructive"
           delay={0.1}
         />
         <StatusCard
-          title="Actores visibles"
-          value={actorsOnPage}
-          subtitle="En la página actual"
+          title="Actores (7 días)"
+          value={summaryLoading ? '…' : actorsTotal}
+          subtitle="Resumen global (no depende de filtros)"
           icon={Clock3}
           variant="primary"
           delay={0.15}
@@ -417,7 +445,7 @@ const AccessLogs = () => {
               <div className="h-[180px] grid place-items-center text-sm text-muted-foreground">
                 Cargando volumen del día...
               </div>
-            ) : volumeData.length > 0 ? (
+            ) : volumeData.length > 0 && hasVolumeValues ? (
               <ResponsiveContainer width="100%" height={180}>
                 <AreaChart data={volumeData} margin={{ top: 5, right: 8, left: -16, bottom: 0 }}>
                   <defs>
@@ -427,7 +455,7 @@ const AccessLogs = () => {
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.15)" />
-                  <XAxis dataKey="t" tick={{ fill: '#64748b', fontSize: 11 }} tickLine={false} axisLine={false} />
+                  <XAxis dataKey="hour" tick={{ fill: '#64748b', fontSize: 11 }} tickLine={false} axisLine={false} />
                   <YAxis tick={{ fill: '#64748b', fontSize: 11 }} tickLine={false} axisLine={false} allowDecimals={false} />
                   <Tooltip contentStyle={tooltipStyle} />
                   <Area type="monotone" dataKey="total" stroke="#6366f1" strokeWidth={2} fill="url(#gTotal)" dot={false} name="Total" />

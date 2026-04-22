@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import mx.edu.utez.server.modules.dashboard.dto.DashboardAccessResultFilter;
+import mx.edu.utez.server.modules.dashboard.dto.DashboardDateFilterType;
 import mx.edu.utez.server.modules.dashboard.dto.DashboardFilterMode;
 import mx.edu.utez.server.modules.dashboard.dto.DashboardFilterScope;
 import mx.edu.utez.server.modules.dashboard.dto.DashboardRankingMode;
@@ -15,6 +16,7 @@ public record ResolvedDashboardAnalysisContext(
         UUID studentId,
         List<UUID> careerIds,
         DashboardAccessResultFilter accessResult,
+        DashboardDateFilterType dateFilterType,
         Instant effectiveDateFrom,
         Instant effectiveDateTo,
         DashboardRankingMode rankingMode,
@@ -29,6 +31,7 @@ public record ResolvedDashboardAnalysisContext(
             UUID studentId,
             List<UUID> careerIds,
             DashboardAccessResultFilter accessResult,
+            DashboardDateFilterType dateFilterType,
             Instant effectiveDateFrom,
             Instant effectiveDateTo,
             DashboardRankingMode rankingMode,
@@ -42,6 +45,7 @@ public record ResolvedDashboardAnalysisContext(
                 studentId,
                 careerIds,
                 accessResult,
+                dateFilterType,
                 effectiveDateFrom,
                 effectiveDateTo,
                 rankingMode,

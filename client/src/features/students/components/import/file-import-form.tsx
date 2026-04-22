@@ -19,7 +19,6 @@ export function FileImportForm({
 }: FileImportFormProps) {
   return (
     <CsvImport
-      showSimulateError
       fullWidth={fullWidth}
       importing={importing}
       hideActions={hideActions}
@@ -29,3 +28,4 @@ export function FileImportForm({
     />
   );
 }
+

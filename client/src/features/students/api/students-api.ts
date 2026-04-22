@@ -17,6 +17,7 @@ export type StudentListParams = {
   enrollmentId?: string;
   lastNamePaternal?: string;
   lastNameMaternal?: string;
+  institutionalEmail?: string;
   careerCode?: string;
   sex?: StudentBackendSex;
   quarter?: number;
@@ -103,6 +104,7 @@ export type StudentExportParams = {
   enrollmentId?: string;
   lastNamePaternal?: string;
   lastNameMaternal?: string;
+  institutionalEmail?: string;
   careerCode?: string;
   sex?: StudentBackendSex;
   quarter?: number;
@@ -125,6 +127,11 @@ export type StudentMetricsPointDto = {
   total: number;
 };
 
+export type StudentCareerDistributionPointDto = {
+  careerCode: string;
+  total: number;
+};
+
 export type StudentMetricsResponseDto = {
   totalStudents: number;
   activeStudents: number;
@@ -134,6 +141,7 @@ export type StudentMetricsResponseDto = {
   failedAccesses: number;
   successRate: number;
   activityByDate: StudentMetricsPointDto[];
+  careerDistribution: StudentCareerDistributionPointDto[];
 };
 
 function buildStudentListQuery(params: StudentListParams) {
@@ -143,6 +151,7 @@ function buildStudentListQuery(params: StudentListParams) {
   if (params.enrollmentId) searchParams.set('enrollmentId', params.enrollmentId);
   if (params.lastNamePaternal) searchParams.set('lastNamePaternal', params.lastNamePaternal);
   if (params.lastNameMaternal) searchParams.set('lastNameMaternal', params.lastNameMaternal);
+  if (params.institutionalEmail) searchParams.set('institutionalEmail', params.institutionalEmail);
   if (params.careerCode) searchParams.set('careerCode', params.careerCode);
   if (params.sex) searchParams.set('sex', params.sex);
   if (params.quarter !== undefined) searchParams.set('quarter', String(params.quarter));
@@ -251,6 +260,7 @@ export async function exportStudentsReport(params: StudentExportParams = {}): Pr
   if (params.enrollmentId) query.set('enrollmentId', params.enrollmentId);
   if (params.lastNamePaternal) query.set('lastNamePaternal', params.lastNamePaternal);
   if (params.lastNameMaternal) query.set('lastNameMaternal', params.lastNameMaternal);
+  if (params.institutionalEmail) query.set('institutionalEmail', params.institutionalEmail);
   if (params.careerCode) query.set('careerCode', params.careerCode);
   if (params.sex) query.set('sex', params.sex);
   if (params.quarter !== undefined) query.set('quarter', String(params.quarter));
@@ -267,12 +277,14 @@ export async function exportStudentsReport(params: StudentExportParams = {}): Pr
 }
 
 export async function downloadStudentsImportTemplate(
-  format: StudentExportFormat = 'csv',
+  format: StudentExportFormat = 'xlsx',
 ): Promise<StudentImportTemplateResult> {
   const { blob, headers } = await api.download(`/students/import-template?format=${format}`);
   const filename = extractFilenameFromContentDisposition(
     headers.get('Content-Disposition'),
-    `students-import-template.${format}`,
+    format === 'xlsx'
+      ? 'plantilla-importacion-estudiantes.xlsx'
+      : 'plantilla-importacion-estudiantes.csv',
   );
 
   return { blob, filename };

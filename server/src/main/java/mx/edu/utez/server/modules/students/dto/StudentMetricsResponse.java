@@ -10,6 +10,7 @@ public record StudentMetricsResponse(
         long successfulAccesses,
         long failedAccesses,
         double successRate,
-        List<StudentMetricsPointResponse> activityByDate
+        List<StudentMetricsPointResponse> activityByDate,
+        List<StudentCareerDistributionResponse> careerDistribution
 ) {
 }

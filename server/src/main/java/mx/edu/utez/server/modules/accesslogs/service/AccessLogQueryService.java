@@ -25,6 +25,7 @@ import mx.edu.utez.server.modules.accesslogs.dto.AccessLogMetricsResponse;
 import mx.edu.utez.server.modules.accesslogs.dto.AccessLogQueryFilters;
 import mx.edu.utez.server.modules.accesslogs.dto.AccessLogResponse;
 import mx.edu.utez.server.modules.accesslogs.dto.AccessLogScope;
+import mx.edu.utez.server.modules.accesslogs.dto.AccessLogSummaryResponse;
 import mx.edu.utez.server.shared.api.PageResponse;
 import mx.edu.utez.server.shared.exception.BusinessException;
 import mx.edu.utez.server.shared.exception.ErrorCode;
@@ -246,6 +247,34 @@ public class AccessLogQueryService {
         List<AccessLogHourlyVolumeResponse> hourly = buildTodayHourlyVolume(filters);
 
         return new AccessLogMetricsResponse(daily, careers, hourly);
+    }
+
+    @Transactional(readOnly = true)
+    public AccessLogSummaryResponse summary(AccessLogQueryFilters filters) {
+        validateSharedFilters(filters);
+
+        QueryContext context = buildQueryContext(filters);
+        String where = context.whereClause();
+
+        Query summaryQuery = entityManager.createNativeQuery("""
+                SELECT
+                    COUNT(*) AS total,
+                    SUM(CASE WHEN result = 'SUCCESS' THEN 1 ELSE 0 END) AS successful,
+                    SUM(CASE WHEN result <> 'SUCCESS' THEN 1 ELSE 0 END) AS failed,
+                    COUNT(DISTINCT CONCAT(actor_type, ':', COALESCE(actor_id, actor_email, id))) AS unique_actors
+                  FROM (
+                """ + UNION_SQL + """
+                ) access_log_union
+                """ + where + """
+                """);
+        bindParams(summaryQuery, context.params());
+
+        Object[] row = (Object[]) summaryQuery.getSingleResult();
+        long total = row[0] == null ? 0L : ((Number) row[0]).longValue();
+        long successful = row[1] == null ? 0L : ((Number) row[1]).longValue();
+        long failed = row[2] == null ? 0L : ((Number) row[2]).longValue();
+        long uniqueActors = row[3] == null ? 0L : ((Number) row[3]).longValue();
+        return new AccessLogSummaryResponse(total, successful, failed, uniqueActors);
     }
 
     private List<AccessLogHourlyVolumeResponse> buildTodayHourlyVolume(AccessLogQueryFilters baseFilters) {

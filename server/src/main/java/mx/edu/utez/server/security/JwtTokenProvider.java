@@ -51,6 +51,12 @@ public class JwtTokenProvider {
         long expirationSeconds = tokenType == JwtTokenType.ADMIN
                 ? appProperties.getJwt().getAdminExpirationSeconds()
                 : appProperties.getJwt().getStudentExpirationSeconds();
+        long idleTimeoutSeconds = appProperties.getAuth().getIdleTimeoutSeconds();
+        // Si el sistema está configurado para expirar por inactividad, el "exp" del JWT no debe ser el factor dominante.
+        // Mantenemos exp como "cinturón de seguridad" a largo plazo.
+        if (idleTimeoutSeconds > 0) {
+            expirationSeconds = Math.max(expirationSeconds, 31_536_000L); // 365 días
+        }
         Instant expiration = now.plusSeconds(expirationSeconds);
 
         return Jwts.builder()

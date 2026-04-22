@@ -107,15 +107,13 @@ public class DashboardExportService {
             }
 
             writer.write("\r\n");
-            writer.write("TOP_USERS_ID,TOP_USERS_NAME,ENROLLMENT,CAREER_CODE,CAREER_NAME,SUCCESS,FAILED,TOTAL\r\n");
+            writer.write("TOP_USERS_ID,TOP_USERS_NAME,ENROLLMENT,SUCCESS,FAILED,TOTAL\r\n");
             for (DashboardTopStudentItemResponse item : snapshot.topStudents().students()) {
                 writeCsvLine(
                         writer,
                         item.studentId() == null ? "" : item.studentId().toString(),
                         item.name(),
                         item.enrollmentId(),
-                        item.careerCode(),
-                        item.careerName(),
                         String.valueOf(item.successfulAccesses()),
                         String.valueOf(item.failedAccesses()),
                         String.valueOf(item.totalAccesses())
@@ -159,20 +157,18 @@ public class DashboardExportService {
             autosize(careers, 5);
 
             Sheet students = wb.createSheet("Top Usuarios");
-            writeHeader(students.createRow(0), headerStyle, "Student Id", "Name", "Enrollment", "Career Code", "Career Name", "Success", "Failed", "Total");
+            writeHeader(students.createRow(0), headerStyle, "Student Id", "Name", "Enrollment", "Success", "Failed", "Total");
             int studentRow = 1;
             for (DashboardTopStudentItemResponse item : snapshot.topStudents().students()) {
                 Row row = students.createRow(studentRow++);
                 row.createCell(0).setCellValue(item.studentId() == null ? "" : item.studentId().toString());
                 row.createCell(1).setCellValue(item.name());
                 row.createCell(2).setCellValue(item.enrollmentId());
-                row.createCell(3).setCellValue(item.careerCode());
-                row.createCell(4).setCellValue(item.careerName());
-                row.createCell(5).setCellValue(item.successfulAccesses());
-                row.createCell(6).setCellValue(item.failedAccesses());
-                row.createCell(7).setCellValue(item.totalAccesses());
+                row.createCell(3).setCellValue(item.successfulAccesses());
+                row.createCell(4).setCellValue(item.failedAccesses());
+                row.createCell(5).setCellValue(item.totalAccesses());
             }
-            autosize(students, 8);
+            autosize(students, 6);
 
             wb.write(out);
         }
